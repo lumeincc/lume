@@ -4,7 +4,7 @@
   "private": true,
   "author": "LUME Inc",
   "license": "SEE LICENSE IN LICENSE",
-  "repository": "https://github.com/reactorgrouptech/lume-internal",
+  "repository": "https://github.com/lumeincc/lume-dev-version",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,11 +19,10 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.2.0",
-    "@types/qrcode": "^1.5.6",
     "bip39": "^3.1.0",
     "idb-keyval": "^6.3.0",
     "minidenticons": "^4.2.1",
-    "next": "^16.2.12",
+    "next": "^16.3.4",
     "qrcode": "^1.5.4",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -34,30 +33,31 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.2.7",
+    "@next/bundle-analyzer": "^16.3.4",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.19.17",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "^4.1.8",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.1",
+    "eslint-config-next": "^16.3.4",
     "eslint-plugin-no-secrets": "^2.3.3",
     "eslint-plugin-security": "^3.0.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "vite": "^8.0.5",
     "postcss": "^8.5.25",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   }
 }

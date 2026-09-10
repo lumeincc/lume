@@ -4,7 +4,7 @@
   "private": true,
   "author": "LUME Inc",
   "license": "SEE LICENSE IN LICENSE",
-  "repository": "https://github.com/reactorgrouptech/lume-internal",
+  "repository": "https://github.com/lumeincc/lume-dev-version",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -20,7 +20,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@vitest/coverage-v8": "^4.1.10",
     "better-sqlite3": "^12.10.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -48,7 +47,8 @@
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.64.0",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "autocannon": "^8.0.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
@@ -59,7 +59,7 @@
     "supertest": "^7.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "vite": "^8.0.5",

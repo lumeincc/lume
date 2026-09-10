@@ -24,7 +24,6 @@ Runtime dependencies
 Client (`client/package.json`)
 
   @noble/hashes        MIT
-  @types/qrcode        MIT          (see note below)
   bip39                ISC
   idb-keyval           Apache-2.0
   minidenticons        MIT
@@ -40,7 +39,6 @@ Client (`client/package.json`)
 
 Server (`server/package.json`)
 
-  @vitest/coverage-v8  MIT          (see note below)
   better-sqlite3       MIT
   compression          MIT
   cors                 MIT
@@ -56,18 +54,14 @@ Server (`server/package.json`)
   ws                   MIT
   zod                  MIT
 
-Two entries are listed above because `dependencies` is where they are declared,
-not because they belong there:
-
-  - `@vitest/coverage-v8` is test tooling declared as a server runtime
-    dependency. It ships into the production image and is never used there.
-  - `@types/qrcode` is a type-only package declared as a client runtime
-    dependency; types are erased at build time.
-
-Both should be `devDependencies`. Moving them is a dependency change and so needs
-a security review pass, not a tidy-up — recorded here rather than done quietly,
-and listed above rather than silently filtered, because this file is meant to say
-what the manifests actually declare.
+Until 2026-09-10 two more entries appeared above, because `dependencies` is where
+they were declared rather than where they belonged: `@vitest/coverage-v8`, test
+tooling that shipped into the server's production image and was never used
+there, and `@types/qrcode`, a type-only package whose types are erased at build
+time. Both are `devDependencies` now. The move had been recorded here as pending,
+because it is a dependency change; it stopped being optional when an advisory
+against vitest (GHSA-82fw-gwwq-j7x9) turned the server's production-tree audit
+red — through a package the production image never ran.
 
 Licence texts ship inside each package under `node_modules/<name>/`. They are
 not vendored here, so this list is a map, not a substitute for them.
