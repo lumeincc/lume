@@ -64,6 +64,7 @@
   "overrides": {
     "vite": "^8.0.5",
     "uuid": "$uuid",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "qs": "^6.16.0"
   }
 }

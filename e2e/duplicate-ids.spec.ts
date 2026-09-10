@@ -61,8 +61,24 @@ test.describe('the messenger renders no duplicate id', () => {
   }) => {
     await authedPage.waitForLoadState('networkidle');
 
-    // Guards the guard: /chats carries dozens of ids, so a zero here means the
-    // page did not render rather than that it rendered cleanly.
+    // Check we are on the messenger before checking the messenger. Counting ids
+    // is not enough on its own: the unlock screen has ids too, so this test
+    // reported ok while the browser was sitting on /unlock after a lost
+    // session — a green result about a page it never looked at. A test that
+    // passes on the wrong page is worse than one that fails, because it is
+    // counted as coverage.
+    // `toHaveURL` retries; reading `.url()` is a snapshot and races the redirect
+    // it is meant to catch.
+    await expect(authedPage).toHaveURL(/\/chats$/);
+
+    // Filter on visibility *before* taking the first match. This page mounts the
+    // mobile and desktop trees at once — the very duplication this file exists
+    // to check — so `New chat` matches twice, and `.first()` can land on the
+    // copy that is correctly hidden at this viewport.
+    await expect(
+      authedPage.getByRole('button', { name: 'New chat' }).filter({ visible: true }).first()
+    ).toBeVisible({ timeout: 15_000 });
+
     expect(await idCount(authedPage)).toBeGreaterThan(0);
     expect(await duplicateIds(authedPage)).toEqual([]);
   });

@@ -14,7 +14,6 @@ import { Avatar, Button, Input, Modal } from '@/components/ui';
 import AddContactPopover from '@/components/modals/AddContactPopover';
 import { t } from '@/lib/i18n';
 import { MIN_PIN_LENGTH } from '@/lib/pinPolicy';
-import { useHoverPrefetch } from '@/hooks/useRoutePrefetch';
 
 function formatTime(timestamp?: number) {
   if (!timestamp) return '';
@@ -31,7 +30,6 @@ const ChatRow = memo(function ChatRow({
   contact,
   selected,
   onClick,
-  onPointerEnter,
   showHiddenControls,
   onToggleHidden,
   searchHighlight,
@@ -41,7 +39,6 @@ const ChatRow = memo(function ChatRow({
   contact: Contact;
   selected: boolean;
   onClick: () => void;
-  onPointerEnter: () => void;
   showHiddenControls: boolean;
   onToggleHidden: (chatId: string) => void;
   searchHighlight?: string;
@@ -62,7 +59,6 @@ const ChatRow = memo(function ChatRow({
     <button
       type="button"
       onClick={onClick}
-      onPointerEnter={onPointerEnter}
       className={`
         relative w-full px-4 py-3.5 sm:py-3 text-left transition-colors
         border-b border-[var(--border)]/55 last:border-b-0
@@ -246,7 +242,6 @@ export default function ChatListPanel({
   // Opening a conversation is a route change, so its payload is fetched at the
   // worst moment — after the click. Pointer-enter is tens to hundreds of
   // milliseconds earlier, which covers most of the round trip.
-  const prefetchOnHover = useHoverPrefetch();
   const showHiddenChats = useUIStore((s) => s.showHiddenChats);
   const setShowHiddenChats = useUIStore((s) => s.setShowHiddenChats);
   const setChatHidden = useChatsStore((s) => s.setChatHidden);
@@ -609,7 +604,6 @@ export default function ChatListPanel({
                   contact={contact}
                   selected={selectedChatId === chat.id}
                   onClick={() => onSelectChat(chat.id)}
-                  onPointerEnter={() => prefetchOnHover(`/chat/${chat.id}`)}
                   showHiddenControls={hiddenChatsEnabled}
                   onToggleHidden={toggleChatHidden}
                   searchHighlight={query || undefined}

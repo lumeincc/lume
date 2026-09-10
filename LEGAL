@@ -64,9 +64,10 @@ not because they belong there:
   - `@types/qrcode` is a type-only package declared as a client runtime
     dependency; types are erased at build time.
 
-Both should be `devDependencies`. Moving them is a dependency change, recorded
-here rather than done quietly, and listed above rather than silently filtered,
-because this file is meant to say what the manifests actually declare.
+Both should be `devDependencies`. Moving them is a dependency change and so needs
+a security review pass, not a tidy-up — recorded here rather than done quietly,
+and listed above rather than silently filtered, because this file is meant to say
+what the manifests actually declare.
 
 Licence texts ship inside each package under `node_modules/<name>/`. They are
 not vendored here, so this list is a map, not a substitute for them.

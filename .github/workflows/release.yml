@@ -52,4 +52,4 @@ jobs:
 
             There is no downloadable artefact: the web client is hosted, and the
             deployment is the build. The Android APK is published from the
-            [mobile repository](https://github.com/aaversee/lume-mobile).
+            [mobile repository](https://github.com/lumeincc/lume-mobile).

@@ -9,7 +9,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleLock } from "@/hooks/useIdleLock";
 import { ShortcutsModal } from "@/components/modals";
 import IdleLockWarning from "@/components/IdleLockWarning";
-import { useAuthStore, useUIStore } from "@/stores";
+import { useAuthStore } from "@/stores";
 
 /**
  * Shared layout for all authenticated routes (chats, chat/[id], settings).
@@ -36,22 +36,17 @@ export default function AuthenticatedLayout({
 }) {
   useMessengerSync();
   const { isHelpOpen, closeHelp } = useKeyboardShortcuts();
-  const locale = useUIStore((s) => s.locale);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { secondsLeft, stayUnlocked } = useIdleLock(isAuthenticated);
 
   return (
     <div className="h-full min-h-0">
       {/*
-        Components read strings through a module-level `t`, so changing the
-        locale does not by itself re-render them. Keying on it remounts the
-        subtree — cheap, and it happens at most once in a session. The key sits
-        here rather than on the layout so useMessengerSync above keeps its
-        WebSocket instead of reconnecting on a language change.
+        The locale key that used to live here moved to LocaleShell in the root
+        layout: the unauthenticated screens need the same remount, and two
+        mechanisms for one job is how they drift apart.
       */}
-      <div key={locale} className="h-full min-h-0">
-        {children}
-      </div>
+      {children}
       <ShortcutsModal isOpen={isHelpOpen} onClose={closeHelp} />
       {/*
         Outside the locale-keyed subtree: a language change remounts that, and
