@@ -18,6 +18,7 @@ import ChatListPanel from "@/components/messenger/ChatListPanel";
 import RightRail from "@/components/messenger/RightRail";
 import { ChatListSkeleton } from "@/components/ui";
 import GroupView from "@/components/chat/GroupView";
+import ChatView from "@/components/chat/ChatView";
 import dynamic from "next/dynamic";
 
 const BackupModal = dynamic(
@@ -114,6 +115,10 @@ export default function ChatsPage() {
     return null;
   }
 
+  // Opening a chat is a state change, not a navigation. It used to push
+  // `/chat/[id]`, a route whose page re-declared this entire dashboard around
+  // the conversation — so every panel on screen, including the list just
+  // clicked in, was torn down and rebuilt to swap the middle column.
   const handleSelectChat = (chatId: string) => {
     if (!chatId) {
       // Called when switching to groups tab — clear individual chat selection
@@ -122,7 +127,6 @@ export default function ChatsPage() {
     }
     setActiveGroup(null);
     setActiveChat(chatId);
-    router.push(`/chat/${chatId}`);
   };
 
   const activeGroup = activeGroupId
@@ -147,8 +151,12 @@ export default function ChatsPage() {
     </div>
   );
 
+  const closeChat = () => setActiveChat(null);
+
   const mainContent = activeGroup ? (
     <GroupView group={activeGroup} />
+  ) : activeChatId ? (
+    <ChatView chatId={activeChatId} onClose={closeChat} />
   ) : (
     emptyMain
   );
@@ -187,10 +195,13 @@ export default function ChatsPage() {
 
   return (
     <div className="h-[100dvh] w-full overflow-hidden">
-      {/* Mobile: group chat full-screen when active, else swipeable Profile + Messages panels */}
+      {/* Mobile: an open conversation takes the whole screen; otherwise the
+          swipeable Profile + Messages panels. */}
       <div className="md:hidden h-full min-h-0">
         {activeGroup ? (
           <GroupView group={activeGroup} />
+        ) : activeChatId ? (
+          <ChatView chatId={activeChatId} onClose={closeChat} />
         ) : (
           <MobileSwipeShell
             profilePanel={mobileProfileNode}

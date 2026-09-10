@@ -3,23 +3,30 @@
 
 /**
  * Shared hook: add-contact + open-chat-for-contact logic.
- * Eliminates copy-paste between chats/page.tsx and chat/[id]/page.tsx.
+ *
+ * Used by the chats page and by the contacts rail beside it. It used to be
+ * shared with a separate `/chat/[id]` page, which is why it exists at all;
+ * that page is now a redirect and the conversation renders in place.
  */
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { useAuthStore, useContactsStore, useChatsStore } from "@/stores";
+import {
+  useAuthStore,
+  useContactsStore,
+  useChatsStore,
+  useGroupsStore,
+} from "@/stores";
 import { authApi } from "@/lib/api";
 import { saveContacts, type Contact } from "@/crypto/storage";
 import { vaultGetMasterKey, vaultHasKeys } from "@/crypto/keyVault";
 
 export function useContactActions() {
-  const router = useRouter();
   const username = useAuthStore((s) => s.username);
   const addContact = useContactsStore((s) => s.addContact);
   const addChat = useChatsStore((s) => s.addChat);
   const setActiveChat = useChatsStore((s) => s.setActiveChat);
+  const setActiveGroup = useGroupsStore((s) => s.setActiveGroup);
 
   const [showAddContact, setShowAddContact] = useState(false);
   const [addContactError, setAddContactError] = useState("");
@@ -41,10 +48,14 @@ export function useContactActions() {
           isHidden: false,
         });
       }
+      // Selecting the chat *is* opening it — there is no navigation any more.
+      // The group has to be cleared here too: the chats page shows a group in
+      // preference to a chat, so without this, opening a contact from the rail
+      // while a group is on screen would change nothing visible.
+      setActiveGroup(null);
       setActiveChat(chatId);
-      router.push(`/chat/${chatId}`);
     },
-    [addChat, setActiveChat, router],
+    [addChat, setActiveChat, setActiveGroup],
   );
 
   const handleAddContact = useCallback(async (input: string) => {

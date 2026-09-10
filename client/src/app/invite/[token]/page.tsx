@@ -114,7 +114,10 @@ export default function InvitePage() {
           .getState()
           .chats.find((c) => c.contactId === user.id);
         if (existingChat) {
-          router.push(`/chat/${existingChat.id}`);
+          // Select, then go to the messenger. `/chat/<id>` still resolves, but
+          // only by redirecting here, so going straight there saves a hop.
+          useChatsStore.getState().setActiveChat(existingChat.id);
+          router.push("/chats");
         } else {
           const chatId = uuidv4();
           useChatsStore.getState().addChat({
@@ -125,7 +128,7 @@ export default function InvitePage() {
             isHidden: false,
           });
           useChatsStore.getState().setActiveChat(chatId);
-          router.push(`/chat/${chatId}`);
+          router.push("/chats");
         }
         return;
       }
@@ -236,7 +239,10 @@ export default function InvitePage() {
             <h1 className="auth-title mt-6">{t("invite.added")}</h1>
             <p className="auth-hint mt-2">{t("invite.addedHint")}</p>
             <button
-              onClick={() => router.push(`/chat/${state.chatId}`)}
+              onClick={() => {
+                useChatsStore.getState().setActiveChat(state.chatId);
+                router.push("/chats");
+              }}
               className="auth-pill mt-8"
             >
               {t("invite.openChat")}

@@ -249,9 +249,9 @@ export default function UnlockPage() {
             and make the passphrase-strength floor irrelevant to anyone holding the
             profile. SEC-20260805-002.
 
-            Securex's validation is "no save prompt appears"; he noted browsers
-            honour `new-password` more consistently than `off` on password fields,
-            so this uses the variant that meets the criterion.
+            The finding's required validation is "no save prompt appears", and
+            browsers honour `new-password` more consistently than `off` on
+            password fields — so this uses the variant that meets the criterion.
           */}
           <input
             ref={hiddenInputRef}

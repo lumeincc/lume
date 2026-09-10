@@ -52,7 +52,7 @@ function isLocale(value: string | null): value is Locale {
  * before unlock so the PIN screen is in the right language, and on an anonymous
  * account it is one less attribute to hand the server.
  */
-function resolveInitialLocale(): Locale {
+export function detectLocale(): Locale {
   if (typeof window === "undefined") return DEFAULT_LOCALE;
 
   const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -62,7 +62,20 @@ function resolveInitialLocale(): Locale {
   return isLocale(fromBrowser ?? null) ? (fromBrowser as Locale) : DEFAULT_LOCALE;
 }
 
-let activeLocale: Locale = resolveInitialLocale();
+/**
+ * Starts at the default on *both* sides, deliberately.
+ *
+ * This used to call `detectLocale()` at module scope, which resolves to the
+ * browser's language in the client bundle and to English on the server. Every
+ * `t()` then returned different text in the two places, so React found a text
+ * mismatch on hydration, threw away the entire server-rendered tree and built
+ * it again from scratch — the React #418 in the console.
+ *
+ * The user saw English for a frame either way. Now that frame is a deliberate
+ * re-render after `LocaleBoot` detects the real locale, instead of React
+ * discarding a whole tree it had just been handed.
+ */
+let activeLocale: Locale = DEFAULT_LOCALE;
 
 export function getLocale(): Locale {
   return activeLocale;

@@ -7,7 +7,7 @@
  */
 
 import { create } from "zustand";
-import { getLocale, setLocale as applyLocale, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, setLocale as applyLocale, type Locale } from "@/lib/i18n";
 import type { Contact } from "@/crypto/storage";
 import { vaultClear, vaultSetSessions, vaultUpsertSession, vaultDeleteSession } from "@/crypto/keyVault";
 import type { SerializedSession } from "@/crypto/ratchet";
@@ -411,7 +411,8 @@ export const useUIStore = create<UIState>()((set) => ({
   isPanicMode: false,
   showHiddenChats: false,
   contactsPanelCollapsed: typeof window !== "undefined" && localStorage.getItem("lume:contacts-collapsed") === "true",
-  locale: getLocale(),
+  // Default on both sides; LocaleBoot applies the real one after mount.
+  locale: DEFAULT_LOCALE,
   isOnline: true,
   wsConnected: false,
   wsStatus: "disconnected",

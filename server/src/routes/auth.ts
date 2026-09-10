@@ -42,9 +42,10 @@ function audit(event: string, details: Record<string, unknown>) {
 /**
  * Registration is the one endpoint that creates unbounded state.
  *
- * Every account is a `users` row plus twenty one-time prekeys, and nothing
- * prunes them — the table's only real bound today is that Render's free plan
- * has an ephemeral disk, which is accidental protection rather than a design.
+ * Every account is a `users` row plus twenty one-time prekeys. They are pruned
+ * by the inactivity sweep in `index.ts`, which is the table's actual bound; the
+ * ephemeral disk on Render's free plan also wipes it, but that is an accident of
+ * hosting and would disappear the day the plan changes.
  *
  * The window was ten minutes, so one address could mint 180 accounts an hour,
  * or 4,320 a day. Raised to an hour for the same allowance, cutting that
@@ -52,11 +53,12 @@ function audit(event: string, details: Record<string, unknown>) {
  * behind one NAT can still register thirty people in an hour, which is far more
  * than any real hour of signups.
  *
- * Whether inactive accounts should expire is deliberately *not* decided here.
- * The server row is a cache and clients re-bind silently, so pruning is safe
- * mechanically — but it releases the username, and a username someone else can
- * then claim is an identity question, not a housekeeping one. That belongs to
- * Securex.
+ * Inactive accounts do expire — the question was open when this comment was
+ * written and has since been decided: the sweep releases the username, and a
+ * released username may be reissued. That is an identity decision rather than
+ * housekeeping, and the reasoning for why reissue is safe here (identity is the
+ * key pair, not the name — a new holder cannot impersonate the old one, and the
+ * safety number changes) lives in `docs/DDOS.md`, not in a rate-limiter.
  */
 const registerRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,

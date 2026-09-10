@@ -12,6 +12,8 @@ import Dedication from "@/components/Dedication";
 import OnlineStatus from "@/components/OnlineStatus";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import LocaleLang from "@/components/LocaleLang";
+import LocaleBoot from "@/components/LocaleBoot";
+import LocaleShell from "@/components/LocaleShell";
 
 // Self-hosted at build time by next/font — no request to Google, so the CSP
 // stays closed and no font call leaks who is using the app.
@@ -26,7 +28,7 @@ const spaceGrotesk = Space_Grotesk({
 // Cyrillic and wins first. So Russian does not extend the stack, it replaces
 // it: globals.css swaps --font-sans wholesale on html[lang="ru"].
 //
-// Manrope is the face the Russian deck uses (brand/LUME-presentation-ru.html),
+// Manrope is the face the Russian deck uses (in the private brand repository),
 // so the product and the deck now agree.
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -89,12 +91,13 @@ export default async function RootLayout({
         ) : null}
         <div className="min-h-screen flex flex-col">
           <LocaleLang />
+          <LocaleBoot />
           <ServiceWorkerRegistration />
           <OnlineStatus />
           <Dedication />
           <ErrorBoundary>
             <StatusBanner />
-            <div className="flex-1 min-h-0">{children}</div>
+            <LocaleShell>{children}</LocaleShell>
           </ErrorBoundary>
         </div>
       </body>

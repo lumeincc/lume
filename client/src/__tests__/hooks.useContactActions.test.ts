@@ -13,10 +13,14 @@ import { renderHook, act } from '@testing-library/react';
 // ── Hoisted state ─────────────────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
+  // Kept, and asserted *not* to be called: opening a chat used to be a
+  // navigation to `/chat/[id]` and is now a state change. A test that simply
+  // stopped mentioning the router would not notice it coming back.
   push: vi.fn(),
   addContact: vi.fn(),
   addChat: vi.fn(),
   setActiveChat: vi.fn(),
+  setActiveGroup: vi.fn(),
   getUser: vi.fn(),
   saveContacts: vi.fn().mockResolvedValue(undefined),
   contacts: [] as unknown[],
@@ -50,7 +54,12 @@ vi.mock('@/stores', () => {
     return selector ? selector(state) : state;
   };
 
-  return { useAuthStore, useContactsStore, useChatsStore };
+  const useGroupsStore = (selector?: (s: unknown) => unknown) => {
+    const state = { setActiveGroup: mocks.setActiveGroup };
+    return selector ? selector(state) : state;
+  };
+
+  return { useAuthStore, useContactsStore, useChatsStore, useGroupsStore };
 });
 
 vi.mock('@/crypto/keyVault', () => ({
@@ -159,7 +168,9 @@ describe('useContactActions', () => {
         expect.objectContaining({ id: 'bob-id', username: 'bob' })
       );
       expect(mocks.saveContacts).toHaveBeenCalled();
-      expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/chat/'));
+      // Opens the conversation by selecting it, without leaving /chats.
+      expect(mocks.setActiveChat).toHaveBeenCalledWith('test-uuid-1234');
+      expect(mocks.push).not.toHaveBeenCalled();
     });
 
     it('closes the modal after successful add', async () => {
@@ -330,10 +341,11 @@ describe('useContactActions', () => {
       expect(mocks.addChat).toHaveBeenCalledWith(
         expect.objectContaining({ contactId: 'bob-id', messages: [] })
       );
-      expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/chat/'));
+      expect(mocks.setActiveChat).toHaveBeenCalledWith('test-uuid-1234');
+      expect(mocks.push).not.toHaveBeenCalled();
     });
 
-    it('navigates to the existing chat without creating a new one', () => {
+    it('opens the existing chat without creating a new one', () => {
       mocks.existingChats = [{ id: 'existing-chat-id', contactId: 'bob-id' }];
 
       const { result } = renderHook(() => useContactActions());
@@ -344,7 +356,22 @@ describe('useContactActions', () => {
 
       expect(mocks.addChat).not.toHaveBeenCalled();
       expect(mocks.setActiveChat).toHaveBeenCalledWith('existing-chat-id');
-      expect(mocks.push).toHaveBeenCalledWith('/chat/existing-chat-id');
+      expect(mocks.push).not.toHaveBeenCalled();
+    });
+
+    it('clears the open group, which would otherwise stay on screen', () => {
+      // The chats page renders a group in preference to a chat, so opening a
+      // contact from the contacts rail while a group is open has to put the
+      // group away or nothing visible changes.
+      mocks.existingChats = [{ id: 'existing-chat-id', contactId: 'bob-id' }];
+
+      const { result } = renderHook(() => useContactActions());
+
+      act(() => {
+        result.current.openChatForContact('bob-id');
+      });
+
+      expect(mocks.setActiveGroup).toHaveBeenCalledWith(null);
     });
   });
 });

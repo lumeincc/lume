@@ -16,6 +16,11 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    /* Without this, an action waits as long as the test has left. One control
+       that never becomes clickable then burns the whole budget and reports
+       "test timeout exceeded" — which names the symptom and hides the cause.
+       Bounded, a stuck click says which locator it was still waiting for. */
+    actionTimeout: 15_000,
   },
 
   projects: [
@@ -26,19 +31,25 @@ export default defineConfig({
   ],
 
   /* Start both servers before running tests. The timeout is generous because a
-     cold Next.js dev start in CI can take well over the old 30s; reuseExistingServer
-     means locally-started servers are picked up and this never waits. */
+     cold Next.js dev start can take well over the old 30s.
+
+     Reuse is a local convenience only. Locally, an already-running dev server
+     is the working tree you are trying to verify, so picking it up saves the
+     cold start and tests the right thing. In CI it is the opposite: the runner
+     has its own checkout, so reusing whatever happens to be listening would
+     report on a different tree than the commit under test. That mattered the
+     moment CI moved onto a machine that also runs a dev server. */
   webServer: [
     {
       command: 'cd server && npm start',
       url: 'http://localhost:3001/api/health',
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: 'cd client && npm run dev',
       url: 'http://localhost:3000',
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
   ],

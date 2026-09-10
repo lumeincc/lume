@@ -31,6 +31,12 @@ const buildEnv = {
 
 const nextConfig: NextConfig = {
   env: buildEnv,
+  // No generated AGENTS.md / CLAUDE.md. From 16.3, `next dev` writes both into
+  // client/ whenever it detects a coding agent, and the CLAUDE.md is an import
+  // that every agent session in this folder then loads. This repository keeps its
+  // own agent rules at the root, held in sync by `check:rules`, and the files also
+  // appeared part-way through every e2e run, leaving the tree dirty behind it.
+  agentRules: false,
   ...(process.env.STANDALONE === "1" && { output: "standalone" }),
   turbopack: {
     resolveAlias: {
