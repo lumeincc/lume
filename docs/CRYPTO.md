@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Cryptography
 
-Status: **draft**, revision 5.
+Status: **draft**, revision 6.
 Nothing here is implemented until this document says it is; code that
 disagrees with it is a bug in one of the two.
 
@@ -56,8 +56,10 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
   identity.
 - **First flights against a later compromise.** The first envelopes of a
   session that used no one-time key are sealed to a signed prekey whose private
-  half is kept up to 40 days (§4); skipped message keys are kept up to 14 days.
+  half is kept up to 40 days (§4) — or, if the app is not opened in that time,
+  until it is next unlocked; skipped message keys are kept up to 14 days.
   Whoever takes the device within those windows can decrypt such recordings.
+  Only the newest message of a backlog travels that way (§5.4).
 - **A stolen identity.** Whoever copies the identity secret or the recovery
   phrase can act as that account until its owner creates a new account. There
   is no identity rotation in this version; recovery locks out an old *device*
@@ -69,11 +71,11 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 - **That a block goes unnoticed.** The relay gives a blocked sender no signal
   (§9.4), but replies and delivery receipts stop, as they would for someone who
   stopped opening the app.
-- **That an account recovered.** Anyone holding one of the account's delivery
+- **That an account recovered.** The generation of a discoverable account is in
+  its public certificate, and anyone holding one of an account's delivery
   tokens — a blocked contact too, since a sink answers like a live token (§9.4)
-  — can read its current generation from a bundle or seal key, and so learn
-  when it recovered on a new device (§3.3). Nothing else about the account is
-  revealed that way.
+  — can read it from a bundle or seal key. Either way they learn when it
+  recovered on a new device (§3.3), and nothing else.
 - **Deleted data on flash storage.** The vault overwrites what it deletes
   (§10.6), but flash memory can keep earlier copies of a block beyond any
   application's reach. Someone who later has the device *and* the passphrase may
@@ -146,8 +148,9 @@ proves it with Wycheproof's modulus-overflow vectors.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.
-- **`AEAD` always draws its own nonce**, `n = Random(24)`, and every use writes
-  `n ‖ AEAD(k, n, ad, m)`; no caller chooses a nonce. A plaintext is at most
+- **`AEAD` always draws its own nonce**, `n = Random(24)`, and every use stores
+  it next to the ciphertext — as `n ‖ AEAD(k, n, ad, m)` or in a structure's
+  `nonce` field; no caller chooses a nonce. A plaintext is at most
   128 KiB, checked before anything is allocated; larger data uses `Stream`
   (§11.1).
 - Times are seconds since the Unix epoch. "Now" is checked with 5 minutes of
@@ -165,6 +168,17 @@ An account is created from **256 bits of entropy** `E = Random(32)`, shown as a
 **24-word BIP39 mnemonic** (English wordlist, 8-bit checksum). BIP39 is used
 only as an encoding of `E`; its PBKDF2 seed function is not run. A phrase whose
 checksum fails is rejected before anything is derived.
+
+**What a phrase may look like.** It is encoded as the 24 lowercase words
+separated by single spaces. On input, ASCII letters in either case are
+accepted, words are separated by any run of spaces, tabs, carriage returns or
+line feeds, and leading or trailing whitespace is ignored. There must be exactly
+24 words, each a whole word of the list — no four-letter abbreviations. Any
+other byte, a non-breaking space or other Unicode included, is refused. Errors
+are reported in a fixed order: a character outside that set, then a word count
+other than 24, then a word not in the list, then a failed checksum. Looking a
+word up or choosing one never branches on, or indexes memory with, its position
+in the list; word lengths and spacing are not hidden.
 
 ### 3.2 Identity keys
 
@@ -197,7 +211,13 @@ phrase on a new device registers **exactly the current generation + 1**
 key, and purges the envelopes, prekeys and seal keys of the old generation,
 which the new device could not open anyway. One device per account in this
 version. A recovered device starts with no contacts and no block list: contacts
-reach it again on their own (§9.3); the block list has to be rebuilt.
+reach it again on their own (§9.3). The relay keeps the tokens of blocked
+contacts as sinks, but the device's own block list, by identity, has to be
+rebuilt.
+
+A client takes a peer's generation only from a signed prekey that covers it
+(§4) or from an `Introduction` inside a session (§5.3), and never lets it go
+down.
 
 ---
 
@@ -212,8 +232,12 @@ reach it again on their own (§9.3); the block list has to be rebuilt.
 | `OPK` — one-time prekey | X25519 | 5 | one handshake; unsigned |
 
 ```
-sig = Sign(IKsig.sk, L("prekey") ‖ u8(kind) ‖ u32(id) ‖ u64(created_at) ‖ lp(public_key))
+sig = Sign(IKsig.sk, L("prekey") ‖ u8(kind) ‖ u32(id) ‖ u64(created_at) ‖ u32(generation) ‖ lp(public_key))
 ```
+
+The signature covers the account's generation (§3.3), so only the identity key
+can say that an account recovered: the relay cannot claim a new generation for
+which it was given no signed key.
 
 **Signed rotating keys** (`SPK`, `PQSPK`, `SSK`) are each active for 7 days from
 their `created_at`. A client uses one only if its `created_at` is not in the
@@ -223,16 +247,19 @@ private half is deleted once it is more than **40 days** past its
 `created_at` — 9 days of use plus the 30-day relay retention plus a day of
 margin. Time alone decides: no envelope sealed to the key can still be waiting
 on the relay by then, and nothing the relay does can keep the key alive longer.
-A client that wakes after a long absence processes its pending deliveries first
-and deletes expired keys after.
+Deleting needs the unlocked vault, so a key outlives its 40 days only until the
+app is next unlocked.
 
 **One-time keys** (`PQOPK`, `OPK`) have no age limit: a one-time key is valid
 while it is published.
 
 **Pre-signed generations.** Rotation needs `IKsig.sk`, which exists only while
 the vault is unlocked. So on every unlock the client withdraws the generations
-that are not yet active and uploads four fresh weekly generations of each
-rotating kind, with future `created_at` values; the relay serves each from its
+that start more than a day later, deletes their private halves, and uploads
+fresh ones up to four weeks ahead of each rotating kind. Their `created_at`
+values continue the active key's schedule — `created_at` of the active key
+plus 7, 14, 21 and 28 days — so frequent unlocks never stretch a rotation past
+§4's 9 days; the relay serves each from its
 `created_at` on and refuses uploads more than 31 days ahead. A user who opens
 the app at least once every four weeks never becomes unreachable, and a device
 compromise exposes only the generations created since the last unlock.
@@ -247,6 +274,9 @@ which ids were handed out and:
 
 - processes pending deliveries **before** replenishing, so a key that a waiting
   first message needs is not discarded;
+- treats every one-time key it published before the last 15 days as handed
+  out when it has not listed hand-outs in that time, since the relay forgets
+  them after 15 days (PROTOCOL §4.2);
 - deletes a handed-out private half when a handshake uses it, or **14 days**
   after hand-out if none arrives — after 14 days without a reply the initiator
   starts over from a fresh bundle (§5.4);
@@ -312,9 +342,9 @@ plaintext, it is authenticated by the session.
 directory key (PROTOCOL §2.1). Alice fetches her own on her authenticated
 connection, which reveals nothing about Bob. Bob shows the username only if:
 the certificate's directory key is on the client's current directory key list
-(PROTOCOL §2.1) and inside that key's window; it has not expired and expires no
-more than 31 days from now;
-its `ik_sig` and `ik_dh` equal the session's peer identity; and its
+(PROTOCOL §2.1) and inside that key's window; its `issued_at` is not in the
+future, it has not expired and it expires no more than 31 days from now; its
+`ik_sig` and `ik_dh` equal the session's peer identity; and its
 `account_id` equals the introduction's. Otherwise he shows "unverified contact"
 with the safety number. He makes no request to the relay to check a name, so
 checking reveals nothing either.
@@ -338,10 +368,12 @@ envelope is dropped.
    everything; no prekey is consumed by a forged envelope.
 
 If Alice receives nothing in a session for 14 days, or learns that Bob's
-generation changed (PROTOCOL §4.5), she starts a new session from a fresh bundle
-and makes the old one **receive-only**: it still decrypts what arrives for 30
-days, then it is deleted. Unacknowledged messages are resent in the new session
-(§7.2).
+generation went up (§3.3), she starts a new session from a fresh bundle and
+makes the old one **receive-only**: it still decrypts what arrives for 30
+days, then it is deleted. In the new session she sends only her newest
+unacknowledged message until Bob has answered in it; the rest follow once his
+reply has moved the ratchet on (§7.2). A backlog is therefore never sent as
+first flights, whatever the relay does to provoke a restart.
 
 ### 5.5 Sessions per contact
 
@@ -350,7 +382,8 @@ from the peer, or, if none has received yet, in the newest session it
 initiated. If both sides started sessions at the same time and each has
 received in the other's, the one initiated by the identity with the
 lexicographically lower `IKsig.pk` is used. Every other session is receive-only
-and deleted 30 days after it stopped being used. A contact has at most three
+and deleted 30 days after it stopped being used. A session made receive-only by
+§5.4 is never sent in again, even if it is the newest to have received. A contact has at most three
 sessions; a fourth makes the oldest receive-only session go first.
 
 ### 5.6 Why hybrid
@@ -476,18 +509,18 @@ a minute per contact and only to the message's sender, also in groups. A
 receipt is resent whenever a duplicate of an already received message arrives.
 
 A sender keeps the content of every message without a receipt for up to 30
-days. It resends it after 1 hour, 4 hours, 24 hours and 7 days and then no
-more on that schedule — four timed resends at most, so one message is never
-more than five envelopes waiting for an offline recipient. It also resends
-every message without a receipt as soon as it learns that the recipient's
-generation changed (`STALE_GENERATION`, a new introduction, a newer bundle or
-seal key). Each resend is a new ratchet message, freshly sealed, so two resends
-cannot be linked by their bytes. A recipient keeps the ids it has seen for 31
-days and discards any content whose id it already has, whatever session it
-arrives in. Resending therefore never produces a duplicate on screen; a message
-lost to an evicted envelope or a relay crash comes back with the timed resends,
-and one lost to a recovery comes back once the sender sees the new generation,
-within the 30 days.
+days. It resends it after 1 hour, 4 hours, 24 hours and 7 days; after that only
+when something shows it is missing — a receipt from the contact for a later
+message but not for this one, acted on at most once a day — and when a new
+session starts (§5.4). A send the relay answers with an error is not a resend:
+it is retried with backoff. Each resend is a new ratchet message, freshly
+sealed, so two resends cannot be linked by their bytes. While its recipient is
+away a message is therefore at most five envelopes on the relay, one more for
+each session restart. A recipient keeps the ids it has seen for 31 days and
+discards any content whose id it already has, whatever session it arrives in.
+Resending never produces a duplicate on screen, and a message lost to
+eviction, a relay crash or a recovery comes back within the 30 days once the
+recipient is reachable again.
 
 ### 7.3 Padding
 
@@ -510,7 +543,9 @@ some content lengths. Content above about 64 KiB goes as an attachment (§11).
 ## 8. Sealed sender
 
 The ratchet message is sealed to the recipient's current seal key `SSK_B`, so
-the relay never learns who sent it:
+the relay never learns who sent it. A client seals an envelope when it sends
+it: an outbox keeps content in the vault, never sealed envelopes, so the 40-day
+arithmetic of §4 holds.
 
 ```
 ES     = fresh X25519 key pair, one per envelope
@@ -578,9 +613,13 @@ recovery and that are not used within 45 days are deleted by the relay
 
 Blocking turns the contact's token into a **sink** and adds their identity to
 the block list. The relay answers a sink token **exactly as a live one** in
-every request — sending, fetching a bundle, an identity or a seal key, uploading
-a blob — and silently discards what arrives on it; quotas are charged on the
-bytes presented, whether or not they are kept. A blocked sender therefore gets
+every request — sending, fetching a bundle, an identity or a seal key — and
+silently discards envelopes that arrive on it; quotas are charged on the bytes
+presented, whether or not they are kept. Blobs are the exception that proves
+the rule: an uploader can download its own blob, so a blob uploaded on a sink
+token is stored and served like any other, counts against that token's quota,
+and expires unread (PROTOCOL §4.7). No cap, eviction or `UNAVAILABLE` answer
+depends on whether a token is a sink. A blocked sender therefore gets
 no signal from the relay. Revoking a token outright is used only for rotation
 (§9.1), when the contact already holds the replacement.
 
@@ -606,15 +645,15 @@ salt    = Random(16), fresh for every vault
 Kpw     = PWHash(passphrase, salt, ops, mem)
 Khw     = HW(Kpw)                                                  §10.2
 KEK     = HKDF(salt = Khw, ikm = Kpw, info = L("vault/master"), 32)
-DK      = Random(32), the vault's data key, stored only as AEAD(KEK, nonce, L("vault/data-key"), DK)
-K_rec   = HKDF(0^32, DK, L("vault/record-key"), 32)
+VK      = Random(32), the vault key, stored only as AEAD(KEK, nonce, L("vault/data-key"), VK)
+K_rec   = HKDF(0^32, VK, L("vault/record-key"), 32)
 K_check = HKDF(0^32, KEK, L("vault/check-key"), 32)
-K_man   = HKDF(0^32, DK, L("vault/manifest-key"), 32)
-K_root  = HKDF(0^32, DK, L("vault/root-key"), 32)
+K_man   = HKDF(0^32, VK, L("vault/manifest-key"), 32)
+K_root  = HKDF(0^32, VK, L("vault/root-key"), 32)
 ```
 
-Each derived key has one job. Records are encrypted under `DK`, which never
-changes; a new passphrase or a new hardware key re-wraps `DK` and re-encrypts
+Each derived key has one job. Records are encrypted under keys derived from
+`VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
 nothing else.
 
 ### 10.2 Hardware binding per platform
@@ -625,7 +664,7 @@ passphrase guess has to run on the original device.
 | Platform | `HW(x)` | What a guess costs |
 |---|---|---|
 | Android, Keystore at TEE or StrongBox level | HMAC-SHA256 with a non-exportable Keystore key created with `setUnlockedDeviceRequired(true)` | a Keystore operation on this unlocked device |
-| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation (`NCRYPT_PCP_USAGEAUTH_PROPERTY`) is the hex encoding of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
+| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation is the raw 32 bytes of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, set through `NCRYPT_PCP_USAGEAUTH_PROPERTY`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
 | Anything else | **software only**: a DPAPI-protected random `Khw` on Windows, an app-private random `Khw` on Android | nothing beyond Argon2id once the secret is read |
 
 **What the TPM adds.** `K_tpm` and `P` are fixed, so on Windows `HW(x)` is a
@@ -639,7 +678,8 @@ the dictionary-attack counter. `P` is checked to be a point on P-256 other than
 the identity before the TPM sees it, and a header whose `P` fails is refused.
 At setup the vault creates `K_tpm`, sets its usage authorisation and performs
 one ECDH; if the provider cannot do all three, the device is treated as
-software only.
+software only. A passphrase change creates a new `K_tpm` and `P` and deletes the
+old key, so an authorisation value that leaked once is worthless afterwards.
 
 Android reporting a `SOFTWARE` security level, and a TPM without ECC support,
 are treated as software only. Software-only mode is shown to the user, never
@@ -687,7 +727,10 @@ tag    = HMAC(K_man, L("vault/manifest") ‖ enc(Manifest { epoch, types: list<{
 `root` is updated incrementally — subtract a record's term, add the new one — so
 a write does not rehash the type, and because the terms are keyed, nobody
 without the vault keys can produce a matching root for a different set of
-records. A record write and its manifest update are **one SQLite transaction**,
+records. A record holds at most 128 KiB (§2.1); collections that can grow beyond it —
+the seen message ids, skipped message keys, a long history — are split into
+records by contact and by day. A record write and its manifest update are
+**one SQLite transaction**,
 so a crash leaves both or neither. On unlock the vault recomputes every root; a
 missing, extra or older record is an **integrity error**: the vault stops
 writing for the session and says so, never treating a record as empty. The user
@@ -697,7 +740,7 @@ recovery phrase.
 ### 10.5 Rollback
 
 The vault **epoch** increases on every unlock. On Android the epoch is part of
-the Keystore key alias: unlock creates the key for epoch `e + 1`, re-wraps `DK`
+the Keystore key alias: unlock creates the key for epoch `e + 1`, re-wraps `VK`
 under it and commits the header, and only then deletes the key for epoch `e`. An
 older copy of the vault file then finds no key for its epoch while a newer one
 exists, which is reported as rollback. Restoring a full device image —
@@ -761,7 +804,9 @@ recipient — never to `IKdh`. A card for the newcomer is sealed to the `SSK` th
 newcomer put in their acceptance, which the inviter passes on with the
 membership update; the newcomer's card for a member is sealed to the `ssk` in
 that member's card. Either seal key is checked first: its signature under the
-recipient's `ik_sig` (§4) and the §4 window. So the member who forwards a card
+recipient's `ik_sig` (§4), and its age — for a card up to 30 days past its
+`created_at` instead of the 9 days of §4, since the card lives 7 days and the
+private half 40, so a member who answers late can still be introduced. So the member who forwards a card
 cannot read the token, and a card has the same sender forward secrecy as a
 seal (§8). It expires in 7 days. It holds everything §5.1 needs, so the
 receiver opens a session over the card's token without asking the relay for
@@ -841,6 +886,7 @@ associated-data inputs.
 
 LUME publishes its own vectors for every construction above — identity and
 device derivation, prekey signatures, PQXDH, ratchet transcripts including
-skipped and out-of-order messages, contents, seals, introductions and cards,
-vault headers, records and manifests, cards, safety numbers — generated once,
+skipped and out-of-order messages, contents, seals, introductions, cards,
+username certificates, directory key lists, vault headers, records and
+manifests, and safety numbers — generated once,
 committed, and checked on every platform the core builds for.

@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Relay protocol
 
-Status: **draft**, revision 5.
+Status: **draft**, revision 6.
 Companion to [CRYPTO.md](CRYPTO.md), which defines every key and construction
 named here.
 
@@ -96,7 +96,8 @@ Every client is built with the **LUME root key**, an Ed25519 key kept offline
 and used for one thing: signing the **directory key list**.
 
 ```
-DirectoryKeys { sequence, issued_at, expires_at, keys: list<{ key_id, public_key, not_before, not_after }>, signature }
+DirectoryKeys { sequence, issued_at, expires_at, keys: list<{ key_id, public_key, not_before, not_after }>,
+                revoked: list<{ key_id, since }>, signature }
 signature = Sign(root_sk, L("directory-keys") ‖ enc(list without signature))
 ```
 
@@ -109,19 +110,36 @@ is accepted only from a key on a current list and inside that key's window.
 Without a current list a client shows names as unverified, with the safety
 number.
 
-The list is how keys are rotated and **revoked**: a new key appears on a list
-before it is used; a stolen key is dropped from the next list, signed at once.
-A relay that withholds the new list can keep a dropped key working for at most
-the 14 days the old list has left. A self-hosted relay builds its clients with
+The list is how keys are rotated and **revoked**. A new key appears on a list
+before it is used; a retired key simply leaves it. A stolen key leaves `keys`
+and is named under `revoked` with the time `since` from which its certificates
+are distrusted, on a list signed at once. A client remembers which key verified
+each contact's name; when a list revokes that key, every name it verified with a
+certificate issued at or after `since` goes back to unverified — unless the
+contact was verified by safety number — until a fresh certificate arrives.
+Clients send their refreshed certificate in an `Introduction` in the next
+message of each session after the weekly refresh. A relay that withholds the
+new list can keep a revoked key working for at most the 14 days the old list
+has left.
+
+Each release ships the list current at build time, so a fresh install has a
+`sequence` floor too. A client whose newest list has expired fetches a new one
+before it checks any name, and retries hourly while it cannot. The relay
+verifies the list against the root public key it is configured with before
+serving it, and answers `GetDirectoryKeys` with `UNAVAILABLE` while it has no
+current one. Losing the root key means a client release with a new one; that is
+the price of keeping it offline. A self-hosted relay builds its clients with
 its own root key.
 
 ```
-UsernameCertificate { key_id, username, account_id, ik_sig, ik_dh, generation, expires_at, signature }
+UsernameCertificate { key_id, username, account_id, ik_sig, ik_dh, generation, issued_at, expires_at, signature }
 signature = Sign(directory_sk, L("certificate") ‖ enc(certificate without signature))
 ```
 
-A certificate is valid for at most 30 days; clients refuse one whose
-`expires_at` is more than 31 days ahead. A client fetches its own certificate on
+A certificate is valid for at most 30 days after its `issued_at`; clients
+refuse one whose `issued_at` is in the future or whose `expires_at` is more
+than 31 days ahead. The relay signs at most one certificate per account per day
+and serves that one from its cache, so lookups never load the signer. A client fetches its own certificate on
 its authenticated connection (`GetCertificate`, §4.2), refreshes it weekly, and
 presents it in introductions (CRYPTO §5.3) and cards (CRYPTO §11.2). A username
 freed by deletion or by the inactivity sweep cannot be registered again for 31
@@ -184,10 +202,11 @@ PrekeyKem          = { kind: u8, id: u32, created_at: u64, key: bytes[1184], sig
 Pow                = { counter: u32, solution: bytes[16] }
 Access             = tag 1 Invite { secret: bytes[32] } | tag 2 Token { token: bytes[32] }
 UsernameCertificate = { key_id: u32, username: text≤32, account_id: bytes[16], ik_sig: bytes[32],
-                        ik_dh: bytes[32], generation: u32, expires_at: u64, signature: bytes[64] }
+                        ik_dh: bytes[32], generation: u32, issued_at: u64, expires_at: u64,
+                        signature: bytes[64] }
 DirectoryKeys      = { sequence: u64, issued_at: u64, expires_at: u64,
                        keys: list<{ key_id: u32, public_key: bytes[32], not_before: u64, not_after: u64 }>≤8,
-                       signature: bytes[64] }
+                       revoked: list<{ key_id: u32, since: u64 }>≤16, signature: bytes[64] }
 
 InitialHeader      = { ik_sig: bytes[32], ik_dh: bytes[32], bind: bytes[64], ek: bytes[32],
                        ct: bytes[1088], spk_id: u32, pq_kind: u8, pq_id: u32, opk_id: opt<u32> }
@@ -219,9 +238,11 @@ only; `[N]` — anonymous only; `[*]` — either.
 
 ```
 → Ping   [*] { }                              ← Pong { }
-← Notice     { kind: u16, text: text≤2000 }   pushed to the account: a policy change,
+← Notice     { kind: u16 }                    pushed to the account: a policy change,
                                               a notice required before a lawful disclosure,
                                               an account action taken by LUME Inc.
+                                              Kinds come from a fixed list and the app shows
+                                              its own text for each; the relay sends no text.
 ```
 
 ### 4.2 Account
@@ -249,8 +270,9 @@ future ones (CRYPTO §4). The largest `Register` is about 75 KB.
   username with `generation` equal to the current generation + 1. The relay
   closes the old device's connections with `4010`, replaces the device key,
   purges the old generation's prekeys, seal keys and pending envelopes, revokes
-  the account's invites, keeps its account id, and marks every delivery token
-  **inherited**: an inherited token not used within 45 days is deleted. A rebind
+  the account's invites, keeps its account id, and marks every live delivery
+  token **inherited**: an inherited token not used within 45 days is deleted.
+  Sinks stay sinks, so a blocked contact stays blocked after a recovery. A rebind
   is not counted against the registration limit and is limited per identity
   instead (§6.3).
 - Any other `generation` for a known `ik_sig` is `GENERATION_MISMATCH`, with
@@ -267,11 +289,12 @@ future ones (CRYPTO §4). The largest `Register` is about 75 KB.
 → ListHandedOut [A] { after: u64 }             ← HandedOut { entries: list<{ kind: u8, id: u32, seq: u64 }>≤150, more: bool }
 → GetCertificate [A] { }                       ← Certificate { certificate: UsernameCertificate }
 → GetDirectoryKeys [*] { }                     ← DirectoryKeys
-→ SetDiscoverable [A] { discoverable: bool }   ← Ok
+→ SetDiscoverable [A] { discoverable: bool }   ← Ok { }
 → DeleteAccount  [A] { confirm: bytes[64] }    Sign(IKsig.sk, L("delete") ‖ lp(host) ‖ nonce)
                                                ← Ok, then close 4000
 → AccountInfo    [A] { }                       ← AccountData
-← AccountData { username, account_id, discoverable, created_day: u32, last_seen_day: u32,
+← AccountData { username: text≤32, account_id: bytes[16], discoverable: bool,
+                created_day: u32, last_seen_day: u32,
                 generation: u32, tokens: u16, invites: u8, pending: u32, pending_bytes: u64,
                 blobs: u32, blob_bytes: u64 }
 ```
@@ -294,6 +317,7 @@ everything in §7 that refers to it, and then its blob files.
 ← Bundle { certificate: UsernameCertificate, bind: bytes[64],
            spk: PrekeyX, pq: PrekeyKem, ssk: PrekeyX, opk: opt<PrekeyX> }
 → FetchSealKey   [N] { recipient: bytes[16], access: Access }        ← SealKey { ssk: PrekeyX, generation: u32 }
+                 generation is the one the ssk signature covers (CRYPTO §4)
 ```
 
 - A **non-discoverable** account is `NOT_FOUND` to `LookupIdentity` and
@@ -352,8 +376,9 @@ The relay decides a `SendItem` in this order:
    current generation, the answer is `STALE_GENERATION`, with no `value`, and
    nothing is stored. Only a sender already authorised by step 1 learns this,
    and a sink token learns it exactly as a live one would. The sender fetches
-   the recipient's seal key again with its token (§4.3), which carries the
-   current generation, and re-seals.
+   the recipient's seal key with its token (§4.3). If its signature proves a
+   higher generation, the sender starts a new session (CRYPTO §5.4); otherwise
+   the answer is treated as transient and the send is retried with backoff.
 3. **Store.** An envelope on a live or inherited token, or an accepted
    introduction, is stored; one on a sink token is discarded after the same
    accounting. A token whose queue is full has its **oldest** envelope evicted.
@@ -397,8 +422,12 @@ what was sent. Twenty reports per account per day.
 ← BlobTicket     { blob_id: bytes[32], upload_key: bytes[32], expires_at: u64 }
 ```
 
-Uploads go on the token lane only, and the token is checked like a send: a sink
-token gets a ticket and its upload is discarded. The ticket authorises one
+Uploads go on the token lane only, with a token the recipient holds. Live, sink
+and inherited tokens are treated the same: the blob is stored, charged and
+served whatever the token's state, because an uploader that could not download
+its own blob would learn that it is blocked (CRYPTO §9.4). A group attachment is
+uploaded once, on the token of any one member the sender writes to, and every
+member reaches it by its id. The ticket authorises one
 `PUT /v1/blob/<hex blob_id>` with header `Lume-Upload-Key: <hex upload_key>` and
 exactly `size` bytes, within 10 minutes. `GET /v1/blob/<hex blob_id>` returns
 the blob at most `max_downloads` times (≤ 100). A blob for one recipient
@@ -477,8 +506,14 @@ behind one carrier NAT are not limited as if they were one — except accounts
 younger than 7 days, which are also limited per address (§6.3).
 
 Every limiter's state is bounded: per-address and per-token counters live in a
-fixed-size table that forgets the least recently used entries, so a flood of
-random tokens or addresses cannot grow memory.
+fixed-size table, so a flood of random tokens or addresses cannot grow memory.
+When the table is full it forgets the least recently used entries that are
+neither limited nor carrying a raised proof-of-work level; an entry that is
+both is kept until its window ends, and when nothing can be forgotten new
+entries start at the strictest level. Nobody can flush their own counters.
+
+Addresses are normalised before keys are built: an IPv4-mapped IPv6 address
+(`::ffff:0:0/96`) counts as its IPv4 address.
 
 ### 6.2 Proof of work
 
@@ -516,15 +551,16 @@ anyone.
 | Frames | 120 per 10 s per connection; beyond that requests get `RATE_LIMITED`; three consecutive windows over close `4008` |
 | `CheckUsername`, `LookupIdentity` | 60 / minute per address |
 | `GetDirectoryKeys` | 10 / minute per address or account; the answer is the same file for everyone |
+| `GetCertificate` | 10 / hour per account; answered from the daily cache |
 | `FetchBundle`, `FetchSealKey` | 20 / minute per address; 30 / hour per presented token |
 | Token lane | 120 / minute per presented token; ≤ 1000 pending per token, oldest evicted |
 | Introduction lane | 10 / minute per address + proof of work; ≤ 50 pending per recipient without invite, of which at most 10 from one /48 or IPv4 /24 — a full queue evicts the oldest from the largest contributor; ≤ 20 per invite |
-| Pending per recipient | ≤ 10 000 envelopes and ≤ 256 MiB; accounts younger than 7 days ≤ 16 MiB |
+| Pending per recipient | ≤ 10 000 envelopes and ≤ 256 MiB; accounts younger than 7 days ≤ 16 MiB; a full recipient evicts the oldest envelope of its largest token or lane |
 | Stored per address | ≤ 1 GiB of envelopes and blobs presented per day (with the §6.1 multipliers), counted whether kept or discarded |
 | Envelope | ≤ 69 713 bytes (§3.2) |
 | Retention | 30 days undelivered; deleted on acknowledgement |
 | Outbound per connection | ≤ 64 unacknowledged deliveries and ≤ 256 KiB queued |
-| Prekeys | ≤ 100 OPK, ≤ 50 PQOPK; per signed kind, the active key, ≤ 4 future ones, and replaced ones still within their 40 days |
+| Prekeys | ≤ 100 OPK, ≤ 50 PQOPK; per signed kind, the active key and ≤ 4 future ones; a replaced key is deleted |
 | Tokens / invites | ≤ 5000 per account / ≤ 5 live, 24 h |
 | Blob | ≤ 25 MiB each; ≤ 1 GiB live per recipient (accounts younger than 7 days ≤ 64 MiB) and ≤ 256 MiB per token; ≤ 100 downloads each and 2 GiB / day per address; 30 days |
 | Disk | from 85 % of `LUME_DISK_QUOTA`, the relay evicts first from the accounts with the highest ratio of stored bytes to account age in days, oldest envelopes and blobs first; from 95 %, stores for recipients above the 90th percentile of pending bytes answer `UNAVAILABLE`, others are still accepted |
@@ -540,7 +576,7 @@ These bounds make abuse expensive, not impossible (CRYPTO §1).
 | Table | Columns | Bound |
 |---|---|---|
 | `accounts` | id, username, ik_sig (unique), ik_dh, bind, device_key, generation, discoverable, created_day, last_seen_day | inactive sweep |
-| `signed_prekeys` | account, kind (SPK, PQSPK, SSK), id, created_at, key, signature | per kind: active, ≤ 4 future, replaced ones for 40 days |
+| `signed_prekeys` | account, kind (SPK, PQSPK, SSK), id, created_at, key, signature | per kind: active and ≤ 4 future; a replaced key is deleted |
 | `one_time_prekeys` | account, kind (OPK, PQOPK), id, created_at, key, signature | per-account caps; deleted when handed out |
 | `handed_out` | account, kind, id, seq, day | 15 days |
 | `delivery_tokens` | account, token_hash, state (live, sink, inherited), created_day, last_used_day | 5000 per account; inherited ones 45 days unused |
@@ -576,11 +612,12 @@ out of range stops the process with a message naming the setting.
 | `LUME_HOST` | required | hostname clients sign (§2) |
 | `LUME_TLS_CERT_FILE`, `LUME_TLS_KEY_FILE` | required unless `LUME_DEV` | the relay terminates TLS itself (§1) |
 | `LUME_CLIENT_ADDRESS` | required | `direct` (the TCP peer) or `proxy-protocol` (a PROXY v2 header on every connection, refused if absent) |
-| `LUME_TRUSTED_PROXIES` | required with `proxy-protocol` | comma-separated CIDR ranges of the load balancer; `0.0.0.0/0`, `::/0` and public ranges wider than /24 or /48 are refused at boot. A connection from any other peer is closed before a byte of it is read |
-| `LUME_DIRECTORY_KEYS_FILE` | required | the current signed directory key list (§2.1); re-read when it changes, and an expired or unverifiable list stops the process from serving it |
+| `LUME_TRUSTED_PROXIES` | required with `proxy-protocol` | comma-separated CIDR ranges of the load balancer, private addresses only (RFC 1918, RFC 4193, or the provider's internal range for this deployment — never a range shared with other customers); anything else is refused at boot. A connection from any other peer is closed before a byte of it is read |
+| `LUME_DIRECTORY_KEYS_FILE` | required | the current signed directory key list (§2.1); re-read when it changes. An unverifiable list stops the process at boot; an expired one is not served (`UNAVAILABLE`) and is logged until replaced |
+| `LUME_DIRECTORY_ROOT_KEY` | required | the root public key the list must verify under, hex |
 | `LUME_DISK_QUOTA` | required | bytes the relay may use for its database and blobs |
 | `LUME_DIRECTORY_SIGNER` | required | `pkcs11:<uri>` for a hardware module, or `unix:<path>` for a local signer process; a key file is accepted only with `LUME_DEV` |
-| `LUME_LISTEN` | `0.0.0.0:443` | with `proxy-protocol`, the address the load balancer reaches — a private interface, never a public one |
+| `LUME_LISTEN` | `0.0.0.0:443` | with `proxy-protocol` it must be set explicitly to a private address the load balancer reaches; the default, `0.0.0.0`, `::` and public addresses are refused at boot |
 | `LUME_DB_PATH` | `./data/relay.db` | |
 | `LUME_BLOB_DIR` | `./data/blobs` | |
 | `INACTIVE_ACCOUNT_DAYS` | `365` | ≥ 30 |
