@@ -51,9 +51,11 @@ Node.js `crypto`, which is OpenSSL — so that both sides have to agree.
 | File | Checks |
 |---|---|
 | `identity.json` | recovery phrase, identity keys, binding and device certificates, CRYPTO.md §3 |
+| `safety.json` | fingerprints, safety numbers and invite fingerprints of the identities above, CRYPTO.md §12 |
 
 ```bash
 node core/tools/generate_identity_vectors.mjs core/third_party/bip39/english.txt core/tests/vectors/trezor/bip39_vectors.json core/tests/vectors/lume/identity.json
+node core/tools/generate_safety_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/lume/safety.json
 ```
 
 The generator checks its own phrase encoding against the Trezor vectors before

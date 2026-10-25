@@ -19,6 +19,7 @@ add_library(lume_core STATIC
     src/crypto/x25519.cpp
     src/identity/identity.cpp
     src/identity/phrase.cpp
+    src/safety/safety_number.cpp
 )
 add_library(lume::core ALIAS lume_core)
 

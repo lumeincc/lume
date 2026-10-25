@@ -151,7 +151,10 @@ CI.
   is pinned — and the tools that come with the runner image; see
   [`.github/PINS.md`](.github/PINS.md).
 - Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
-  the seed that reproduces it.
+  the seed that reproduces it. The one exception is the properties over the
+  5200-round safety-number fingerprint, which run 100 cases
+  (`LUME_FINGERPRINT_PROPERTY_RUNS`); the fingerprint itself is checked
+  against independent vectors in both orders.
 - Build and test locally with the presets: `cmake --preset windows-msvc`,
   `cmake --build --preset windows-msvc-debug`, `ctest --preset
   windows-msvc-debug`, and the `linux-*` equivalents. `VCPKG_ROOT` must point
