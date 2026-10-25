@@ -5,30 +5,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Relay protocol
 
-Status: **draft**, revision 3.
+Status: **draft**, revision 4.
 Companion to [CRYPTO.md](CRYPTO.md), which defines every key and construction
 named here.
 
 The relay accepts sealed envelopes for an account and hands them to that
-account when it connects. It verifies signatures on public keys, signs username
-certificates, enforces limits, and stores as little as delivery needs. It never
-holds a private key of a user and never decrypts an envelope.
+account when it connects. It verifies signatures on public keys, has username
+certificates signed, enforces limits, and stores as little as delivery needs.
+It never holds a private key of a user and never decrypts an envelope.
 
 ---
 
 ## 1. Transport
 
-- **One WebSocket endpoint**, `wss://<host>/v1`, TLS terminated by the hosting
-  edge. Plain `ws://` only when the relay runs in development mode.
+- **One WebSocket endpoint**, `wss://<host>/v1`. **TLS is terminated by the
+  relay process itself**; a load balancer in front passes TCP through and, if
+  configured, reports the client address with the PROXY protocol v2 (§8).
+  Delivery tokens travel inside requests (§4), so whoever terminates TLS sees
+  them, and that must be the relay. Plain `ws://` only in development mode.
 - **Binary frames only.** A text frame, a frame that does not decode (§3), or a
   message larger than **80 KiB** closes the connection with `4400`. The limit is
-  enforced by the WebSocket reader before a fragmented message is reassembled,
-  and a frame that is not complete within 10 seconds of its first byte closes
-  the connection.
+  enforced by the WebSocket reader before a fragmented message is reassembled.
+  A frame must arrive at an average of at least 1 KiB per second after its first
+  byte, and within 120 seconds at most, or the connection is closed — slow
+  enough for Tor and poor mobile links, fast enough that a connection cannot be
+  held open by trickling bytes.
 - **No browser access.** An upgrade request that carries an `Origin` header is
-  refused with HTTP 403 before the WebSocket opens. Native clients send none;
-  refusing pages stops any website from using its visitors as anonymous
-  connections.
+  refused with HTTP 403 before the WebSocket opens.
 - **Blobs** move over HTTPS on the same host (§4.7).
 - Deliveries are streamed from disk; a connection never has more than 256 KiB
   queued for it (§6.3).
@@ -42,11 +45,10 @@ holds a private key of a user and never decrypts an envelope.
 | Lifetime | long-lived, one per account | at most 5 minutes or 50 requests, enforced by the relay |
 
 Sending on anonymous connections is what keeps the relay from recording who
-sent an envelope. To keep those connections from becoming a pseudonym of their
-own, the relay closes each after 5 minutes or 50 requests, whichever comes
-first, and the client opens them independently of its authenticated one, with
-random lifetimes below that. A connection that carried `Register` is closed by
-the relay after the answer.
+sent an envelope. The relay closes each anonymous connection after 5 minutes or
+50 requests, and the client opens them independently of its authenticated one,
+with random lifetimes below that. A connection that carried `Register` is closed
+by the relay after the answer.
 
 ---
 
@@ -58,7 +60,8 @@ On every new connection the relay sends first:
 Challenge { nonce: bytes[32], pow_bits: u8 }
 ```
 
-An authenticated connection answers with
+`pow_bits` is the proof-of-work difficulty that currently applies to the
+connecting address (§6.2). An authenticated connection answers with
 
 ```
 Authenticate {
@@ -71,31 +74,40 @@ Authenticate {
 ```
 
 The relay accepts if `device_key` and `generation` equal the account's record,
-`cert` verifies under `ik_sig`, and `signature` verifies under `device_key`.
-The nonce is single-use per connection: there is no replay window, nothing to
+`cert` verifies under `ik_sig`, and `signature` verifies under `device_key`. The
+nonce is single-use per connection: there is no replay window, nothing to
 store, and no clock to disagree with.
 
 `host` is the relay's hostname as the client dialled it, normalised: IDNA
-A-label form, lower-case ASCII, no trailing dot, no port. A signature therefore
-cannot be replayed to another relay.
+A-label form, lower-case ASCII, no trailing dot, no port.
 
 A connection whose first frame is not `Authenticate` is anonymous for its whole
 life. A connection with no valid first frame within 10 seconds is closed.
 
-### 2.1 Directory key and username certificates
+### 2.1 Directory keys and username certificates
 
-The relay holds an Ed25519 **directory key**. Its public half is built into
-every client and pinned there. It signs one thing: username certificates.
+Username certificates are signed by a **directory key**. The signing key is held
+by a signer separate from the relay's network-facing process — a hardware
+security module, or at least a separate process reachable only over a local
+socket (§8) — so that compromising the relay process does not hand out the key.
+
+Every client is built with a **list of directory public keys**, each with a
+`key_id` and a validity window, and accepts a certificate only from a listed key
+inside its window. That list is how a key is rotated: a new key is added in a
+release, used after its window opens, and the old key's window closes later. A
+self-hosted relay ships clients with its own list.
 
 ```
-UsernameCertificate { username, account_id, ik_sig, ik_dh, generation, expires_at, relay_sig }
-relay_sig = Sign(directory_sk, L("certificate") ‖ enc(certificate without relay_sig))
+UsernameCertificate { key_id, username, account_id, ik_sig, ik_dh, generation, expires_at, signature }
+signature = Sign(directory_sk, L("certificate") ‖ enc(certificate without signature))
 ```
 
-A client fetches its own certificate on its authenticated connection
-(`GetCertificate`, §4.2), refreshes it weekly, and presents it in its
-introductions (CRYPTO §5.3) and cards (CRYPTO §11.2), where it is checked
-offline. A certificate is valid for 30 days.
+A certificate is valid for at most 30 days; clients refuse one whose
+`expires_at` is more than 31 days ahead. A client fetches its own certificate on
+its authenticated connection (`GetCertificate`, §4.2), refreshes it weekly, and
+presents it in introductions (CRYPTO §5.3) and cards (CRYPTO §11.2). A username
+freed by deletion or by the inactivity sweep cannot be registered again for 31
+days, so two valid certificates never name the same username.
 
 ---
 
@@ -109,8 +121,8 @@ frame = u8(version = 1) ‖ u16(type) ‖ u32(request_id) ‖ body
 ```
 
 `request_id` is chosen by the client and echoed in the response; `0` marks a
-frame the relay pushes. `body` is the fields of `type` in the order listed in
-§4, with no tags and no padding.
+frame the relay pushes. `body` is the fields of `type` in the order listed, with
+no tags and no padding.
 
 | Field kind | Encoding | Canonical rule |
 |---|---|---|
@@ -121,11 +133,12 @@ frame the relay pushes. `body` is the fields of `type` in the order listed in
 | `text≤M` | as `bytes≤M` | valid UTF-8, no NUL |
 | `list<T>≤K` | `u16(count) ‖ T…` | `count ≤ K` |
 | `opt<T>` | `u8(0)` or `u8(1) ‖ T` | only `0` or `1` |
+| `tag` union | `u8(tag) ‖ fields of that variant` | only the listed tags |
 
-Decoding **rejects** an unknown version or type, any length or count over its
-bound, a non-canonical `bool` or `opt`, invalid text, and bytes after the last
-field. It never allocates more than the frame's own length. Every type has a
-fuzz target and a round-trip property test.
+Decoding **rejects** an unknown version, type or tag, any length or count over
+its bound, a non-canonical `bool` or `opt`, invalid text, and bytes after the
+last field. It never allocates more than the frame's own length. Every
+structure has a fuzz target and a round-trip property test.
 
 **Identifiers** — `account_id` (16 bytes), `envelope_id` (16), `blob_id` (32) —
 are random, never sequential.
@@ -137,10 +150,41 @@ are random, never sequential.
 | `0x0001–0x000F` | `Challenge 1`, `Authenticate 2`, `Ok 3`, `Error 4`, `Ping 5`, `Pong 6`, `Notice 7` |
 | `0x0010–0x001F` | `Register 16`, `Registered 17`, `UpdatePrekeys 18`, `PrekeyStock 19`, `SetDiscoverable 20`, `DeleteAccount 21`, `AccountInfo 22`, `AccountData 23`, `ListHandedOut 24`, `HandedOut 25`, `GetCertificate 26`, `Certificate 27` |
 | `0x0020–0x002F` | `CheckUsername 32`, `UsernameStatus 33`, `LookupIdentity 34`, `Identity 35`, `FetchBundle 36`, `Bundle 37`, `FetchSealKey 38`, `SealKey 39` |
-| `0x0030–0x003F` | `AddTokens 48`, `RevokeTokens 49`, `CreateInvite 50`, `RevokeInvite 51` |
+| `0x0030–0x003F` | `AddTokens 48`, `RevokeTokens 49`, `CreateInvite 50`, `RevokeInvite 51`, `SinkTokens 52` |
 | `0x0040–0x004F` | `Send 64`, `SendBatch 65`, `Accepted 66`, `BatchAccepted 67`, `Deliver 68`, `Ack 69` |
 | `0x0050–0x005F` | `BlobUpload 80`, `BlobTicket 81` |
 | `0x0060–0x006F` | `Report 96` |
+
+### 3.2 Shared structures
+
+Used by frames below and by CRYPTO.md. Sizes are maxima.
+
+```
+PrekeyX            = { kind: u8, id: u32, created_at: u64, key: bytes[32], signature: opt<bytes[64]> }
+                     signature is absent for kind 5 (OPK) and present for every other kind
+PrekeyKem          = { kind: u8, id: u32, created_at: u64, key: bytes[1184], signature: bytes[64] }
+Pow                = { counter: u32, solution: bytes[16] }
+Access             = tag 1 Invite { secret: bytes[32] } | tag 2 Token { token: bytes[32] }
+UsernameCertificate = { key_id: u32, username: text≤32, account_id: bytes[16], ik_sig: bytes[32],
+                        ik_dh: bytes[32], generation: u32, expires_at: u64, signature: bytes[64] }
+
+InitialHeader      = { ik_sig: bytes[32], ik_dh: bytes[32], bind: bytes[64], ek: bytes[32],
+                       ct: bytes[1088], spk_id: u32, pq_kind: u8, pq_id: u32, opk_id: opt<u32> }
+Introduction       = { account_id: bytes[16], generation: u32, token: bytes[32], seal_key: PrekeyX,
+                       certificate: opt<UsernameCertificate> }
+Content            = { id: bytes[16], kind: u8, introduction: opt<Introduction>, body: bytes≤67000 }
+Header             = { dh: bytes[32], pn: u32, n: u32 }
+RatchetMessage     = { enc_header: bytes[80], body: bytes≤69000 }
+Inner              = { sender: bytes[32], initial: opt<InitialHeader>, message: RatchetMessage }
+Seal               = { version: u8, ssk_id: u32, es: bytes[32], nonce: bytes[24], box: bytes≤69648 }
+Card               = { certificate: UsernameCertificate, bind: bytes[64], spk: PrekeyX, pqspk: PrekeyKem,
+                       ssk: PrekeyX, token: bytes[32], group_id: bytes[16], expires_at: u64,
+                       signature: bytes[64] }
+```
+
+`enc_header` is `24 + enc(Header) + 16 = 80` bytes. A `Seal` of the largest
+padded plaintext is `1 + 4 + 32 + 24 + 4 + 69 632 + 16 = 69 713` bytes, the
+envelope bound.
 
 ---
 
@@ -162,10 +206,6 @@ only; `[N]` — anonymous only; `[*]` — either.
 ### 4.2 Account
 
 ```
-PrekeyX   = { kind: u8, id: u32, created_at: u64, key: bytes[32], signature: opt<bytes[64]> }
-PrekeyKem = { kind: u8, id: u32, created_at: u64, key: bytes[1184], signature: bytes[64] }
-Pow       = { counter: u32, solution: bytes[16] }
-
 → Register [N] {
     username:   text≤32,
     ik_sig:     bytes[32],  ik_dh: bytes[32],  bind: bytes[64],
@@ -178,25 +218,24 @@ Pow       = { counter: u32, solution: bytes[16] }
 ```
 
 The relay checks, before writing anything: the proof of work (§6.2), the
-username (§6.3), `bind`, `cert`, every prekey signature and `created_at`, and
-`proof`. It then answers and closes the connection. The signed-key lists hold
-the active generation and up to four pre-signed future ones (CRYPTO §4). An
-`OPK` (kind 5) must carry no signature and every other `PrekeyX` must carry
-one; anything else is `MALFORMED`. With that rule the largest `Register` is
-about 75 KB and fits the 80 KiB frame.
+username (§6.3), `bind`, `cert`, every prekey signature, every `created_at`
+(not more than 31 days ahead), and `proof`. It then answers and closes the
+connection. Each signed-key list holds the active generation and up to four
+future ones (CRYPTO §4). The largest `Register` is about 75 KB.
 
 - **New account**: an unknown `ik_sig` with a free username, `generation` 1.
 - **Rebind** (recovery on a new device): a known `ik_sig` under the same
   username with `generation` equal to the current generation + 1. The relay
   closes the old device's connections with `4010`, replaces the device key,
   purges the old generation's prekeys, seal keys and pending envelopes, revokes
-  the account's invites, keeps its delivery tokens and account id, and raises
-  the generation. A rebind is not counted against the registration limit — the
-  relay already holds the key, which is evidence rather than a claim — and is
-  limited per identity instead (§6.3).
+  the account's invites, keeps its account id, and marks every delivery token
+  **inherited**: an inherited token not used within 45 days is deleted. A rebind
+  is not counted against the registration limit and is limited per identity
+  instead (§6.3).
 - Any other `generation` for a known `ik_sig` is `GENERATION_MISMATCH`, with
   the current generation in `value`, reported only after `proof` has verified.
-- A taken username under a different key is `USERNAME_TAKEN`.
+- A taken username under a different key, or a name in its 31-day hold, is
+  `USERNAME_TAKEN`.
 
 ```
 → UpdatePrekeys [A] { spk: list<PrekeyX>≤5, pqspk: list<PrekeyKem>≤5, ssk: list<PrekeyX>≤5,
@@ -204,7 +243,7 @@ about 75 KB and fits the 80 KiB frame.
                       withdraw: list<{ kind: u8, id: u32 }>≤150 }               ← PrekeyStock
 ← PrekeyStock   { opks: u16, pqopks: u16 }     also pushed when stock falls below 20 OPK or 10 PQOPK
 
-→ ListHandedOut [A] { after: u64 }             ← HandedOut { entries: list<{ kind: u8, id: u32, at: u64 }>≤150, more: bool }
+→ ListHandedOut [A] { after: u64 }             ← HandedOut { entries: list<{ kind: u8, id: u32, seq: u64 }>≤150, more: bool }
 → GetCertificate [A] { }                       ← Certificate { certificate: UsernameCertificate }
 → SetDiscoverable [A] { discoverable: bool }   ← Ok
 → DeleteAccount  [A] { confirm: bytes[64] }    Sign(IKsig.sk, L("delete") ‖ lp(host) ‖ nonce)
@@ -215,19 +254,17 @@ about 75 KB and fits the 80 KiB frame.
                 blobs: u32, blob_bytes: u64 }
 ```
 
-`ListHandedOut` pages through one-time keys handed out since `after`, so the
-client can delete the ones never used (CRYPTO §4); the relay forgets an entry 15
-days after hand-out. `withdraw` removes published one-time keys before the
-client evicts them locally. `DeleteAccount` and the inactive-account sweep
-remove the account and, in the same transaction, everything in §7 that refers
-to it, and then its blob files. `AccountInfo` is everything the relay holds
-about the account.
+`withdraw` removes published keys of any kind by id — not-yet-active rotating
+keys on every unlock (CRYPTO §4) and one-time keys before local eviction.
+`ListHandedOut` pages, by an opaque sequence number, through the one-time keys
+handed out since `after`; the relay keeps the day of each hand-out, not the
+time, and forgets the entry after 15 days. `DeleteAccount` and the
+inactive-account sweep remove the account and, in the same transaction,
+everything in §7 that refers to it, and then its blob files.
 
 ### 4.3 Directory
 
 ```
-Access = tag u8: 1 Invite { secret: bytes[32] } | 2 Token { token: bytes[32] }
-
 → CheckUsername  [N] { username: text≤32 }                          ← UsernameStatus { available: bool }
 → LookupIdentity [N] { username: text≤32, access: opt<Access> }     ← Identity
 ← Identity { certificate: UsernameCertificate, bind: bytes[64] }
@@ -238,82 +275,84 @@ Access = tag u8: 1 Invite { secret: bytes[32] } | 2 Token { token: bytes[32] }
 ```
 
 - A **non-discoverable** account is `NOT_FOUND` to `LookupIdentity` and
-  `FetchBundle` unless `access` is one of its live invite secrets **or one of
-  its live delivery tokens** — which every contact holds, so contacts can
-  re-establish a session after a recovery without the account being
-  discoverable.
-- `FetchBundle` hands out one OPK and one PQOPK when available; `pq.kind` says
-  whether `pq` is one-time (3) or last-resort (2). **A bundle is never refused
-  because of who asks for it**: once 4 of either kind have been handed out in an
-  hour for a target, further bundles that hour come without one-time keys.
+  `FetchBundle` unless `access` is one of its live invite secrets or one of its
+  delivery tokens.
+- **Every token that the account holds as live, sink or inherited is answered
+  identically** (CRYPTO §9.4). A token that the account does not hold gets
+  `NOT_FOUND`, but a contact only ever holds a token the account issued, and a
+  blocked contact's token is a sink, not a deleted one.
+- A bundle fetched with a token as access carries **no one-time keys**; one-time
+  keys go only to fetches by username or invite, at most 4 of each kind per hour
+  per target. **A bundle is never refused because of who asks for it.**
 - `FetchSealKey` returns the recipient's current seal key to a holder of an
-  invite or token (CRYPTO §8).
+  invite or token.
 
 ### 4.4 Delivery tokens and invites
 
 ```
-→ AddTokens    [A] { hashes: list<bytes[32]>≤100 }    ← Ok    at most 1000 live per account
-→ RevokeTokens [A] { hashes: list<bytes[32]>≤100 }    ← Ok
+→ AddTokens    [A] { hashes: list<bytes[32]>≤100 }    ← Ok    at most 5000 per account, sinks included
+→ RevokeTokens [A] { hashes: list<bytes[32]>≤100 }    ← Ok    deletes them; used for rotation
+→ SinkTokens   [A] { hashes: list<bytes[32]>≤100 }    ← Ok    turns them into sinks; used for blocking
 → CreateInvite [A] { secret_hash: bytes[32] }         ← Ok    24 h, at most 5 live
 → RevokeInvite [A] { secret_hash: bytes[32] }         ← Ok
 ```
 
-The relay only ever sees hashes: `SHA256(L("token") ‖ T)` (CRYPTO §9.1) and
-`SHA256(L("invite") ‖ S)`.
+The relay stores only hashes, `SHA256(L("token") ‖ T)` (CRYPTO §9.1) and
+`SHA256(L("invite") ‖ S)`, though it sees the token itself whenever a request
+presents it.
 
 ### 4.5 Envelopes
 
 ```
-Lane = tag u8: 1 Token { token: bytes[32] } | 2 Intro { invite: opt<bytes[32]>, pow: Pow }
-
+Lane     = tag 1 Token { token: bytes[32] } | tag 2 Intro { invite: opt<bytes[32]>, pow: Pow }
+LaneSeen = tag 1 Token { hash: bytes[32] } | tag 2 Intro { invite_hash: opt<bytes[32]> }
 SendItem = { recipient: bytes[16], sealed_for_generation: u32, lane: Lane, ephemeral: bool,
              envelope: bytes≤69713 }
 
 → Send      [N] SendItem                           ← Accepted { }
 → SendBatch [N] { items: list<SendItem>≤64 }       ← BatchAccepted { results: list<Result>≤64 }
-                Result = tag u8: 1 Accepted | 2 Error { code: u16, value: u32 }
+                Result = tag 1 Accepted | tag 2 Error { code: u16, retry_after_ms: u32, value: u32 }
 
 ← Deliver [A]  { envelope_id: bytes[16], received_at: u64, lane: LaneSeen, envelope: bytes≤69713 }
-               LaneSeen = tag u8: 1 Token { hash: bytes[32] } | 2 Intro { invite_hash: opt<bytes[32]> }
 → Ack     [A]  { ids: list<bytes[16]>≤256 }        ← Ok
 ```
 
-The relay processes a `SendItem` in this order, the same for every lane:
+The relay decides a `SendItem` in this order:
 
-1. **Generation.** If `sealed_for_generation` differs from the recipient's
+1. **Lane.**
+   - *Token lane*: a token the recipient does not hold is answered `Accepted`
+     and discarded, whatever the rest of the item says. A live, sink or
+     inherited token continues.
+   - *Introduction lane*: continues only if the recipient is discoverable or
+     `invite` is one of their live invite secrets, and the proof of work is
+     valid; otherwise `NOT_ACCEPTED`.
+2. **Generation.** If `sealed_for_generation` differs from the recipient's
    current generation, the answer is `STALE_GENERATION` with the current
-   generation in `value`, and nothing is stored. The sender learns of a
-   recovery before an envelope sealed to the old device can be lost, fetches a
-   fresh bundle (with its token as access) and starts a new session.
-2. **Token lane.** The answer is `Accepted` for a live token, a revoked one or
-   one never issued; only an envelope on a live token is stored. A live token
-   whose queue is full has its **oldest** envelope evicted rather than
-   answering differently, and the same rate limit applies to every presented
-   token, live or not. A sender cannot tell a block from a delivery.
-3. **Introduction lane.** Accepted only if the recipient is discoverable or
-   `invite` is one of their live invite secrets, and the proof of work is valid;
-   otherwise `NOT_ACCEPTED`. Intro envelopes have their own quota per
-   recipient, and invite holders a separate one per invite (§6.3).
+   generation in `value`, and nothing is stored. Only a sender already
+   authorised by step 1 learns this, and a sink token learns it exactly as a
+   live one would.
+3. **Store.** An envelope on a live or inherited token, or an accepted
+   introduction, is stored; one on a sink token is discarded after the same
+   accounting. A token whose queue is full has its **oldest** envelope evicted.
+   The answer is `Accepted`.
 
-The answer is sent once the decision is made; the envelope is written to disk
-within 100 ms after it. An envelope lost to a relay crash in that window is
-recovered end to end: recipients return a delivery receipt inside the session,
-and a sender resends an envelope with no receipt after 24 hours — the ratchet
-discards the copy if the original did arrive (CRYPTO §6.5).
+The answer is sent once the decision is made, and the envelope is written within
+100 ms after it; the relay never delays an answer for a slow disk. An envelope
+lost to a crash or to eviction is recovered end to end by the sender's resends
+(CRYPTO §7.2).
 
 - **Batches.** A client adds items to a `SendBatch` only while the frame stays
-  within 80 KiB; at 2 KiB envelopes that is about 35 items.
+  within 80 KiB; at the 2 KiB bucket that is 37 items.
 - **Delivery.** The relay pushes pending envelopes to the recipient's
   authenticated connection, oldest first, holding at most 64 unacknowledged
   envelopes and at most 256 KiB queued. `Deliver` says which lane an envelope
   arrived on, so the client can apply CRYPTO §9.2.
 - **Acknowledgement.** `Ack` deletes only envelopes addressed to the
   authenticated account. The client acknowledges after the result is durably
-  committed to its vault, and also when an envelope fails permanently, so a
-  bad envelope cannot stall delivery.
+  committed, and also when an envelope fails permanently.
 - **Ephemeral** envelopes (typing, presence) are pushed if the recipient is
-  connected and otherwise dropped, never stored. The answer to a `Send` does not
-  depend on whether that happened.
+  connected and otherwise dropped, never stored; the answer does not depend on
+  which.
 
 ### 4.6 Reports
 
@@ -321,13 +360,12 @@ discards the copy if the original did arrive (CRYPTO §6.5).
 → Report [A] { sealed: bytes≤69713 }    ← Ok
 ```
 
-`sealed` holds the reported messages as the reporter received them and the
-reported sender's identity pair (not their username, which may since have been
-reissued). It is sealed to LUME Inc.'s published report key with the
-construction of CRYPTO §8, using the labels `report/key` and `report/ad`. The
-relay stores it without being able to read it. A report is evidence of what the
-reporter says, not proof of what was sent (CRYPTO §1). Twenty reports per
-account per day.
+`sealed` holds the reported message or messages, as the reporter received them
+and up to the envelope size, and the reported sender's identity pair. It is
+sealed to LUME Inc.'s published report key with the construction of CRYPTO §8,
+using the labels `report/key` and `report/ad`. The relay stores it without being
+able to read it. A report is evidence of what the reporter says, not proof of
+what was sent. Twenty reports per account per day.
 
 ### 4.7 Blobs
 
@@ -336,14 +374,15 @@ account per day.
 ← BlobTicket     { blob_id: bytes[32], upload_key: bytes[32], expires_at: u64 }
 ```
 
-Uploads go on the token lane only — a stranger on the introduction lane cannot
-store blobs against anyone. The ticket authorises one
+Uploads go on the token lane only, and the token is checked like a send: a sink
+token gets a ticket and its upload is discarded. The ticket authorises one
 `PUT /v1/blob/<hex blob_id>` with header `Lume-Upload-Key: <hex upload_key>` and
 exactly `size` bytes, within 10 minutes. `GET /v1/blob/<hex blob_id>` returns
-the blob at most `max_downloads` times (≤ 100; a group attachment asks for
-twice the group size). The id is 256 random bits that travel only inside an
-encrypted message, and the content is encrypted (CRYPTO §11.1). Blob bytes
-count against the recipient's quota.
+the blob at most `max_downloads` times (≤ 100). A blob for one recipient
+(`max_downloads` 1–3) counts against that recipient's quota; a group blob counts
+against the uploading address's stored budget only. The id is 256 random bits
+that travel only inside an encrypted message, and the content is encrypted
+(CRYPTO §11.1).
 
 ---
 
@@ -381,10 +420,10 @@ Code 14 is reserved and unused.
 | `4002` | authentication failed |
 | `4005` | replaced by a newer authenticated connection for the account |
 | `4006` | connection limit for this address |
-| `4008` | frame budget exceeded three times over |
+| `4008` | frame budget exceeded in three consecutive windows |
 | `4009` | idle timeout, or an anonymous connection's lifetime or request allowance used up |
 | `4010` | the account recovered on another device |
-| `4400` | undecodable, oversized or incomplete frame |
+| `4400` | undecodable, oversized or too slowly delivered frame |
 
 The relay sends the close frame and waits up to one second for it to flush
 before dropping the socket, so a refused client sees the code, not a bare
@@ -406,15 +445,16 @@ allocation buys nothing beyond the allocation's own budget:
 | IPv6 | /64 ×1, /56 ×4, /48 ×16, /32 ×64 |
 
 One helper builds every address key; no limiter formats an address itself. The
-client address is the entry `TRUSTED_PROXY_HOPS` from the right of
-`X-Forwarded-For`; when that setting is non-zero, a request without enough
-entries is refused.
+client address is the TCP peer, or the address from the PROXY protocol header
+when the relay is configured to expect one (§8).
 
 Authenticated connections are keyed by account, not address, so many users
 behind one carrier NAT are not limited as if they were one — except accounts
-younger than 7 days, which are also limited per address (§6.3), so that a crowd
-of freshly made accounts cannot occupy the capacity reserved for authenticated
-connections.
+younger than 7 days, which are also limited per address (§6.3).
+
+Every limiter's state is bounded: per-address and per-token counters live in a
+fixed-size table that forgets the least recently used entries, so a flood of
+random tokens or addresses cannot grow memory.
 
 ### 6.2 Proof of work
 
@@ -427,52 +467,46 @@ purpose: 1 register, 2 intro
 
 `nonce` is the connection's challenge, so stamps cannot be precomputed or
 shared. `counter` must be strictly greater than the last counter **accepted** on
-the connection; a stamp is consumed only when it verifies, so rejected or
-reordered requests do not put client and relay out of step.
+the connection; a stamp is consumed only when it verifies.
 
-`d` is set **per address**, not globally: 18 bits by default (about a second on
-a phone), one more for each doubling of that address's recent rate above its
-budget, at /64 and /48, up to a maximum of 24. A flood from one allocation
-raises the cost for that allocation alone. `Challenge` announces the default; a
-stamp that is too weak is answered with `BAD_POW` and the required `d` in
-`value`.
-
-Proof of work slows abuse but does not stop a well-funded one, and an attacker
-with a GPU pays far less than a phone does. Unlinkable per-account rate-limit
-tokens (a VOPRF over ristretto255, in the style of Privacy Pass) are the
-planned replacement and are not part of this version.
+`d` is set **per address**: 18 bits by default (about a second on a phone), one
+more for each doubling of the address's recent rate above its budget at any
+level of §6.1, up to 22 (about 16 seconds). `Challenge` announces the `d` that
+applies to the connecting address; a stamp that is too weak is answered with
+`BAD_POW` and the required `d` in `value`. Honest users who share an allocation
+with an abuser pay the raised cost too, which is the price of not identifying
+anyone.
 
 ### 6.3 Bounds
 
 | What | Bound |
 |---|---|
-| Username | `^[a-z0-9_]{3,32}$`, upper case folded first; reserved and barred names refused |
+| Username | `^[a-z0-9_]{3,32}$`, upper case folded first; reserved, barred and held names refused |
 | Registrations | 30 / hour per address (with the §6.1 multipliers); proof of work |
 | Rebinds | 3 / day per identity |
 | `Register` attempts | 10 / minute per address, counted before any signature is verified |
-| Authenticated connections | 1 per account; 20 % of process capacity reserved for them; accounts younger than 7 days: 16 per address |
-| Anonymous connections | 256 concurrent per address; 60 new / minute per address; 5 minutes or 50 requests each |
+| Authenticated connections | 1 per account; at least 20 % of process capacity kept for them; accounts younger than 7 days: 16 per address |
+| Anonymous connections | 64 concurrent per address; 60 new / minute per address; 5 minutes or 50 requests each |
 | Process | 10 000 concurrent connections |
 | Idle timeout | anonymous 60 s, authenticated 15 min (the client pings every 4 min) |
-| Frames | 120 per 10 s per connection; beyond that requests get `RATE_LIMITED`; three times over closes `4008` |
+| Frames | 120 per 10 s per connection; beyond that requests get `RATE_LIMITED`; three consecutive windows over close `4008` |
 | `CheckUsername`, `LookupIdentity` | 60 / minute per address |
-| `FetchBundle`, `FetchSealKey` | 20 / minute per address; one-time keys: 4 per kind handed out per hour per target |
+| `FetchBundle`, `FetchSealKey` | 20 / minute per address; 30 / hour per presented token |
 | Token lane | 120 / minute per presented token; ≤ 1000 pending per token, oldest evicted |
-| Introduction lane | 10 / minute per address + proof of work; ≤ 50 pending per recipient without invite (oldest evicted), ≤ 20 per invite |
+| Introduction lane | 10 / minute per address + proof of work; ≤ 50 pending per recipient without invite, of which at most 10 from one /48 or IPv4 /24 — a full queue evicts the oldest from the largest contributor; ≤ 20 per invite |
 | Pending per recipient | ≤ 10 000 envelopes and ≤ 256 MiB; accounts younger than 7 days ≤ 16 MiB |
-| Stored per address | ≤ 1 GiB of envelopes and blobs per day (with the §6.1 multipliers) |
-| Envelope | ≤ 69 713 bytes (CRYPTO §7–§8: largest padded plaintext 69 632 + 81 bytes of seal encoding) |
+| Stored per address | ≤ 1 GiB of envelopes and blobs presented per day (with the §6.1 multipliers), counted whether kept or discarded |
+| Envelope | ≤ 69 713 bytes (§3.2) |
 | Retention | 30 days undelivered; deleted on acknowledgement |
 | Outbound per connection | ≤ 64 unacknowledged deliveries and ≤ 256 KiB queued |
-| Prekeys | ≤ 100 OPK, ≤ 50 PQOPK; ≤ 5 generations of each signed kind |
-| Tokens / invites | ≤ 1000 live per account / ≤ 5 live, 24 h |
-| Blob | ≤ 25 MiB each; ≤ 1 GiB live per recipient (accounts younger than 7 days ≤ 64 MiB); ≤ 100 downloads each and 2 GiB / day per address; 30 days |
-| Disk | from 85 % of `LUME_DISK_QUOTA`, the relay evicts the oldest envelopes and blobs of the largest and youngest accounts first; from 95 %, `Send` and `BlobUpload` answer `UNAVAILABLE` |
+| Prekeys | ≤ 100 OPK, ≤ 50 PQOPK; per signed kind, the active key, ≤ 4 future ones, and replaced ones still within their 40 days |
+| Tokens / invites | ≤ 5000 per account / ≤ 5 live, 24 h |
+| Blob | ≤ 25 MiB each; ≤ 1 GiB live per recipient (accounts younger than 7 days ≤ 64 MiB) and ≤ 256 MiB per token; ≤ 100 downloads each and 2 GiB / day per address; 30 days |
+| Disk | from 85 % of `LUME_DISK_QUOTA`, the relay evicts first from the accounts with the highest ratio of stored bytes to account age in days, oldest envelopes and blobs first; from 95 %, stores for recipients above the 90th percentile of pending bytes answer `UNAVAILABLE`, others are still accepted |
 | Reports | 20 / day per account, kept 90 days |
 | Inactive account | deleted after 365 days without an authenticated connection; never below 30 (boot refuses) |
 
-Limiter state lives in memory. Nothing about who called what is written to
-disk.
+These bounds make abuse expensive, not impossible (CRYPTO §1).
 
 ---
 
@@ -481,18 +515,20 @@ disk.
 | Table | Columns | Bound |
 |---|---|---|
 | `accounts` | id, username, ik_sig (unique), ik_dh, bind, device_key, generation, discoverable, created_day, last_seen_day | inactive sweep |
-| `signed_prekeys` | account, kind (SPK, PQSPK, SSK), id, created_at, key, signature | ≤ 5 generations per kind; replaced ones kept for their grace period |
+| `signed_prekeys` | account, kind (SPK, PQSPK, SSK), id, created_at, key, signature | per kind: active, ≤ 4 future, replaced ones for 40 days |
 | `one_time_prekeys` | account, kind (OPK, PQOPK), id, created_at, key, signature | per-account caps; deleted when handed out |
-| `handed_out` | account, kind, id, at | 15 days |
-| `delivery_tokens` | account, token_hash, created_day | 1000 per account |
+| `handed_out` | account, kind, id, seq, day | 15 days |
+| `delivery_tokens` | account, token_hash, state (live, sink, inherited), created_day, last_used_day | 5000 per account; inherited ones 45 days unused |
 | `invites` | account, secret_hash, expires_at | 5 per account, TTL |
-| `pending` | id, recipient, generation, lane (token hash or intro + invite hash), envelope, received_at | 30 days; per-token, per-intro, per-recipient caps |
-| `blobs` | id, recipient, size, upload_key_hash, downloads_left, expires_at | TTL, per-recipient byte cap; file deleted with the row |
+| `pending` | id, recipient, generation, lane (token hash or intro + invite hash + contributor prefix), envelope, received_at | 30 days; per-token, per-intro, per-recipient caps |
+| `blobs` | id, recipient, size, upload_key_hash, downloads_left, expires_at | TTL, per-recipient and per-token byte caps; file deleted with the row |
 | `reports` | id, sealed, received_at | 90 days, per-account daily cap |
-| `barred_usernames` | username_hash, created_day | 100 000 rows, oldest removed |
+| `barred_usernames` | username_hash, reason (barred or held), until_day | 100 000 rows, oldest removed; held names 31 days |
 
-Seen-times are kept to the **day**. Certificates are signed on request and not
-stored.
+The contributor prefix of an introduction (its /48 or IPv4 /24, hashed with a
+key that changes daily) exists only to enforce the per-prefix share of §6.3 and
+is deleted with the envelope. Seen-times are kept to the **day**. Certificates
+are signed on request and not stored.
 
 **Not stored, by design:** the sender of any envelope; group names, members or
 roles; display names and avatars; typing and read state; request signatures or
@@ -513,14 +549,15 @@ out of range stops the process with a message naming the setting.
 | Setting | Default | Rule |
 |---|---|---|
 | `LUME_HOST` | required | hostname clients sign (§2) |
-| `TRUSTED_PROXY_HOPS` | required | integer 0–4; must match the deployment — too high lets callers choose their own address, too low puts everyone in one |
+| `LUME_TLS_CERT_FILE`, `LUME_TLS_KEY_FILE` | required unless `LUME_DEV` | the relay terminates TLS itself (§1) |
+| `LUME_CLIENT_ADDRESS` | required | `direct` (the TCP peer) or `proxy-protocol` (a PROXY v2 header from the load balancer, refused if absent) |
 | `LUME_DISK_QUOTA` | required | bytes the relay may use for its database and blobs |
-| `LUME_DIRECTORY_KEY_FILE` | required | the directory signing key (§2.1); readable only by the relay's user |
-| `LUME_LISTEN` | `0.0.0.0:3001` | |
+| `LUME_DIRECTORY_SIGNER` | required | `pkcs11:<uri>` for a hardware module, or `unix:<path>` for a local signer process; a key file is accepted only with `LUME_DEV` |
+| `LUME_LISTEN` | `0.0.0.0:443` | |
 | `LUME_DB_PATH` | `./data/relay.db` | |
 | `LUME_BLOB_DIR` | `./data/blobs` | |
 | `INACTIVE_ACCOUNT_DAYS` | `365` | ≥ 30 |
-| `LUME_DEV` | unset | allows `ws://`; refuses to start unless `LUME_HOST` is `localhost` |
+| `LUME_DEV` | unset | allows `ws://` and a directory key file; refuses to start unless `LUME_HOST` is `localhost` |
 
 Logs carry event names, counts, durations and error codes — never usernames,
 account ids, tokens, addresses or envelope bytes.
