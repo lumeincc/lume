@@ -88,7 +88,7 @@ TEST(SafetyNumber, AnInviteFingerprintOfAnotherLengthNeverMatches)
 {
     const auto identities = vector_identities();
     const auto expected = invite_fingerprint(identities.at(0));
-    EXPECT_FALSE(matches_invite(identities.at(0), Bytes(expected.begin(), expected.end() - 1)));
+    EXPECT_FALSE(matches_invite(identities.at(0), crypto::ByteView(expected).first(invite_fingerprint_size - 1)));
     EXPECT_FALSE(matches_invite(identities.at(0), {}));
 }
 
