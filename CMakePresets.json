@@ -114,6 +114,18 @@
       }
     },
     {
+      "name": "linux-clang-fuzz",
+      "displayName": "Linux, Clang, libFuzzer + AddressSanitizer + UndefinedBehaviorSanitizer",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "LUME_BUILD_TESTS": "OFF",
+        "LUME_BUILD_FUZZERS": "ON",
+        "LUME_SANITIZERS": "address;undefined;fuzzer-no-link"
+      }
+    },
+    {
       "name": "linux-gcc-coverage",
       "displayName": "Linux, GCC, coverage",
       "inherits": "linux-base",
@@ -164,6 +176,10 @@
     {
       "name": "linux-clang-asan",
       "configurePreset": "linux-clang-asan"
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "configurePreset": "linux-clang-fuzz"
     },
     {
       "name": "linux-gcc-coverage",

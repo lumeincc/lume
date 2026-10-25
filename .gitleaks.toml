@@ -5,5 +5,5 @@
 useDefault = true
 
 [[allowlists]]
-description = "Published Wycheproof test vectors: every key in them is public by design"
-paths = ['''^core/tests/vectors/wycheproof/[a-z0-9_]+\.json$''']
+description = "Published and generated test vectors: every key in them is public by design"
+paths = ['''^core/tests/vectors/(wycheproof|trezor|lume)/[a-z0-9_]+\.json$''']

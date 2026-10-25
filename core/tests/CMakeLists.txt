@@ -19,6 +19,8 @@ add_executable(lume_core_tests
     crypto/random_test.cpp
     crypto/secret_bytes_test.cpp
     crypto/x25519_test.cpp
+    identity/identity_test.cpp
+    identity/phrase_test.cpp
 )
 
 target_include_directories(lume_core_tests PRIVATE . ../src)
@@ -32,6 +34,7 @@ target_link_libraries(lume_core_tests PRIVATE
 )
 target_compile_definitions(lume_core_tests PRIVATE
     LUME_TEST_VECTORS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/vectors"
+    LUME_THIRD_PARTY_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../third_party"
     _SILENCE_CXX23_ALIGNED_STORAGE_DEPRECATION_WARNING
 )
 lume_configure_target(lume_core_tests)

@@ -32,3 +32,30 @@ generated from these files and must be regenerated when they change:
 ```bash
 node core/tools/generate_known_answers.mjs core/tests/vectors/wycheproof core/src/crypto/known_answers.hpp
 ```
+
+## trezor/
+
+`bip39_vectors.json` from
+[trezor/python-mnemonic](https://github.com/trezor/python-mnemonic/blob/b57a5ad77a981e743f4167ab2f7927a55c1e82a8/vectors.json),
+commit `b57a5ad77a981e743f4167ab2f7927a55c1e82a8`, copied unchanged. MIT —
+[`LICENSES/MIT.txt`](../../../LICENSES/MIT.txt). Only the English entropy and
+mnemonic columns are used: the 24-word phrases must encode and decode exactly,
+and the 12- and 18-word ones must be refused. The seeds in the file come from
+BIP39's PBKDF2 step, which LUME does not run.
+
+## lume/
+
+LUME's own vectors, computed by an implementation independent of the core —
+Node.js `crypto`, which is OpenSSL — so that both sides have to agree.
+
+| File | Checks |
+|---|---|
+| `identity.json` | recovery phrase, identity keys, binding and device certificates, CRYPTO.md §3 |
+
+```bash
+node core/tools/generate_identity_vectors.mjs core/third_party/bip39/english.txt core/tests/vectors/trezor/bip39_vectors.json core/tests/vectors/lume/identity.json
+```
+
+The generator checks its own phrase encoding against the Trezor vectors before
+it writes anything. CI regenerates every generated file and fails if it
+differs from what is committed.

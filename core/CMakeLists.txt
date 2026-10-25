@@ -17,6 +17,8 @@ add_library(lume_core STATIC
     src/crypto/secret_bytes.cpp
     src/crypto/self_test.cpp
     src/crypto/x25519.cpp
+    src/identity/identity.cpp
+    src/identity/phrase.cpp
 )
 add_library(lume::core ALIAS lume_core)
 
@@ -30,4 +32,8 @@ lume_configure_target(lume_core)
 
 if(LUME_BUILD_TESTS)
     add_subdirectory(tests)
+endif()
+
+if(LUME_BUILD_FUZZERS)
+    add_subdirectory(fuzz)
 endif()
