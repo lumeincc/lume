@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Relay protocol
 
-Status: **draft**, revision 4.
+Status: **draft**, revision 5.
 Companion to [CRYPTO.md](CRYPTO.md), which defines every key and construction
 named here.
 
@@ -20,7 +20,8 @@ It never holds a private key of a user and never decrypts an envelope.
 
 - **One WebSocket endpoint**, `wss://<host>/v1`. **TLS is terminated by the
   relay process itself**; a load balancer in front passes TCP through and, if
-  configured, reports the client address with the PROXY protocol v2 (§8).
+  configured, reports the client address with the PROXY protocol v2 — accepted
+  only from the load balancer's own addresses (§8).
   Delivery tokens travel inside requests (§4), so whoever terminates TLS sees
   them, and that must be the relay. Plain `ws://` only in development mode.
 - **Binary frames only.** A text frame, a frame that does not decode (§3), or a
@@ -91,11 +92,28 @@ by a signer separate from the relay's network-facing process — a hardware
 security module, or at least a separate process reachable only over a local
 socket (§8) — so that compromising the relay process does not hand out the key.
 
-Every client is built with a **list of directory public keys**, each with a
-`key_id` and a validity window, and accepts a certificate only from a listed key
-inside its window. That list is how a key is rotated: a new key is added in a
-release, used after its window opens, and the old key's window closes later. A
-self-hosted relay ships clients with its own list.
+Every client is built with the **LUME root key**, an Ed25519 key kept offline
+and used for one thing: signing the **directory key list**.
+
+```
+DirectoryKeys { sequence, issued_at, expires_at, keys: list<{ key_id, public_key, not_before, not_after }>, signature }
+signature = Sign(root_sk, L("directory-keys") ‖ enc(list without signature))
+```
+
+A list expires at most 14 days after `issued_at` and is signed again every
+week. The relay serves the newest one (`GetDirectoryKeys`, §4.2); a client
+fetches it whenever it refreshes its own certificate and at most once a day
+otherwise, keeps the list with the highest `sequence` it has verified, and
+ignores one with a lower `sequence`, so it cannot be rolled back. A certificate
+is accepted only from a key on a current list and inside that key's window.
+Without a current list a client shows names as unverified, with the safety
+number.
+
+The list is how keys are rotated and **revoked**: a new key appears on a list
+before it is used; a stolen key is dropped from the next list, signed at once.
+A relay that withholds the new list can keep a dropped key working for at most
+the 14 days the old list has left. A self-hosted relay builds its clients with
+its own root key.
 
 ```
 UsernameCertificate { key_id, username, account_id, ik_sig, ik_dh, generation, expires_at, signature }
@@ -148,7 +166,7 @@ are random, never sequential.
 | Range | Types |
 |---|---|
 | `0x0001–0x000F` | `Challenge 1`, `Authenticate 2`, `Ok 3`, `Error 4`, `Ping 5`, `Pong 6`, `Notice 7` |
-| `0x0010–0x001F` | `Register 16`, `Registered 17`, `UpdatePrekeys 18`, `PrekeyStock 19`, `SetDiscoverable 20`, `DeleteAccount 21`, `AccountInfo 22`, `AccountData 23`, `ListHandedOut 24`, `HandedOut 25`, `GetCertificate 26`, `Certificate 27` |
+| `0x0010–0x001F` | `Register 16`, `Registered 17`, `UpdatePrekeys 18`, `PrekeyStock 19`, `SetDiscoverable 20`, `DeleteAccount 21`, `AccountInfo 22`, `AccountData 23`, `ListHandedOut 24`, `HandedOut 25`, `GetCertificate 26`, `Certificate 27`, `GetDirectoryKeys 28`, `DirectoryKeys 29` |
 | `0x0020–0x002F` | `CheckUsername 32`, `UsernameStatus 33`, `LookupIdentity 34`, `Identity 35`, `FetchBundle 36`, `Bundle 37`, `FetchSealKey 38`, `SealKey 39` |
 | `0x0030–0x003F` | `AddTokens 48`, `RevokeTokens 49`, `CreateInvite 50`, `RevokeInvite 51`, `SinkTokens 52` |
 | `0x0040–0x004F` | `Send 64`, `SendBatch 65`, `Accepted 66`, `BatchAccepted 67`, `Deliver 68`, `Ack 69` |
@@ -167,6 +185,9 @@ Pow                = { counter: u32, solution: bytes[16] }
 Access             = tag 1 Invite { secret: bytes[32] } | tag 2 Token { token: bytes[32] }
 UsernameCertificate = { key_id: u32, username: text≤32, account_id: bytes[16], ik_sig: bytes[32],
                         ik_dh: bytes[32], generation: u32, expires_at: u64, signature: bytes[64] }
+DirectoryKeys      = { sequence: u64, issued_at: u64, expires_at: u64,
+                       keys: list<{ key_id: u32, public_key: bytes[32], not_before: u64, not_after: u64 }>≤8,
+                       signature: bytes[64] }
 
 InitialHeader      = { ik_sig: bytes[32], ik_dh: bytes[32], bind: bytes[64], ek: bytes[32],
                        ct: bytes[1088], spk_id: u32, pq_kind: u8, pq_id: u32, opk_id: opt<u32> }
@@ -245,6 +266,7 @@ future ones (CRYPTO §4). The largest `Register` is about 75 KB.
 
 → ListHandedOut [A] { after: u64 }             ← HandedOut { entries: list<{ kind: u8, id: u32, seq: u64 }>≤150, more: bool }
 → GetCertificate [A] { }                       ← Certificate { certificate: UsernameCertificate }
+→ GetDirectoryKeys [*] { }                     ← DirectoryKeys
 → SetDiscoverable [A] { discoverable: bool }   ← Ok
 → DeleteAccount  [A] { confirm: bytes[64] }    Sign(IKsig.sk, L("delete") ‖ lp(host) ‖ nonce)
                                                ← Ok, then close 4000
@@ -327,10 +349,11 @@ The relay decides a `SendItem` in this order:
      `invite` is one of their live invite secrets, and the proof of work is
      valid; otherwise `NOT_ACCEPTED`.
 2. **Generation.** If `sealed_for_generation` differs from the recipient's
-   current generation, the answer is `STALE_GENERATION` with the current
-   generation in `value`, and nothing is stored. Only a sender already
-   authorised by step 1 learns this, and a sink token learns it exactly as a
-   live one would.
+   current generation, the answer is `STALE_GENERATION`, with no `value`, and
+   nothing is stored. Only a sender already authorised by step 1 learns this,
+   and a sink token learns it exactly as a live one would. The sender fetches
+   the recipient's seal key again with its token (§4.3), which carries the
+   current generation, and re-seals.
 3. **Store.** An envelope on a live or inherited token, or an accepted
    introduction, is stored; one on a sink token is discarded after the same
    accounting. A token whose queue is full has its **oldest** envelope evicted.
@@ -408,7 +431,7 @@ says so. Codes carry no internal detail.
 | 12 | `UNAVAILABLE` | the relay is shedding load or near its disk quota |
 | 13 | `INTERNAL` | |
 | 15 | `BAD_POW` | proof of work missing, reused or too weak; `value` is the difficulty required |
-| 16 | `STALE_GENERATION` | the recipient has recovered on a new device; `value` is the current generation |
+| 16 | `STALE_GENERATION` | the recipient has recovered on a new device; fetch the seal key again |
 | 17 | `GENERATION_MISMATCH` | a rebind with the wrong generation; `value` is the current generation |
 
 Code 14 is reserved and unused.
@@ -445,8 +468,9 @@ allocation buys nothing beyond the allocation's own budget:
 | IPv6 | /64 ×1, /56 ×4, /48 ×16, /32 ×64 |
 
 One helper builds every address key; no limiter formats an address itself. The
-client address is the TCP peer, or the address from the PROXY protocol header
-when the relay is configured to expect one (§8).
+client address is the TCP peer, or, with `LUME_CLIENT_ADDRESS=proxy-protocol`,
+the address in the PROXY protocol header sent by a peer in
+`LUME_TRUSTED_PROXIES` (§8). No other peer is believed about an address.
 
 Authenticated connections are keyed by account, not address, so many users
 behind one carrier NAT are not limited as if they were one — except accounts
@@ -491,6 +515,7 @@ anyone.
 | Idle timeout | anonymous 60 s, authenticated 15 min (the client pings every 4 min) |
 | Frames | 120 per 10 s per connection; beyond that requests get `RATE_LIMITED`; three consecutive windows over close `4008` |
 | `CheckUsername`, `LookupIdentity` | 60 / minute per address |
+| `GetDirectoryKeys` | 10 / minute per address or account; the answer is the same file for everyone |
 | `FetchBundle`, `FetchSealKey` | 20 / minute per address; 30 / hour per presented token |
 | Token lane | 120 / minute per presented token; ≤ 1000 pending per token, oldest evicted |
 | Introduction lane | 10 / minute per address + proof of work; ≤ 50 pending per recipient without invite, of which at most 10 from one /48 or IPv4 /24 — a full queue evicts the oldest from the largest contributor; ≤ 20 per invite |
@@ -550,10 +575,12 @@ out of range stops the process with a message naming the setting.
 |---|---|---|
 | `LUME_HOST` | required | hostname clients sign (§2) |
 | `LUME_TLS_CERT_FILE`, `LUME_TLS_KEY_FILE` | required unless `LUME_DEV` | the relay terminates TLS itself (§1) |
-| `LUME_CLIENT_ADDRESS` | required | `direct` (the TCP peer) or `proxy-protocol` (a PROXY v2 header from the load balancer, refused if absent) |
+| `LUME_CLIENT_ADDRESS` | required | `direct` (the TCP peer) or `proxy-protocol` (a PROXY v2 header on every connection, refused if absent) |
+| `LUME_TRUSTED_PROXIES` | required with `proxy-protocol` | comma-separated CIDR ranges of the load balancer; `0.0.0.0/0`, `::/0` and public ranges wider than /24 or /48 are refused at boot. A connection from any other peer is closed before a byte of it is read |
+| `LUME_DIRECTORY_KEYS_FILE` | required | the current signed directory key list (§2.1); re-read when it changes, and an expired or unverifiable list stops the process from serving it |
 | `LUME_DISK_QUOTA` | required | bytes the relay may use for its database and blobs |
 | `LUME_DIRECTORY_SIGNER` | required | `pkcs11:<uri>` for a hardware module, or `unix:<path>` for a local signer process; a key file is accepted only with `LUME_DEV` |
-| `LUME_LISTEN` | `0.0.0.0:443` | |
+| `LUME_LISTEN` | `0.0.0.0:443` | with `proxy-protocol`, the address the load balancer reaches — a private interface, never a public one |
 | `LUME_DB_PATH` | `./data/relay.db` | |
 | `LUME_BLOB_DIR` | `./data/blobs` | |
 | `INACTIVE_ACCOUNT_DAYS` | `365` | ≥ 30 |

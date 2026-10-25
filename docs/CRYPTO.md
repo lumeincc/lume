@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Cryptography
 
-Status: **draft**, revision 4.
+Status: **draft**, revision 5.
 Nothing here is implemented until this document says it is; code that
 disagrees with it is a bug in one of the two.
 
@@ -48,8 +48,10 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
   its introduction lane; it does not hide that the name is in use.
 - **Names beyond the relay's word.** A contact's username is confirmed by a
   certificate the relay signs (§5.3). Whoever holds the relay's directory key
-  can attach a name to the wrong identity; the safety number (§12) is the check
-  that does not depend on the relay. A certificate given to a contact can also
+  can attach a name to the wrong identity until that key is dropped from the
+  directory key list — up to 14 days after the drop if the relay withholds the
+  new list (PROTOCOL §2.1); the safety number (§12) is the check that does not
+  depend on the relay. A certificate given to a contact can also
   be shown by that contact to others as proof that a username belongs to an
   identity.
 - **First flights against a later compromise.** The first envelopes of a
@@ -67,6 +69,11 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 - **That a block goes unnoticed.** The relay gives a blocked sender no signal
   (§9.4), but replies and delivery receipts stop, as they would for someone who
   stopped opening the app.
+- **That an account recovered.** Anyone holding one of the account's delivery
+  tokens — a blocked contact too, since a sink answers like a live token (§9.4)
+  — can read its current generation from a bundle or seal key, and so learn
+  when it recovered on a new device (§3.3). Nothing else about the account is
+  revealed that way.
 - **Deleted data on flash storage.** The vault overwrites what it deletes
   (§10.6), but flash memory can keep earlier copies of a block beyond any
   application's reach. Someone who later has the device *and* the passphrase may
@@ -109,10 +116,13 @@ decapsulation under Clang 15–18 (CVE-2024-36405). Both versions are pinned in
 the vcpkg baseline; liboqs is built with ML-KEM-768 only and without OpenSSL.
 
 **Self-test.** At start-up the core checks SHA-2, HMAC, HKDF, X25519 (including
-rejection of a low-order point), Ed25519, the AEAD (including rejection of a
-forged tag) and ML-KEM-768 (key generation from a seed and decapsulation)
-against known answers, and an ML-KEM round trip. Any mismatch stops the core
-from initialising; no key is generated or used.
+rejection of low-order points), Ed25519 (including rejection of a small-order
+public key), the AEAD (including rejection of a forged tag) and ML-KEM-768 (key
+generation from a seed, encapsulation, decapsulation and implicit rejection)
+against known answers, an AEAD and an ML-KEM round trip, and that both random
+generators produce fresh output. Every primitive passes through one gate that
+runs the self-test once: until it has passed, nothing is generated, signed or
+decrypted, and if it failed, every call fails.
 
 **ML-KEM input check.** `Encaps` refuses an encapsulation key that fails the
 FIPS 203 §7.2 modulus check; liboqs performs the check and the test suite
@@ -133,6 +143,13 @@ proves it with Wycheproof's modulus-overflow vectors.
   that crosses a trust boundary — on the wire or in storage — uses it.
 - Secret material lives in `SecretBytes` (sodium_malloc, guard pages, wiped on
   release).
+- **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
+  its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
+  one signing or decapsulation, so a stored key cannot be half-replaced.
+- **`AEAD` always draws its own nonce**, `n = Random(24)`, and every use writes
+  `n ‖ AEAD(k, n, ad, m)`; no caller chooses a nonce. A plaintext is at most
+  128 KiB, checked before anything is allocated; larger data uses `Stream`
+  (§11.1).
 - Times are seconds since the Unix epoch. "Now" is checked with 5 minutes of
   allowed clock skew.
 - **Generation** always means the account's device generation (§3.3). The
@@ -202,10 +219,12 @@ sig = Sign(IKsig.sk, L("prekey") ‖ u8(kind) ‖ u32(id) ‖ u64(created_at) �
 their `created_at`. A client uses one only if its `created_at` is not in the
 future and not more than **9 days** past; a fetched key outside that window is
 refused, and a cached `SSK` older than 7 days is refreshed before use (§8). The
-private half is deleted only once it is more than **40 days** past its
+private half is deleted once it is more than **40 days** past its
 `created_at` — 9 days of use plus the 30-day relay retention plus a day of
-margin — **and** the client has drained its relay queue at least once after that
-point, so no pending envelope that needs the key can be lost.
+margin. Time alone decides: no envelope sealed to the key can still be waiting
+on the relay by then, and nothing the relay does can keep the key alive longer.
+A client that wakes after a long absence processes its pending deliveries first
+and deletes expired keys after.
 
 **One-time keys** (`PQOPK`, `OPK`) have no age limit: a one-time key is valid
 while it is published.
@@ -292,8 +311,9 @@ plaintext, it is authenticated by the session.
 **The name is checked offline.** `certificate` is signed by the relay's
 directory key (PROTOCOL §2.1). Alice fetches her own on her authenticated
 connection, which reveals nothing about Bob. Bob shows the username only if:
-the certificate's directory key is one the client pins and within that key's
-validity window; it has not expired and expires no more than 31 days from now;
+the certificate's directory key is on the client's current directory key list
+(PROTOCOL §2.1) and inside that key's window; it has not expired and expires no
+more than 31 days from now;
 its `ik_sig` and `ik_dh` equal the session's peer identity; and its
 `account_id` equals the introduction's. Otherwise he shows "unverified contact"
 with the safety number. He makes no request to the relay to check a name, so
@@ -456,13 +476,18 @@ a minute per contact and only to the message's sender, also in groups. A
 receipt is resent whenever a duplicate of an already received message arrives.
 
 A sender keeps the content of every message without a receipt for up to 30
-days, and resends it after 1 hour, 4 hours, 24 hours and then daily — each time
-as a new ratchet message, freshly sealed, so two resends cannot be linked by
-their bytes. A recipient keeps the ids it has seen for 31 days and discards any
-content whose id it already has, whatever session it arrives in. Resending
-therefore never produces a duplicate on screen, and a message lost anywhere —
-an evicted envelope, a relay crash, a recovery — is delivered as long as either
-side is reachable within 30 days.
+days. It resends it after 1 hour, 4 hours, 24 hours and 7 days and then no
+more on that schedule — four timed resends at most, so one message is never
+more than five envelopes waiting for an offline recipient. It also resends
+every message without a receipt as soon as it learns that the recipient's
+generation changed (`STALE_GENERATION`, a new introduction, a newer bundle or
+seal key). Each resend is a new ratchet message, freshly sealed, so two resends
+cannot be linked by their bytes. A recipient keeps the ids it has seen for 31
+days and discards any content whose id it already has, whatever session it
+arrives in. Resending therefore never produces a duplicate on screen; a message
+lost to an evicted envelope or a relay crash comes back with the timed resends,
+and one lost to a recovery comes back once the sender sees the new generation,
+within the 30 days.
 
 ### 7.3 Padding
 
@@ -509,7 +534,7 @@ more than 7 days past its `created_at`, the sender first fetches the current
 one from the relay with its delivery token (PROTOCOL §4.3).
 
 **Forward secrecy of the sender.** A seal key's private half is deleted 40 days
-after its `created_at` and after the queue has drained (§4), so a recorded
+after its `created_at` (§4), so a recorded
 envelope stops revealing its sender to someone who later takes Bob's device or
 phrase after that. The seal is classical X25519; a quantum adversary who records
 envelopes could later learn *who* sent them, not *what* they said.
@@ -600,8 +625,21 @@ passphrase guess has to run on the original device.
 | Platform | `HW(x)` | What a guess costs |
 |---|---|---|
 | Android, Keystore at TEE or StrongBox level | HMAC-SHA256 with a non-exportable Keystore key created with `setUnlockedDeviceRequired(true)` | a Keystore operation on this unlocked device |
-| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose usage authorisation is the hex encoding of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
+| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation (`NCRYPT_PCP_USAGEAUTH_PROPERTY`) is the hex encoding of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
 | Anything else | **software only**: a DPAPI-protected random `Khw` on Windows, an app-private random `Khw` on Android | nothing beyond Argon2id once the secret is read |
+
+**What the TPM adds.** `K_tpm` and `P` are fixed, so on Windows `HW(x)` is a
+per-device constant that the TPM releases only for the right `x`. It binds the
+vault to the device and makes every guess pay a TPM operation and a lockout
+count; it adds no entropy, and the passphrase enters the vault key only through
+`Kpw` (§10.1). That guess cost holds only because the usage authorisation is the
+TPM object's own authValue, checked inside the TPM: the Windows test suite
+proves that a wrong value fails with the TPM's authorisation error and advances
+the dictionary-attack counter. `P` is checked to be a point on P-256 other than
+the identity before the TPM sees it, and a header whose `P` fails is refused.
+At setup the vault creates `K_tpm`, sets its usage authorisation and performs
+one ECDH; if the provider cannot do all three, the device is treated as
+software only.
 
 Android reporting a `SOFTWARE` security level, and a TPM without ECC support,
 are treated as software only. Software-only mode is shown to the user, never
@@ -717,9 +755,15 @@ Card { certificate, bind, spk, pqspk, ssk, token, group_id, expires_at, signatur
 signature = Sign(IKsig.sk, L("card") ‖ recipient.ik_sig ‖ group_id ‖ SHA256(token) ‖ u64(expires_at))
 ```
 
-A card is sealed to its recipient's identity with the seal construction of §8
-under the labels `card/key` and `card/ad`, so the member who forwards it cannot
-read the token. It expires in 7 days. It holds everything §5.1 needs, so the
+A card is sealed with the construction of §8, under the labels `card/key` and
+`card/ad` instead of `seal/key` and `seal/ad`, to a **seal key** of its
+recipient — never to `IKdh`. A card for the newcomer is sealed to the `SSK` the
+newcomer put in their acceptance, which the inviter passes on with the
+membership update; the newcomer's card for a member is sealed to the `ssk` in
+that member's card. Either seal key is checked first: its signature under the
+recipient's `ik_sig` (§4) and the §4 window. So the member who forwards a card
+cannot read the token, and a card has the same sender forward secrecy as a
+seal (§8). It expires in 7 days. It holds everything §5.1 needs, so the
 receiver opens a session over the card's token without asking the relay for
 anything. The two members then rotate the token inside their new session.
 Identities that arrive this way are marked "introduced by <name>" until verified
@@ -773,6 +817,7 @@ Each is used exactly once, always as `L(name)`.
 | `vault/check` | §10.3 |
 | `vault/record`, `vault/root`, `vault/manifest` | §10.4 |
 | `card`, `card/key`, `card/ad` | §11.2 |
+| `directory-keys` | PROTOCOL §2.1 |
 | `fingerprint`, `invite/fingerprint` | §12 |
 | `invite` | PROTOCOL §4.4 |
 | `auth` | PROTOCOL §2 |
@@ -797,5 +842,5 @@ associated-data inputs.
 LUME publishes its own vectors for every construction above — identity and
 device derivation, prekey signatures, PQXDH, ratchet transcripts including
 skipped and out-of-order messages, contents, seals, introductions and cards,
-vault headers, records and manifests, safety numbers — generated once,
+vault headers, records and manifests, cards, safety numbers — generated once,
 committed, and checked on every platform the core builds for.
