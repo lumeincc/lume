@@ -13,9 +13,7 @@ namespace {
 
 TEST(Hex, DecodesUpperAndLowerCase)
 {
-    const auto bytes = decode_hex("00ff7Fa0");
-    ASSERT_TRUE(bytes.has_value());
-    EXPECT_EQ(*bytes, (crypto::Bytes{0x00, 0xff, 0x7f, 0xa0}));
+    EXPECT_EQ(decode_hex("00ff7Fa0"), std::optional<crypto::Bytes>(crypto::Bytes{0x00, 0xff, 0x7f, 0xa0}));
 }
 
 TEST(Hex, EmptyInputIsEmpty)
@@ -34,9 +32,7 @@ TEST(Hex, RejectsMalformedInput)
 
 RC_GTEST_PROP(HexProperties, EncodeThenDecodeIsIdentity, (const crypto::Bytes& bytes))
 {
-    const auto decoded = decode_hex(encode_hex(bytes));
-    RC_ASSERT(decoded.has_value());
-    RC_ASSERT(*decoded == bytes);
+    RC_ASSERT(decode_hex(encode_hex(bytes)) == std::optional<crypto::Bytes>(bytes));
 }
 
 }
