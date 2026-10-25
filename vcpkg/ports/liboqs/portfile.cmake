@@ -8,6 +8,8 @@ vcpkg_from_github(
     SHA512 d4a48335e2848c4ea4f5615af7846b21f83a9d8ff5256ebd0d27fa52e21bae3338de138770f07a4befea35b94f20ec8fd897594d45948c86d41c95cfe07be151
 )
 
+vcpkg_replace_string("${SOURCE_PATH}/.CMake/compiler_opts.cmake" "add_compile_options(/MT)" "")
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS

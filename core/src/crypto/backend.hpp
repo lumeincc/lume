@@ -14,6 +14,8 @@ namespace lume::crypto::detail {
 
 void require_operational();
 
+void throw_unless_operational(const Result<void>& state);
+
 [[nodiscard]] inline const std::uint8_t* pointer_to(ByteView bytes) noexcept
 {
     static constexpr std::uint8_t nothing = 0;

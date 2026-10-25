@@ -1,6 +1,7 @@
 {
   "name": "liboqs",
   "version": "0.15.0",
+  "port-version": 1,
   "description": "liboqs built with ML-KEM-768 only and without OpenSSL.",
   "homepage": "https://openquantumsafe.org/",
   "license": "MIT",

@@ -102,10 +102,12 @@ bool ed25519_matches()
         && !ed25519_verify(key_pair->public_key, ka::ed25519_message, with_first_bit_flipped(ka::ed25519_signature));
 }
 
-bool ed25519_rejects_small_order_key()
+bool ed25519_rejects_keys_outside_the_prime_order_subgroup()
 {
     return !ed25519_verify(
-        ka::ed25519_small_order_public_key, ka::ed25519_forgery_message, ka::ed25519_forgery_signature);
+               ka::ed25519_small_order_public_key, ka::ed25519_forgery_message, ka::ed25519_forgery_signature)
+        && !ed25519_verify(
+            ka::ed25519_mixed_order_public_key, ka::ed25519_mixed_order_message, ka::ed25519_mixed_order_signature);
 }
 
 bool aead_matches()
@@ -177,7 +179,7 @@ bool mlkem_round_trips()
 Result<void> run_self_test()
 {
     const bool passed = random_is_live() && sha2_matches() && hmac_matches() && hkdf_matches() && x25519_matches()
-        && x25519_rejects_low_order_points() && ed25519_matches() && ed25519_rejects_small_order_key()
+        && x25519_rejects_low_order_points() && ed25519_matches() && ed25519_rejects_keys_outside_the_prime_order_subgroup()
         && aead_matches() && aead_round_trips() && mlkem_matches() && mlkem_rejects_implicitly()
         && mlkem_encapsulation_matches() && mlkem_round_trips();
     if (!passed) {

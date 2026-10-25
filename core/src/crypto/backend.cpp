@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <expected>
 #include <stdexcept>
 
@@ -38,15 +39,19 @@ void fill_from_sodium(std::uint8_t* output, std::size_t length)
     randombytes_buf(output, length);
 }
 
-Result<void> start()
+Result<void> start() noexcept
 {
-    if (sodium_init() < 0) {
+    try {
+        if (sodium_init() < 0) {
+            return std::unexpected(Error::library_failure);
+        }
+        OQS_init();
+        OQS_randombytes_custom_algorithm(&fill_from_sodium);
+        const SelfTestScope scope;
+        return run_self_test();
+    } catch (const std::exception&) {
         return std::unexpected(Error::library_failure);
     }
-    OQS_init();
-    OQS_randombytes_custom_algorithm(&fill_from_sodium);
-    const SelfTestScope scope;
-    return run_self_test();
 }
 
 }
@@ -62,7 +67,11 @@ Result<void> operational_state()
 
 void require_operational()
 {
-    const auto state = operational_state();
+    throw_unless_operational(operational_state());
+}
+
+void throw_unless_operational(const Result<void>& state)
+{
     if (!state) {
         throw std::runtime_error(
             state.error() == Error::self_test_failed ? "the cryptographic self-test failed"

@@ -16,8 +16,8 @@ one of the two — fix the one that is wrong, in the same change.
 ## Layout
 
 ```
-core/      liblume, C++20 — crypto, identity, vault, handshake, ratchet, wire, session, C API
-server/    lume-relay, C++20 — WebSocket over Boost.Beast/Asio, SQLite
+core/      liblume, C++23 — crypto, identity, vault, handshake, ratchet, wire, session, C API
+server/    lume-relay, C++23 — WebSocket over Boost.Beast/Asio, SQLite
 android/   Kotlin + Jetpack Compose; the core through JNI over the C API
 desktop/   WinUI 3 (C++/WinRT); the core linked directly
 docs/      specification
@@ -81,12 +81,12 @@ CI.
 6. **Bound everything an attacker controls**: skipped keys, message sizes,
    prekey counts, collection lengths.
 7. **Domain-separate every derivation** with a distinct, versioned label from
-   `docs/CRYPTO.md` §12.
+   `docs/CRYPTO.md` §13.
 8. Randomness comes from `randombytes_buf` — never `rand()`, `<random>` or the
    clock.
 9. **Nothing works before the self-test passes.** Every primitive goes through
-   one gate that runs the start-up self-test once; if it failed, every call
-   throws and nothing is generated, signed or decrypted.
+   one gate that runs the start-up self-test once; if it failed, every call that would
+   generate, sign, verify, encrypt or decrypt throws instead.
 10. **Private keys are held as seeds.** Ed25519 keeps its 32-byte seed and
     ML-KEM-768 its 64-byte seed; the expanded forms exist only inside a single
     signing or decapsulation call, so a stored key cannot be half-replaced.
@@ -146,7 +146,9 @@ CI.
   Coverage of `core/` below 90 % of lines or 70 % of branches fails the build.
 - Generated files (`core/src/crypto/known_answers.hpp` and the like) are
   regenerated in CI and must match what is committed.
-- Every download in CI is pinned by commit or hash; see
+- Every download in CI is pinned by commit or hash, except the Clang 22
+  packages — apt.llvm.org keeps only its newest build, so only its signing key
+  is pinned — and the tools that come with the runner image; see
   [`.github/PINS.md`](.github/PINS.md).
 - Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
   the seed that reproduces it.

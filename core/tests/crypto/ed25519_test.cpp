@@ -9,8 +9,6 @@
 #include <gtest/gtest.h>
 #include "support/properties.hpp"
 
-#include <algorithm>
-#include <numeric>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -50,9 +48,7 @@ TEST(Ed25519, VerifiesExactlyLikeWycheproof)
     });
     EXPECT_EQ(checked, suite.at("numberOfTests").get<int>());
     EXPECT_EQ(small_order, 8);
-    std::vector<int> every_mixed_order(21);
-    std::ranges::iota(every_mixed_order, 160);
-    EXPECT_EQ(accepted_mixed_order, every_mixed_order) << "libsodium's verdict on mixed-order keys changed";
+    EXPECT_EQ(accepted_mixed_order, std::vector<int>{}) << "a public key outside the prime-order subgroup verified";
 }
 
 TEST(Ed25519, Rfc8032FirstVectorFromSeed)

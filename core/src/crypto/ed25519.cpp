@@ -81,6 +81,9 @@ bool ed25519_verify(ByteView public_key, ByteView message, ByteView signature)
         return false;
     }
     detail::require_operational();
+    if (crypto_core_ed25519_is_valid_point(public_key.data()) != 1) {
+        return false;
+    }
     return crypto_sign_verify_detached(
                signature.data(), detail::pointer_to(message), message.size(), public_key.data())
         == 0;

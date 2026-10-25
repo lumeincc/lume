@@ -89,6 +89,9 @@ Result<Bytes> aead_seal(const SecretBytes& key, ByteView associated_data, ByteVi
 
 Result<SecretBytes> aead_open(const SecretBytes& key, ByteView associated_data, ByteView sealed)
 {
+    if (key.size() != aead_key_size) {
+        return std::unexpected(Error::invalid_size);
+    }
     if (sealed.size() < aead_overhead) {
         return std::unexpected(Error::authentication_failed);
     }

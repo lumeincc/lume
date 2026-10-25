@@ -21,15 +21,14 @@ inline crypto::Bytes flip_bit(crypto::ByteView bytes, std::size_t index, unsigne
 
 inline crypto::Bytes flip_random_bit(crypto::ByteView bytes)
 {
-    const auto index = *rc::gen::inRange<std::size_t>(0, bytes.size());
-    const auto bit = *rc::gen::inRange<unsigned>(0, 8);
+    const auto index = *rc::gen::resize(rc::kNominalSize, rc::gen::inRange<std::size_t>(0, bytes.size()));
+    const auto bit = *rc::gen::resize(rc::kNominalSize, rc::gen::inRange<unsigned>(0, 8));
     return flip_bit(bytes, index, bit);
 }
 
 inline crypto::Bytes random_bytes_of(std::size_t size)
 {
-    return *rc::gen::container<crypto::Bytes>(
-        size, rc::gen::map(rc::gen::inRange(0, 256), [](int value) { return static_cast<std::uint8_t>(value); }));
+    return *rc::gen::resize(rc::kNominalSize, rc::gen::container<crypto::Bytes>(size, rc::gen::arbitrary<std::uint8_t>()));
 }
 
 }

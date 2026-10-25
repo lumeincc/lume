@@ -10,6 +10,8 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <expected>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -32,6 +34,15 @@ TEST(Library, TheGateReportsTheSelfTestOutcome)
 {
     EXPECT_TRUE(detail::operational_state().has_value());
     EXPECT_NO_THROW(detail::require_operational());
+}
+
+TEST(Library, AFailedStateStopsEveryCaller)
+{
+    EXPECT_THROW(
+        detail::throw_unless_operational(std::unexpected(Error::self_test_failed)), std::runtime_error);
+    EXPECT_THROW(
+        detail::throw_unless_operational(std::unexpected(Error::library_failure)), std::runtime_error);
+    EXPECT_NO_THROW(detail::throw_unless_operational({}));
 }
 
 TEST(Library, SelfTestPassesWhenRunDirectly)

@@ -37,6 +37,9 @@ if (encaps.result !== "valid") throw new Error("unexpected ML-KEM encapsulation 
 const forgery = tests(load("ed25519_test.json")).find((t) => t.tcId === 152);
 if (!forgery.comment.includes("universal forgery") || !forgery.flags.includes("SmallOrderPublicKey")) throw new Error("unexpected Ed25519 forgery vector");
 
+const mixedOrder = tests(load("ed25519_test.json")).find((t) => t.tcId === 160);
+if (!mixedOrder.flags.includes("MixedOrderPublicKey")) throw new Error("unexpected Ed25519 mixed-order vector");
+
 const lowOrder = tests(load("x25519_test.json")).find((t) => t.tcId === 33);
 if (!lowOrder.flags.includes("LowOrderPublic")) throw new Error("unexpected X25519 low-order vector");
 
@@ -62,6 +65,9 @@ const constants = [
   ["ed25519_small_order_public_key", forgery.group.publicKey.pk],
   ["ed25519_forgery_message", forgery.msg],
   ["ed25519_forgery_signature", forgery.sig],
+  ["ed25519_mixed_order_public_key", mixedOrder.group.publicKey.pk],
+  ["ed25519_mixed_order_message", mixedOrder.msg],
+  ["ed25519_mixed_order_signature", mixedOrder.sig],
   ["aead_key", xchacha.key],
   ["aead_nonce", xchacha.iv],
   ["aead_associated_data", xchacha.aad],
