@@ -10,6 +10,12 @@ SPDX-FileCopyrightText = "2026 LUME Inc."
 SPDX-License-Identifier = "LicenseRef-LUME-Brand"
 
 [[annotations]]
+path = "**/*.ru.md"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 LUME Inc."
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
 path = "legacy/**"
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 LUME Inc."
