@@ -44,6 +44,14 @@ RC_GTEST_PROP(HashProperties, Sha256OfPartsEqualsSha256OfConcatenation, (const B
     RC_ASSERT(sha256({ByteView(first), ByteView(second)}) == sha256(joined));
 }
 
+RC_GTEST_PROP(HashProperties, SecretSha256MatchesSha256, (const Bytes& first, const Bytes& second))
+{
+    const auto digest = sha256({ByteView(first), ByteView(second)});
+    const auto secret = sha256_secret({ByteView(first), ByteView(second)});
+    RC_ASSERT(secret.size() == sha256_size);
+    RC_ASSERT(secret.equals(digest));
+}
+
 RC_GTEST_PROP(HashProperties, Sha512OfPartsEqualsSha512OfConcatenation, (const Bytes& first, const Bytes& second))
 {
     Bytes joined(first);

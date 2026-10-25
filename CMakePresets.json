@@ -70,6 +70,14 @@
       }
     },
     {
+      "name": "windows-msvc-ninja-release",
+      "displayName": "Windows, MSVC, Ninja, release",
+      "inherits": "windows-msvc-ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "linux-base",
       "hidden": true,
       "inherits": "base",
@@ -146,6 +154,10 @@
       "configurePreset": "windows-msvc-ninja"
     },
     {
+      "name": "windows-msvc-ninja-release",
+      "configurePreset": "windows-msvc-ninja-release"
+    },
+    {
       "name": "linux-gcc-asan",
       "configurePreset": "linux-gcc-asan"
     },
@@ -194,6 +206,11 @@
       "name": "windows-msvc-ninja",
       "inherits": "test-base",
       "configurePreset": "windows-msvc-ninja"
+    },
+    {
+      "name": "windows-msvc-ninja-release",
+      "inherits": "test-base",
+      "configurePreset": "windows-msvc-ninja-release"
     },
     {
       "name": "linux-gcc-asan",

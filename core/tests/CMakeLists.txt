@@ -6,11 +6,13 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(rapidcheck CONFIG REQUIRED)
 
 add_executable(lume_core_tests
+    support/hex.cpp
+    support/hex_test.cpp
     support/vectors.cpp
     crypto/aead_test.cpp
     crypto/ed25519_test.cpp
+    crypto/encoding_test.cpp
     crypto/hash_test.cpp
-    crypto/hex_test.cpp
     crypto/kdf_test.cpp
     crypto/library_test.cpp
     crypto/mlkem_test.cpp

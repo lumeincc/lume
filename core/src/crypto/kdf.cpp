@@ -7,13 +7,16 @@
 
 #include <sodium.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <expected>
+#include <string>
 
 namespace lume::crypto {
 
 SecretBytes hmac_sha256(ByteView key, ByteView message)
 {
-    detail::ensure_backends_ready();
+    detail::require_operational();
     SecretBytes tag(hmac_sha256_size);
     crypto_auth_hmacsha256_state state;
     crypto_auth_hmacsha256_init(&state, detail::pointer_to(key), key.size());
@@ -28,7 +31,7 @@ Result<SecretBytes> hkdf_sha256(ByteView salt, ByteView input_key, ByteView info
     if (length == 0 || length > hkdf_sha256_max_length) {
         return std::unexpected(Error::invalid_size);
     }
-    detail::ensure_backends_ready();
+    detail::require_operational();
 
     SecretBytes pseudorandom_key(crypto_kdf_hkdf_sha256_KEYBYTES);
     if (crypto_kdf_hkdf_sha256_extract(
@@ -39,9 +42,11 @@ Result<SecretBytes> hkdf_sha256(ByteView salt, ByteView input_key, ByteView info
     }
 
     SecretBytes output(length);
-    const auto* context = reinterpret_cast<const char*>(detail::pointer_to(info));
+    std::string context(info.size(), '\0');
+    std::ranges::transform(info, context.begin(), [](std::uint8_t byte) { return static_cast<char>(byte); });
     if (crypto_kdf_hkdf_sha256_expand(
-            output.writable().data(), output.size(), context, info.size(), pseudorandom_key.view().data())
+            output.writable().data(), output.size(), context.data(), context.size(),
+            pseudorandom_key.view().data())
         != 0) {
         return std::unexpected(Error::library_failure);
     }

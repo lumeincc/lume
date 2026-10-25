@@ -31,7 +31,7 @@ Result<X25519KeyPair> x25519_from_secret(SecretBytes secret_key)
     if (secret_key.size() != x25519_key_size) {
         return std::unexpected(Error::invalid_size);
     }
-    detail::ensure_backends_ready();
+    detail::require_operational();
     ByteArray<x25519_key_size> public_key{};
     if (crypto_scalarmult_base(public_key.data(), secret_key.view().data()) != 0) {
         return std::unexpected(Error::invalid_key);
@@ -44,7 +44,7 @@ Result<SecretBytes> x25519_shared_secret(const SecretBytes& secret_key, ByteView
     if (secret_key.size() != x25519_key_size || peer_public_key.size() != x25519_key_size) {
         return std::unexpected(Error::invalid_size);
     }
-    detail::ensure_backends_ready();
+    detail::require_operational();
     SecretBytes shared(x25519_key_size);
     if (crypto_scalarmult(shared.writable().data(), secret_key.view().data(), peer_public_key.data()) != 0) {
         return std::unexpected(Error::weak_public_key);

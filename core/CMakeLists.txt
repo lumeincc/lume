@@ -8,8 +8,8 @@ add_library(lume_core STATIC
     src/crypto/aead.cpp
     src/crypto/backend.cpp
     src/crypto/ed25519.cpp
+    src/crypto/encoding.cpp
     src/crypto/hash.cpp
-    src/crypto/hex.cpp
     src/crypto/kdf.cpp
     src/crypto/library.cpp
     src/crypto/mlkem.cpp

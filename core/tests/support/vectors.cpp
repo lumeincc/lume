@@ -3,7 +3,7 @@
 
 #include "support/vectors.hpp"
 
-#include "crypto/hex.hpp"
+#include "support/hex.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -57,7 +57,7 @@ int for_each_wycheproof_case(const nlohmann::json& suite, const std::function<vo
     int checked = 0;
     for (const auto& group : suite.at("testGroups")) {
         for (const auto& test : group.at("tests")) {
-            check(WycheproofCase{group, test});
+            check(WycheproofCase{.group = group, .test = test});
             ++checked;
         }
     }
@@ -66,7 +66,7 @@ int for_each_wycheproof_case(const nlohmann::json& suite, const std::function<vo
 
 crypto::Bytes from_hex(std::string_view hex)
 {
-    auto bytes = crypto::detail::decode_hex(hex);
+    auto bytes = decode_hex(hex);
     if (!bytes) {
         throw std::invalid_argument("malformed hex in test vectors");
     }
@@ -75,7 +75,7 @@ crypto::Bytes from_hex(std::string_view hex)
 
 std::string to_hex(crypto::ByteView bytes)
 {
-    return crypto::detail::encode_hex(bytes);
+    return encode_hex(bytes);
 }
 
 }

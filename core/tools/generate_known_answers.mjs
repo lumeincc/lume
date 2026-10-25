@@ -28,6 +28,18 @@ if (xchacha.result !== "valid" || xchacha.group.ivSize !== 192) throw new Error(
 const mlkem = tests(load("mlkem_768_test.json")).find((t) => t.tcId === 1);
 if (mlkem.result !== "valid") throw new Error("unexpected ML-KEM vector");
 
+const rejection = tests(load("mlkem_768_test.json")).find((t) => t.tcId === 194);
+if (rejection.result !== "valid" || !rejection.comment.includes("implicit rejection")) throw new Error("unexpected ML-KEM rejection vector");
+
+const encaps = tests(load("mlkem_768_encaps_test.json")).find((t) => t.tcId === 14);
+if (encaps.result !== "valid") throw new Error("unexpected ML-KEM encapsulation vector");
+
+const forgery = tests(load("ed25519_test.json")).find((t) => t.tcId === 152);
+if (!forgery.comment.includes("universal forgery") || !forgery.flags.includes("SmallOrderPublicKey")) throw new Error("unexpected Ed25519 forgery vector");
+
+const lowOrder = tests(load("x25519_test.json")).find((t) => t.tcId === 33);
+if (!lowOrder.flags.includes("LowOrderPublic")) throw new Error("unexpected X25519 low-order vector");
+
 const constants = [
   ["sha2_input", "616263"],
   ["sha256_digest", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
@@ -42,10 +54,14 @@ const constants = [
   ["x25519_secret_key", x25519.private],
   ["x25519_peer_public_key", x25519.public],
   ["x25519_shared_secret", x25519.shared],
+  ["x25519_low_order_point", lowOrder.public],
   ["ed25519_seed", "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"],
   ["ed25519_public_key", ed25519.group.publicKey.pk],
   ["ed25519_message", ed25519.msg],
   ["ed25519_signature", ed25519.sig],
+  ["ed25519_small_order_public_key", forgery.group.publicKey.pk],
+  ["ed25519_forgery_message", forgery.msg],
+  ["ed25519_forgery_signature", forgery.sig],
   ["aead_key", xchacha.key],
   ["aead_nonce", xchacha.iv],
   ["aead_associated_data", xchacha.aad],
@@ -55,23 +71,38 @@ const constants = [
   ["mlkem_public_key_sha256", sha256Hex(mlkem.ek)],
   ["mlkem_ciphertext", mlkem.c],
   ["mlkem_shared_secret", mlkem.K],
+  ["mlkem_rejection_key_seed", rejection.seed],
+  ["mlkem_rejection_ciphertext", rejection.c],
+  ["mlkem_rejection_shared_secret", rejection.K],
+  ["mlkem_encapsulation_public_key", encaps.ek],
+  ["mlkem_encapsulation_randomness", encaps.m],
+  ["mlkem_encapsulation_ciphertext_sha256", sha256Hex(encaps.c)],
+  ["mlkem_encapsulation_shared_secret", encaps.K],
 ];
 
-const declare = ([name, hex]) =>
-  hex === ""
-    ? `inline constexpr std::string_view ${name}{};`
-    : `inline constexpr std::string_view ${name} =\n    "${hex.match(/.{1,96}/g).join('"\n    "')}";`;
+const bytesPerLine = 16;
+const declare = ([name, hex]) => {
+  const bytes = hex.match(/.{2}/g) ?? [];
+  if (bytes.length === 0) return `inline constexpr std::array<std::uint8_t, 0> ${name}{};`;
+  const lines = [];
+  for (let start = 0; start < bytes.length; start += bytesPerLine) {
+    lines.push("    " + bytes.slice(start, start + bytesPerLine).map((b) => `0x${b}`).join(", ") + ",");
+  }
+  return [`inline constexpr std::array<std::uint8_t, ${bytes.length}> ${name}{`, ...lines, "};"].join("\n");
+};
 
 const body = constants.map(declare).join("\n\n");
+const spdx = (tag, value) => `// SPDX-${tag}: ${value}`;
 
 writeFileSync(
   outputFile,
-  `// SPDX-FileCopyrightText: 2026 LUME Inc.
-// SPDX-License-Identifier: AGPL-3.0-only
+  `${spdx("FileCopyrightText", "2026 LUME Inc.")}
+${spdx("License-Identifier", "AGPL-3.0-only")}
 
 #pragma once
 
-#include <string_view>
+#include <array>
+#include <cstdint>
 
 namespace lume::crypto::known_answers {
 

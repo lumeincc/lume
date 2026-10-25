@@ -3,9 +3,15 @@
 
 #include "lume/crypto/library.hpp"
 
+#include "crypto/backend.hpp"
 #include "crypto/self_test.hpp"
+#include "lume/crypto/hash.hpp"
 
 #include <gtest/gtest.h>
+
+#include <atomic>
+#include <thread>
+#include <vector>
 
 namespace lume::crypto {
 namespace {
@@ -22,9 +28,32 @@ TEST(Library, InitialisationIsIdempotent)
     EXPECT_TRUE(initialise().has_value());
 }
 
+TEST(Library, TheGateReportsTheSelfTestOutcome)
+{
+    EXPECT_TRUE(detail::operational_state().has_value());
+    EXPECT_NO_THROW(detail::require_operational());
+}
+
 TEST(Library, SelfTestPassesWhenRunDirectly)
 {
     EXPECT_TRUE(detail::run_self_test().has_value());
+}
+
+TEST(Library, PrimitivesUsedFromManyThreadsAtOnceAgree)
+{
+    constexpr int thread_count = 8;
+    std::atomic<int> matching{0};
+    std::vector<std::jthread> threads;
+    threads.reserve(thread_count);
+    for (int index = 0; index < thread_count; ++index) {
+        threads.emplace_back([&matching] {
+            if (sha256(Bytes{'a', 'b', 'c'}) == sha256(Bytes{'a', 'b', 'c'})) {
+                ++matching;
+            }
+        });
+    }
+    threads.clear();
+    EXPECT_EQ(matching.load(), thread_count);
 }
 
 }

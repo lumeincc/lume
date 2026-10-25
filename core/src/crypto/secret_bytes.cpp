@@ -18,7 +18,7 @@ SecretBytes::SecretBytes(std::size_t size)
     if (size == 0) {
         return;
     }
-    detail::ensure_backends_ready();
+    detail::require_operational();
     data_ = static_cast<std::uint8_t*>(sodium_malloc(size));
     if (data_ == nullptr) {
         throw std::bad_alloc();

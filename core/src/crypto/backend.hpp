@@ -4,12 +4,15 @@
 #pragma once
 
 #include "lume/crypto/bytes.hpp"
+#include "lume/crypto/error.hpp"
 
 #include <cstdint>
 
 namespace lume::crypto::detail {
 
-void ensure_backends_ready();
+[[nodiscard]] Result<void> operational_state();
+
+void require_operational();
 
 [[nodiscard]] inline const std::uint8_t* pointer_to(ByteView bytes) noexcept
 {

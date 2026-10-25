@@ -56,7 +56,9 @@ TEST(HkdfSha256, AcceptsTheLargestOutputAndRefusesOneMore)
 {
     const Bytes input_key(32, 7);
     EXPECT_TRUE(hkdf_sha256({}, input_key, {}, hkdf_sha256_max_length).has_value());
-    EXPECT_FALSE(hkdf_sha256({}, input_key, {}, hkdf_sha256_max_length + 1).has_value());
+    const auto too_long = hkdf_sha256({}, input_key, {}, hkdf_sha256_max_length + 1);
+    ASSERT_FALSE(too_long.has_value());
+    EXPECT_EQ(too_long.error(), Error::invalid_size);
 }
 
 RC_GTEST_PROP(KdfProperties, ShorterHkdfOutputIsAPrefixOfLongerOutput,

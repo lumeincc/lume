@@ -14,7 +14,7 @@ void random_fill(std::span<std::uint8_t> output)
     if (output.empty()) {
         return;
     }
-    detail::ensure_backends_ready();
+    detail::require_operational();
     randombytes_buf(output.data(), output.size());
 }
 

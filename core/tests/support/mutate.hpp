@@ -28,7 +28,8 @@ inline crypto::Bytes flip_random_bit(crypto::ByteView bytes)
 
 inline crypto::Bytes random_bytes_of(std::size_t size)
 {
-    return *rc::gen::container<crypto::Bytes>(size, rc::gen::arbitrary<std::uint8_t>());
+    return *rc::gen::container<crypto::Bytes>(
+        size, rc::gen::map(rc::gen::inRange(0, 256), [](int value) { return static_cast<std::uint8_t>(value); }));
 }
 
 }

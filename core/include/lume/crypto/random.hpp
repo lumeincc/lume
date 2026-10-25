@@ -17,7 +17,7 @@ void random_fill(std::span<std::uint8_t> output);
 [[nodiscard]] SecretBytes random_secret(std::size_t size);
 
 template <std::size_t Size>
-[[nodiscard]] ByteArray<Size> random_array()
+[[nodiscard]] ByteArray<Size> random_public_bytes()
 {
     ByteArray<Size> output{};
     random_fill(output);

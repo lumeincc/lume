@@ -10,7 +10,6 @@ Checks: >
   concurrency-*,
   cppcoreguidelines-*,
   -cppcoreguidelines-avoid-magic-numbers,
-  -cppcoreguidelines-pro-type-reinterpret-cast,
   misc-*,
   -misc-include-cleaner,
   modernize-*,
@@ -24,3 +23,5 @@ Checks: >
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*[/\\]core[/\\](include|src)[/\\].*'
 FormatStyle: none
+CheckOptions:
+  readability-function-cognitive-complexity.IgnoreMacros: true

@@ -14,8 +14,8 @@ namespace {
 
 TEST(Random, ArraysOfTheSameSizeDiffer)
 {
-    const auto first = random_array<32>();
-    const auto second = random_array<32>();
+    const auto first = random_public_bytes<32>();
+    const auto second = random_public_bytes<32>();
     EXPECT_NE(first, second);
 }
 

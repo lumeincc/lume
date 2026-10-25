@@ -9,10 +9,10 @@
 #include <string>
 #include <string_view>
 
-namespace lume::crypto::detail {
+namespace lume::test {
 
-[[nodiscard]] std::optional<Bytes> decode_hex(std::string_view hex);
+[[nodiscard]] std::optional<crypto::Bytes> decode_hex(std::string_view hex);
 
-[[nodiscard]] std::string encode_hex(ByteView bytes);
+[[nodiscard]] std::string encode_hex(crypto::ByteView bytes);
 
 }

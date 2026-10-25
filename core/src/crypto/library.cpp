@@ -4,31 +4,19 @@
 #include "lume/crypto/library.hpp"
 
 #include "backend.hpp"
-#include "self_test.hpp"
 
 #include <exception>
 #include <expected>
 
 namespace lume::crypto {
 
-namespace {
-
-Result<void> start()
+Result<void> initialise()
 {
     try {
-        detail::ensure_backends_ready();
-        return detail::run_self_test();
+        return detail::operational_state();
     } catch (const std::exception&) {
         return std::unexpected(Error::library_failure);
     }
-}
-
-}
-
-Result<void> initialise()
-{
-    static const Result<void> outcome = start();
-    return outcome;
 }
 
 }

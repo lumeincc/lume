@@ -49,9 +49,10 @@ TEST(SecretBytes, MoveConstructionTransfersOwnership)
 {
     const Bytes bytes{9, 8, 7};
     auto source = SecretBytes::copy_of(bytes);
+    const SecretBytes* const moved_from = &source;
     const SecretBytes target(std::move(source));
     EXPECT_TRUE(target.equals(bytes));
-    EXPECT_TRUE(source.empty());
+    EXPECT_TRUE(moved_from->empty());
 }
 
 TEST(SecretBytes, MoveAssignmentReplacesContent)
@@ -60,9 +61,10 @@ TEST(SecretBytes, MoveAssignmentReplacesContent)
     const Bytes second{2, 2, 2, 2};
     auto target = SecretBytes::copy_of(first);
     auto source = SecretBytes::copy_of(second);
+    const SecretBytes* const moved_from = &source;
     target = std::move(source);
     EXPECT_TRUE(target.equals(second));
-    EXPECT_TRUE(source.empty());
+    EXPECT_TRUE(moved_from->empty());
 }
 
 TEST(SecretBytes, CloneIsIndependent)
@@ -70,7 +72,7 @@ TEST(SecretBytes, CloneIsIndependent)
     const Bytes bytes{5, 6, 7};
     const auto original = SecretBytes::copy_of(bytes);
     auto copy = original.clone();
-    copy.writable()[0] = 0;
+    copy.writable().front() = 0;
     EXPECT_TRUE(original.equals(bytes));
     EXPECT_FALSE(copy.equals(bytes));
 }

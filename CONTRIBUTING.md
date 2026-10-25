@@ -84,6 +84,16 @@ CI.
    `docs/CRYPTO.md` §12.
 8. Randomness comes from `randombytes_buf` — never `rand()`, `<random>` or the
    clock.
+9. **Nothing works before the self-test passes.** Every primitive goes through
+   one gate that runs the start-up self-test once; if it failed, every call
+   throws and nothing is generated, signed or decrypted.
+10. **Private keys are held as seeds.** Ed25519 keeps its 32-byte seed and
+    ML-KEM-768 its 64-byte seed; the expanded forms exist only inside a single
+    signing or decapsulation call, so a stored key cannot be half-replaced.
+11. **Callers never choose a nonce.** `aead_seal` draws a fresh 24-byte nonce
+    and returns `nonce ‖ ciphertext ‖ tag`. Derandomised forms (explicit
+    nonces, ML-KEM encapsulation from given randomness) live in `detail` for
+    known-answer tests only.
 
 ## Wire format
 
@@ -114,19 +124,30 @@ CI.
 - No undefined behaviour; sanitizer builds stay clean.
 - Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths.
   They are never reinterpreted as anything other than bytes.
-- Expected failures return `lume::crypto::Result<T>` (`std::expected`).
-  Exceptions never cross the C ABI.
-- `clang-tidy` 22 with [`.clang-tidy`](.clang-tidy) reports nothing; CI fails
-  otherwise.
+- Expected failures — bad sizes, invalid keys, failed authentication — return
+  `lume::crypto::Result<T>` (`std::expected`). Failures that should never
+  happen — allocation, a failed self-test, a library that stopped working —
+  throw. The C API catches every exception and turns it into an error code;
+  no exception crosses the C ABI.
+- Hardened standard libraries in every build: `_GLIBCXX_ASSERTIONS`, the
+  libc++ extensive hardening mode, `_MSVC_STL_HARDENING`; `_FORTIFY_SOURCE=3`,
+  full RELRO and stack-clash protection outside Debug on Linux and Android.
+- `clang-tidy` 22 with [`.clang-tidy`](.clang-tidy) reports nothing on the
+  library or the tests; CI fails otherwise.
 
 ## Tests
 
 - Every module ships with its tests in the same change: unit tests, published
   test vectors where they exist, property-based tests for codecs and protocol
   invariants, and a fuzz target for every parser.
-- CI runs GCC and Clang with AddressSanitizer, UndefinedBehaviorSanitizer and,
-  for the relay, ThreadSanitizer; MSVC on Windows; the Android build on an
-  emulator. Line coverage of `core/` below 90 % fails the build.
+- CI runs GCC and Clang with AddressSanitizer and UndefinedBehaviorSanitizer,
+  a GCC release build, and MSVC Debug and Release on Windows. ThreadSanitizer
+  for the relay and the Android build on an emulator join when those exist.
+  Coverage of `core/` below 90 % of lines or 70 % of branches fails the build.
+- Generated files (`core/src/crypto/known_answers.hpp` and the like) are
+  regenerated in CI and must match what is committed.
+- Every download in CI is pinned by commit or hash; see
+  [`.github/PINS.md`](.github/PINS.md).
 - Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
   the seed that reproduces it.
 - Build and test locally with the presets: `cmake --preset windows-msvc`,

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "lume/crypto/bytes.hpp"
+#include "lume/crypto/secret_bytes.hpp"
 
 #include <cstddef>
 #include <initializer_list>
@@ -15,6 +16,7 @@ inline constexpr std::size_t sha512_size = 64;
 
 [[nodiscard]] ByteArray<sha256_size> sha256(ByteView data);
 [[nodiscard]] ByteArray<sha256_size> sha256(std::initializer_list<ByteView> parts);
+[[nodiscard]] SecretBytes sha256_secret(std::initializer_list<ByteView> parts);
 [[nodiscard]] ByteArray<sha512_size> sha512(ByteView data);
 [[nodiscard]] ByteArray<sha512_size> sha512(std::initializer_list<ByteView> parts);
 
