@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Relay protocol
 
-Status: **draft**, revision 6.
+Status: **draft**, revision 7.
 Companion to [CRYPTO.md](CRYPTO.md), which defines every key and construction
 named here.
 
@@ -113,14 +113,15 @@ number.
 The list is how keys are rotated and **revoked**. A new key appears on a list
 before it is used; a retired key simply leaves it. A stolen key leaves `keys`
 and is named under `revoked` with the time `since` from which its certificates
-are distrusted, on a list signed at once. A client remembers which key verified
-each contact's name; when a list revokes that key, every name it verified with a
-certificate issued at or after `since` goes back to unverified — unless the
-contact was verified by safety number — until a fresh certificate arrives.
-Clients send their refreshed certificate in an `Introduction` in the next
-message of each session after the weekly refresh. A relay that withholds the
-new list can keep a revoked key working for at most the 14 days the old list
-has left.
+are distrusted, on a list signed at once. A client records, for each contact,
+which key verified the name and when it accepted it, by its own clock. When a
+list revokes that key, every name the client accepted with it at or after
+`since`, less a day of margin, goes back to unverified — unless the contact was
+verified by safety number — until a fresh certificate arrives. The client's
+own record decides, because a stolen key can write any `issued_at`. Clients
+send their refreshed certificate in an `Introduction` in the next message of
+each session after the weekly refresh. A relay that withholds the new list can
+keep a revoked key working for at most the 14 days the old list has left.
 
 Each release ships the list current at build time, so a fresh install has a
 `sequence` floor too. A client whose newest list has expired fetches a new one
@@ -139,7 +140,10 @@ signature = Sign(directory_sk, L("certificate") ‖ enc(certificate without sign
 A certificate is valid for at most 30 days after its `issued_at`; clients
 refuse one whose `issued_at` is in the future or whose `expires_at` is more
 than 31 days ahead. The relay signs at most one certificate per account per day
-and serves that one from its cache, so lookups never load the signer. A client fetches its own certificate on
+and serves that one from its cache, so lookups never load the signer; a rebind
+or a revocation of the signing key drops the cached one at once. `issued_at` is
+the start of the UTC day of signing, so it does not reveal when the owner was
+active. A client fetches its own certificate on
 its authenticated connection (`GetCertificate`, §4.2), refreshes it weekly, and
 presents it in introductions (CRYPTO §5.3) and cards (CRYPTO §11.2). A username
 freed by deletion or by the inactivity sweep cannot be registered again for 31
@@ -217,9 +221,9 @@ Header             = { dh: bytes[32], pn: u32, n: u32 }
 RatchetMessage     = { enc_header: bytes[80], body: bytes≤69000 }
 Inner              = { sender: bytes[32], initial: opt<InitialHeader>, message: RatchetMessage }
 Seal               = { version: u8, ssk_id: u32, es: bytes[32], nonce: bytes[24], box: bytes≤69648 }
-Card               = { certificate: UsernameCertificate, bind: bytes[64], spk: PrekeyX, pqspk: PrekeyKem,
-                       ssk: PrekeyX, token: bytes[32], group_id: bytes[16], expires_at: u64,
-                       signature: bytes[64] }
+Card               = { certificate: UsernameCertificate, bind: bytes[64], generation: u32,
+                       spk: PrekeyX, pqspk: PrekeyKem, ssk: PrekeyX, token: bytes[32],
+                       group_id: bytes[16], expires_at: u64, signature: bytes[64] }
 ```
 
 `enc_header` is `24 + enc(Header) + 16 = 80` bytes. A `Seal` of the largest
@@ -260,7 +264,8 @@ only; `[N]` — anonymous only; `[*]` — either.
 ```
 
 The relay checks, before writing anything: the proof of work (§6.2), the
-username (§6.3), `bind`, `cert`, every prekey signature, every `created_at`
+username (§6.3), `bind`, `cert`, every prekey signature under `generation`
+(`UpdatePrekeys` under the account's current generation), every `created_at`
 (not more than 31 days ahead), and `proof`. It then answers and closes the
 connection. Each signed-key list holds the active generation and up to four
 future ones (CRYPTO §4). The largest `Register` is about 75 KB.
@@ -314,8 +319,10 @@ everything in §7 that refers to it, and then its blob files.
 → LookupIdentity [N] { username: text≤32, access: opt<Access> }     ← Identity
 ← Identity { certificate: UsernameCertificate, bind: bytes[64] }
 → FetchBundle    [N] { username: text≤32, access: opt<Access> }     ← Bundle
-← Bundle { certificate: UsernameCertificate, bind: bytes[64],
+← Bundle { certificate: UsernameCertificate, bind: bytes[64], generation: u32,
            spk: PrekeyX, pq: PrekeyKem, ssk: PrekeyX, opk: opt<PrekeyX> }
+           generation is the one every prekey signature covers (CRYPTO §4); the
+           certificate's own generation is informational
 → FetchSealKey   [N] { recipient: bytes[16], access: Access }        ← SealKey { ssk: PrekeyX, generation: u32 }
                  generation is the one the ssk signature covers (CRYPTO §4)
 ```
@@ -425,7 +432,11 @@ what was sent. Twenty reports per account per day.
 Uploads go on the token lane only, with a token the recipient holds. Live, sink
 and inherited tokens are treated the same: the blob is stored, charged and
 served whatever the token's state, because an uploader that could not download
-its own blob would learn that it is blocked (CRYPTO §9.4). A group attachment is
+its own blob would learn that it is blocked (CRYPTO §9.4). A blob on a sink
+token counts against that token's 256 MiB and the uploader's address budget,
+and is reported in that token's answers as if it counted against the
+recipient; it never reduces what the recipient's other tokens may store and
+never raises the recipient's rank under disk pressure. A group attachment is
 uploaded once, on the token of any one member the sender writes to, and every
 member reaches it by its id. The ticket authorises one
 `PUT /v1/blob/<hex blob_id>` with header `Lume-Upload-Key: <hex upload_key>` and
@@ -507,10 +518,12 @@ younger than 7 days, which are also limited per address (§6.3).
 
 Every limiter's state is bounded: per-address and per-token counters live in a
 fixed-size table, so a flood of random tokens or addresses cannot grow memory.
-When the table is full it forgets the least recently used entries that are
-neither limited nor carrying a raised proof-of-work level; an entry that is
-both is kept until its window ends, and when nothing can be forgotten new
-entries start at the strictest level. Nobody can flush their own counters.
+Each table holds 2^20 entries. When it is full it forgets the least recently
+used entries that are neither limited nor carrying a raised proof-of-work
+level; an entry that is either is kept until its window ends. Entries that find
+the table full of such entries share one overflow entry, limited as strictly as
+a single address. Nobody can flush their own counters, and a flood degrades
+only the newcomers who arrive during it.
 
 Addresses are normalised before keys are built: an IPv4-mapped IPv6 address
 (`::ffff:0:0/96`) counts as its IPv4 address.
@@ -612,7 +625,7 @@ out of range stops the process with a message naming the setting.
 | `LUME_HOST` | required | hostname clients sign (§2) |
 | `LUME_TLS_CERT_FILE`, `LUME_TLS_KEY_FILE` | required unless `LUME_DEV` | the relay terminates TLS itself (§1) |
 | `LUME_CLIENT_ADDRESS` | required | `direct` (the TCP peer) or `proxy-protocol` (a PROXY v2 header on every connection, refused if absent) |
-| `LUME_TRUSTED_PROXIES` | required with `proxy-protocol` | comma-separated CIDR ranges of the load balancer, private addresses only (RFC 1918, RFC 4193, or the provider's internal range for this deployment — never a range shared with other customers); anything else is refused at boot. A connection from any other peer is closed before a byte of it is read |
+| `LUME_TRUSTED_PROXIES` | required with `proxy-protocol` | comma-separated CIDR ranges of the load balancer, each inside `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10` or `fc00::/7`; anything else is refused at boot. The relay cannot tell whether a range is shared with other customers of the provider, so the operator must not list one that is. A connection from any other peer is closed before a byte of it is read |
 | `LUME_DIRECTORY_KEYS_FILE` | required | the current signed directory key list (§2.1); re-read when it changes. An unverifiable list stops the process at boot; an expired one is not served (`UNAVAILABLE`) and is logged until replaced |
 | `LUME_DIRECTORY_ROOT_KEY` | required | the root public key the list must verify under, hex |
 | `LUME_DISK_QUOTA` | required | bytes the relay may use for its database and blobs |

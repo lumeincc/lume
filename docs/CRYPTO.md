@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Cryptography
 
-Status: **draft**, revision 6.
+Status: **draft**, revision 7.
 Nothing here is implemented until this document says it is; code that
 disagrees with it is a bug in one of the two.
 
@@ -103,7 +103,7 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 | `HMAC(k, m)` | HMAC-SHA256 | `crypto_auth_hmacsha256_*` |
 | `HKDF(salt, ikm, info, L)` | HKDF-SHA256, RFC 5869 | `crypto_kdf_hkdf_sha256_extract` / `_expand` |
 | `DH(sk, pk)` | X25519, RFC 7748 | `crypto_scalarmult`; **a non-zero return (low-order point) aborts the operation** |
-| `Sign`, `Verify` | Ed25519, RFC 8032 | `crypto_sign_detached`, `crypto_sign_verify_detached` |
+| `Sign`, `Verify` | Ed25519, RFC 8032 | `crypto_sign_detached`, `crypto_sign_verify_detached`; **a public key outside the prime-order subgroup is refused** (`crypto_core_ed25519_is_valid_point`), so one private key has one public key |
 | `AEAD(k, n, ad, m)` | XChaCha20-Poly1305-IETF | `crypto_aead_xchacha20poly1305_ietf_encrypt` / `_decrypt` |
 | `Stream` | XChaCha20-Poly1305 secretstream | `crypto_secretstream_xchacha20poly1305_*` |
 | `KEM` | ML-KEM-768, FIPS 203 (final) | liboqs `OQS_KEM_ml_kem_768_*` |
@@ -216,8 +216,8 @@ contacts as sinks, but the device's own block list, by identity, has to be
 rebuilt.
 
 A client takes a peer's generation only from a signed prekey that covers it
-(§4) or from an `Introduction` inside a session (§5.3), and never lets it go
-down.
+(§4) — an `Introduction`'s generation counts only if its `seal_key` verifies
+under it — and never lets it go down.
 
 ---
 
@@ -237,7 +237,11 @@ sig = Sign(IKsig.sk, L("prekey") ‖ u8(kind) ‖ u32(id) ‖ u64(created_at) �
 
 The signature covers the account's generation (§3.3), so only the identity key
 can say that an account recovered: the relay cannot claim a new generation for
-which it was given no signed key.
+which it was given no signed key. Wherever a signed prekey travels — a bundle,
+a seal key, a card, an introduction, a group acceptance, a seal-key update
+inside a session — the generation its signature covers travels with it, and
+the key is checked under that generation; the relay checks uploads under the
+account's current one.
 
 **Signed rotating keys** (`SPK`, `PQSPK`, `SSK`) are each active for 7 days from
 their `created_at`. A client uses one only if its `created_at` is not in the
@@ -276,7 +280,7 @@ which ids were handed out and:
   first message needs is not discarded;
 - treats every one-time key it published before the last 15 days as handed
   out when it has not listed hand-outs in that time, since the relay forgets
-  them after 15 days (PROTOCOL §4.2);
+  them after 15 days (PROTOCOL §4.2), and withdraws those still published;
 - deletes a handed-out private half when a handshake uses it, or **14 days**
   after hand-out if none arrives — after 14 days without a reply the initiator
   starts over from a fresh bundle (§5.4);
@@ -512,9 +516,12 @@ A sender keeps the content of every message without a receipt for up to 30
 days. It resends it after 1 hour, 4 hours, 24 hours and 7 days; after that only
 when something shows it is missing — a receipt from the contact for a later
 message but not for this one, acted on at most once a day — and when a new
-session starts (§5.4). A send the relay answers with an error is not a resend:
-it is retried with backoff. Each resend is a new ratchet message, freshly
-sealed, so two resends cannot be linked by their bytes. While its recipient is
+session starts (§5.4). A send the relay answers with a transient error is not a
+resend: it is retried with backoff. Each resend is a new ratchet message, freshly
+sealed, so two resends cannot be linked by their bytes. Resends that fall due
+while §5.4 holds a backlog wait with it. A send the relay refuses for good —
+`NOT_ACCEPTED`, `NOT_FOUND`, `TOO_LARGE`, `MALFORMED` — is not retried; the
+message is marked as not delivered. While its recipient is
 away a message is therefore at most five envelopes on the relay, one more for
 each session restart. A recipient keeps the ids it has seen for 31 days and
 discards any content whose id it already has, whatever session it arrives in.
@@ -617,8 +624,9 @@ every request — sending, fetching a bundle, an identity or a seal key — and
 silently discards envelopes that arrive on it; quotas are charged on the bytes
 presented, whether or not they are kept. Blobs are the exception that proves
 the rule: an uploader can download its own blob, so a blob uploaded on a sink
-token is stored and served like any other, counts against that token's quota,
-and expires unread (PROTOCOL §4.7). No cap, eviction or `UNAVAILABLE` answer
+token is stored and served like any other and expires unread. It counts against
+that token's own limits and in that token's answers, never against what the
+recipient's other tokens may store (PROTOCOL §4.7). No cap, eviction or `UNAVAILABLE` answer
 depends on whether a token is a sink. A blocked sender therefore gets
 no signal from the relay. Revoking a token outright is used only for rotation
 (§9.1), when the contact already holds the replacement.
@@ -678,8 +686,10 @@ the dictionary-attack counter. `P` is checked to be a point on P-256 other than
 the identity before the TPM sees it, and a header whose `P` fails is refused.
 At setup the vault creates `K_tpm`, sets its usage authorisation and performs
 one ECDH; if the provider cannot do all three, the device is treated as
-software only. A passphrase change creates a new `K_tpm` and `P` and deletes the
-old key, so an authorisation value that leaked once is worthless afterwards.
+software only. A passphrase change creates a new `K_tpm` and `P`, commits the
+header re-wrapped under them, and only then deletes the old key — so a crash
+leaves a vault that opens, and an authorisation value that leaked once is
+worthless afterwards.
 
 Android reporting a `SOFTWARE` security level, and a TPM without ECC support,
 are treated as software only. Software-only mode is shown to the user, never
@@ -794,7 +804,7 @@ default) produces a card for the newcomer, and the newcomer produces one for
 each such member:
 
 ```
-Card { certificate, bind, spk, pqspk, ssk, token, group_id, expires_at, signature }
+Card { certificate, bind, generation, spk, pqspk, ssk, token, group_id, expires_at, signature }
 signature = Sign(IKsig.sk, L("card") ‖ recipient.ik_sig ‖ group_id ‖ SHA256(token) ‖ u64(expires_at))
 ```
 
