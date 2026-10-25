@@ -61,7 +61,8 @@ Files that cannot carry a header (images, binary fixtures) are covered in
 **Carries no comments besides that header.** Code says what it does through
 names, types and small functions; the specification says why. A piece of code
 that needs a paragraph to be understood needs to be rewritten or specified in
-`docs/`.
+`docs/`. [`tools/check_comments.py`](tools/check_comments.py) enforces this in
+CI.
 
 ## Cryptography
 
@@ -105,14 +106,17 @@ that needs a paragraph to be understood needs to be rewritten or specified in
 
 ## C++
 
-- C++20. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion -Wshadow
-  -Werror` on GCC and Clang, `/W4 /WX /permissive-` on MSVC.
+- C++23. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion
+  -Wsign-conversion -Wshadow -Wold-style-cast -Werror` on GCC and Clang,
+  `/W4 /WX /permissive-` on MSVC — see `cmake/LumeCompilerOptions.cmake`.
 - RAII for every resource. No owning raw pointers, no `new` or `delete`.
 - No undefined behaviour; sanitizer builds stay clean.
-- Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths; no
-  `reinterpret_cast` over input.
-- Expected failures return a result type. Exceptions never cross the C ABI.
-- `clang-tidy` and `cppcheck` clean.
+- Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths.
+  They are never reinterpreted as anything other than bytes.
+- Expected failures return `lume::crypto::Result<T>` (`std::expected`).
+  Exceptions never cross the C ABI.
+- `clang-tidy` 22 with [`.clang-tidy`](.clang-tidy) reports nothing; CI fails
+  otherwise.
 
 ## Tests
 
@@ -121,7 +125,13 @@ that needs a paragraph to be understood needs to be rewritten or specified in
   invariants, and a fuzz target for every parser.
 - CI runs GCC and Clang with AddressSanitizer, UndefinedBehaviorSanitizer and,
   for the relay, ThreadSanitizer; MSVC on Windows; the Android build on an
-  emulator. Core coverage below the gate fails the build.
+  emulator. Line coverage of `core/` below 90 % fails the build.
+- Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
+  the seed that reproduces it.
+- Build and test locally with the presets: `cmake --preset windows-msvc`,
+  `cmake --build --preset windows-msvc-debug`, `ctest --preset
+  windows-msvc-debug`, and the `linux-*` equivalents. `VCPKG_ROOT` must point
+  at a vcpkg checkout of the commit pinned in `vcpkg.json`.
 - Never weaken or delete an assertion to make a run pass. When a test fails,
   decide first whether the code or the test is wrong, and say which.
 - Report only what was observed. A check that could not run is reported as

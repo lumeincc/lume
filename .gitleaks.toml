@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Published Wycheproof test vectors: every key in them is public by design"
+paths = ['''^core/tests/vectors/wycheproof/[a-z0-9_]+\.json$''']

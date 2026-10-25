@@ -16,6 +16,18 @@ SPDX-FileCopyrightText = "2026 LUME Inc."
 SPDX-License-Identifier = "AGPL-3.0-only"
 
 [[annotations]]
+path = ["vcpkg.json", "vcpkg-configuration.json", "CMakePresets.json", "vcpkg/ports/**/vcpkg.json"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 LUME Inc."
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = "core/tests/vectors/wycheproof/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Google LLC and the Project Wycheproof authors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
 path = "legacy/**"
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 LUME Inc."

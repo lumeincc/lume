@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+find_package(unofficial-sodium CONFIG REQUIRED)
+find_package(liboqs CONFIG REQUIRED)
+
+add_library(lume_core STATIC
+    src/crypto/aead.cpp
+    src/crypto/backend.cpp
+    src/crypto/ed25519.cpp
+    src/crypto/hash.cpp
+    src/crypto/hex.cpp
+    src/crypto/kdf.cpp
+    src/crypto/library.cpp
+    src/crypto/mlkem.cpp
+    src/crypto/random.cpp
+    src/crypto/secret_bytes.cpp
+    src/crypto/self_test.cpp
+    src/crypto/x25519.cpp
+)
+add_library(lume::core ALIAS lume_core)
+
+target_include_directories(lume_core
+    PUBLIC include
+    PRIVATE src
+)
+target_link_libraries(lume_core PRIVATE unofficial-sodium::sodium OQS::oqs)
+target_compile_features(lume_core PUBLIC cxx_std_23)
+lume_configure_target(lume_core)
+
+if(LUME_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
