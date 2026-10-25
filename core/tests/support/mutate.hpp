@@ -5,7 +5,7 @@
 
 #include "lume/crypto/bytes.hpp"
 
-#include <rapidcheck.h>
+#include "support/properties.hpp"
 
 #include <cstddef>
 #include <cstdint>

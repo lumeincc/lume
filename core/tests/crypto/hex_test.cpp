@@ -4,7 +4,7 @@
 #include "crypto/hex.hpp"
 
 #include <gtest/gtest.h>
-#include <rapidcheck/gtest.h>
+#include "support/properties.hpp"
 
 namespace lume::crypto::detail {
 namespace {

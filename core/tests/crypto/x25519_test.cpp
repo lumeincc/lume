@@ -7,7 +7,7 @@
 #include "support/vectors.hpp"
 
 #include <gtest/gtest.h>
-#include <rapidcheck/gtest.h>
+#include "support/properties.hpp"
 
 #include <algorithm>
 #include <cstdint>
