@@ -101,7 +101,7 @@ TEST(DeviceCertificate, RefusesGenerationZeroAndWrongSizes)
     EXPECT_FALSE(verify_device_certificate(identity.signing.public_key, Bytes(31), first_generation, *certificate));
     EXPECT_FALSE(verify_device_certificate(Bytes(31), device.public_key, first_generation, *certificate));
     EXPECT_FALSE(verify_device_certificate(
-        identity.signing.public_key, device.public_key, first_generation, Bytes(certificate->begin(), certificate->end() - 1)));
+        identity.signing.public_key, device.public_key, first_generation, crypto::ByteView(*certificate).first(device_certificate_size - 1)));
 }
 
 TEST(DeviceCertificate, CoversTheLargestGeneration)
