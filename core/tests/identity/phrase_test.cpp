@@ -167,8 +167,8 @@ TEST(Phrase, RejectsAnyOtherNumberOfWords)
 TEST(Phrase, RejectsWordsOutsideTheList)
 {
     auto words = words_of(zero_entropy_phrase);
-    for (const std::string& stranger : {"lume", "aban", "abandons", "abandoned", "zzzzzzzzzzzz", "a"}) {
-        words.at(5) = stranger;
+    for (const std::string_view stranger : {"lume", "aban", "abandons", "abandoned", "zzzzzzzzzzzz", "a"}) {
+        words.at(5) = std::string(stranger);
         EXPECT_EQ(error_of(joined(words, " ")), PhraseError::unknown_word) << stranger;
     }
 }
