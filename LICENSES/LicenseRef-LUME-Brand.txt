@@ -1,0 +1,21 @@
+Copyright (C) 2026 LUME Inc. All rights reserved.
+
+The LUME name, the LUME logo, and the artwork in the brand/ directory of this
+repository are trademarks and copyrighted works of LUME Inc. (Republic of
+Kazakhstan, BIN 260740032421).
+
+They are NOT licensed under the GNU Affero General Public License or under any
+other licence that covers the source code in this repository. No right to use,
+copy, modify or distribute them is granted, except:
+
+  1. displaying them unmodified, in this repository and in unmodified copies of
+     it, to identify the official LUME project; and
+
+  2. referring to the LUME project by name in text, for example in reviews,
+     articles or compatibility statements, in a way that does not suggest
+     endorsement by LUME Inc.
+
+A modified or redistributed version of the software must not use the LUME name
+or logo as its own name or logo. See TRADEMARKS.md for the full policy.
+
+For any other use, ask LUME Inc. for written permission.

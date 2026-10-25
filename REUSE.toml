@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+version = 1
+
+[[annotations]]
+path = "brand/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 LUME Inc."
+SPDX-License-Identifier = "LicenseRef-LUME-Brand"
+
+[[annotations]]
+path = "legacy/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 LUME Inc."
+SPDX-License-Identifier = "LicenseRef-LUME-Source-Available"

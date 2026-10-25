@@ -1,0 +1,87 @@
+Copyright (C) 2026 LUME Inc. All rights reserved.
+
+This is a source-available license. It is NOT an open-source license and NOT a
+free-software license. It does not grant the freedoms described by the Open
+Source Definition or the Free Software Definition. The source is published so
+that it can be read and reviewed, not so that it can be used or reused.
+
+
+1. Definitions
+
+   "Software" means the LUME source code and other materials contained in this
+   repository, in whole or in part, in any form.
+
+   "You" means the individual or entity exercising the rights granted under
+   this License.
+
+   "Licensor" means LUME Inc, the copyright holder.
+
+
+2. Grant — viewing and reference only
+
+   Subject to every term of this License, the Licensor grants You a personal,
+   non-exclusive, non-transferable, non-sublicensable, and revocable license to
+   view and read the Software, and to reference it solely for the purposes of
+   evaluation, study, and discussion.
+
+
+3. Restrictions
+
+   Except as expressly and narrowly permitted in Section 2, You may NOT, in
+   whole or in part, without a separate prior written agreement signed by the
+   Licensor:
+
+     (a) use, run, execute, host, or deploy the Software for any purpose,
+         whether personal, internal, commercial, or otherwise;
+     (b) copy the Software, except for the transient copies strictly necessary
+         to view it as permitted in Section 2;
+     (c) modify, adapt, translate, port, or create derivative works of the
+         Software;
+     (d) distribute, publish, mirror, sublicense, sell, rent, lease, lend, or
+         otherwise make the Software available to any third party;
+     (e) remove, alter, or obscure any copyright, license, or attribution
+         notice contained in the Software.
+
+
+4. Reservation of rights
+
+   All rights not expressly granted in Section 2 are reserved by the Licensor.
+   No rights are granted by implication, estoppel, exhaustion, or otherwise.
+
+
+5. Third-party components
+
+   The Software incorporates third-party components that are licensed under
+   their own separate terms. Those terms are summarized in the file `LEGAL` and
+   continue to govern their respective components. Nothing in this License
+   enlarges or restricts any right You may have under those separate terms.
+
+
+6. Termination
+
+   The license granted in Section 2 terminates automatically and immediately if
+   You breach any term of this License, and may be revoked by the Licensor at
+   any time. Upon termination You must cease all permitted activity and destroy
+   all copies of the Software within Your possession or control.
+
+
+7. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT.
+
+
+8. Limitation of liability
+
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+   IN THE SOFTWARE.
+
+
+9. Licensing inquiries
+
+   Any use of the Software beyond the narrow grant in Section 2 requires a
+   separate written license from the Licensor. To request one, contact
+   LUME Inc.

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build / caches
+dist/
+coverage/
+.vitest/
+
+# Expo / RN (added when the app shell lands)
+.expo/
+android/
+ios/
+*.keystore
+
+# Env & secrets
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local simulation build output
+.tmp/

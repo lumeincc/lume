@@ -1,0 +1,55 @@
+name: Release
+
+# Tag-driven. A release is a decision someone made, and a tag is that decision
+# written down.
+#
+#   git tag v0.1.1 && git push origin v0.1.1
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # required to create the release
+
+jobs:
+  release:
+    name: Draft a release
+    runs-on: ubuntu-latest
+    # There is no artefact to attach, and pretending otherwise would be worse
+    # than saying so. The web client is hosted: the deployment *is* the build,
+    # and a `.next` directory in a release page is something nobody can run.
+    # What a release gives us here is a fixed point — a version anyone can name,
+    # tied to a commit, with the changes between it and the last one written
+    # down. The commit is the same one the app prints in its settings, so a
+    # screenshot can be matched to a release without guessing.
+    #
+    # The mobile repository does publish an APK, because there it is a real
+    # artefact somebody installs.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # release notes are generated from the history
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      # A tag must not be the one build that skipped the checks. This repeats
+      # what CI already ran on `main`, which is the point: the tag is what gets
+      # published, so the tag is what gets verified.
+      - run: cd server && npm ci && npm run type-check && npm run lint && npm test
+      - run: cd client && npm ci && npm run type-check && npm run lint && npm test
+
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          draft: true # a human decides when it goes public
+          generate_release_notes: true
+          body: |
+            Deployed from `${{ github.sha }}`.
+
+            The same commit is shown at the foot of the app's settings screen, so
+            a running instance can be matched to this release without guessing.
+
+            There is no downloadable artefact: the web client is hosted, and the
+            deployment is the build. The Android APK is published from the
+            [mobile repository](https://github.com/aaversee/lume-mobile).

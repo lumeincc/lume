@@ -1,0 +1,5 @@
+# Client-specific overrides (see root .gitignore for defaults)
+.env.local
+
+# Coverage output (npm run test:coverage)
+coverage/

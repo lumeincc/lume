@@ -1,0 +1,216 @@
+name: CI (self-hosted)
+
+# The same gate as ci.yml, run on a runner registered on the maintainer's own
+# machine instead of a GitHub-hosted one.
+#
+# Why: this repository is private, so its Actions minutes are metered, and the
+# account's billing is currently blocked — every job died in under thirteen
+# seconds without running a step. Self-hosted runners are not metered, so the
+# gate keeps working at no cost. (The two public repositories are unaffected:
+# public repositories get GitHub-hosted minutes for free.)
+#
+# Self-hosted runners are safe here specifically because the repository is
+# private: only someone with write access can cause a workflow to run. The same
+# arrangement on a public repository would let any fork's pull request execute
+# code on the machine, and must never be done for `lumeincc/lume`.
+#
+# Not covered here, and deliberately not faked: the two Docker image builds.
+# They need a running Docker daemon, and a step that quietly skips itself when
+# the daemon is down is worse than no step — it reports green for something it
+# did not check. `npm run verify:docker` runs them on demand, and the server
+# image is the one that matters, since Render builds from `server/Dockerfile`.
+#
+# When billing is restored: re-enable the triggers in ci.yml, and delete this
+# file along with the runner (`C:\actions-runner\config.cmd remove`).
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: [self-hosted, lume-local]
+    timeout-minutes: 45
+    defaults:
+      run:
+        # Windows PowerShell 5.1. The machine has no PowerShell 7, so the
+        # Windows default of `pwsh` fails with "command not found"; and
+        # `shell: bash` resolves through PATH to `C:\WINDOWS\system32\bash.exe`,
+        # the WSL launcher, which has no distribution installed and exits 1 on a
+        # prompt to install one. Both of those killed a run of this workflow
+        # before anything was checked.
+        #
+        # **Every step below runs exactly one command.** GitHub's PowerShell
+        # wrapper checks `$LASTEXITCODE` after the *last* line of a step, so a
+        # three-line step whose first command fails still reports success if the
+        # third succeeds — `npm run type-check` could go red and the step green.
+        # One command per step makes each status mean what it says, and names
+        # each check in the run summary. Keep it that way when adding steps.
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The secret scan below reads history, not just the tip: a secret that
+          # was committed and later removed is still in the objects being pushed.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      # No `cache: npm` on purpose. That action round-trips the module cache
+      # through GitHub's storage, which is worth it on a fresh hosted VM and
+      # pure overhead on a machine that already has a warm local npm cache.
+
+      # The end-to-end suite starts its own servers on 3000 and 3001. If a
+      # development server is already listening there, Playwright's
+      # `reuseExistingServer` would hand the tests that process instead — which
+      # is a different working tree from the one being verified, so the run
+      # would report on code that is not in this commit. Fail here, with a
+      # sentence that says what to do, rather than produce a confident result
+      # about the wrong thing.
+      - name: Ports 3000 and 3001 must be free
+        run: |
+          $busy = @(3000, 3001) | Where-Object {
+            Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue
+          }
+          if ($busy) {
+            Write-Host "::error::Port(s) $($busy -join ', ') are in use. Stop the local dev server and re-run this job."
+            exit 1
+          }
+          Write-Host "3000 and 3001 are free."
+
+      - name: Guard — string catalogue
+        run: npm run check:i18n
+
+      - name: Guard — design tokens
+        run: npm run check:css
+
+      # Prefer the binary already on the machine, and download only if there
+      # is none. The download was the first choice — pinned and checksummed, so
+      # a scanner fetched over the network could not itself become the supply
+      # chain problem — but from this network GitHub's release host returns an
+      # empty reply to Invoke-WebRequest and to curl alike. A gate that cannot
+      # run is not a gate, so the local binary wins and the download stays as
+      # the fallback for a machine without one.
+      #
+      # It still blocks: no gitleaks anywhere fails the job. What is given up is
+      # the guarantee that the scanner is a known-good build — the honest cost
+      # of having it run at all.
+      - name: Secrets — gitleaks
+        shell: powershell
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $gitleaks = (Get-Command gitleaks -ErrorAction SilentlyContinue).Source
+
+          if (-not $gitleaks) {
+            Write-Host 'No gitleaks on PATH - downloading a pinned build.'
+            $archive = "gitleaks_${env:GITLEAKS_VERSION}_windows_x64.zip"
+            $url = "https://github.com/gitleaks/gitleaks/releases/download/v${env:GITLEAKS_VERSION}/$archive"
+            $tmp = Join-Path $env:RUNNER_TEMP 'gitleaks'
+            New-Item -ItemType Directory -Force $tmp | Out-Null
+            $zip = Join-Path $tmp $archive
+            & curl.exe -sSLf --retry 3 --retry-connrefused -o "$zip" "$url"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::gitleaks is not installed and could not be downloaded. Install it (winget install gitleaks) so the secret scan can run."
+              exit 1
+            }
+            $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+            if ($actual -ne $env:GITLEAKS_SHA256) {
+              Write-Host "::error::gitleaks checksum mismatch. expected $($env:GITLEAKS_SHA256), got $actual"
+              exit 1
+            }
+            Expand-Archive -Path $zip -DestinationPath $tmp -Force
+            $gitleaks = Join-Path $tmp 'gitleaks.exe'
+          }
+
+          & $gitleaks version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # --redact so a finding never prints the secret into the build log,
+          # which would publish the very thing the job exists to catch.
+          & $gitleaks git --redact -v --no-banner --log-opts="--all" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Dependencies — advisory audit
+        run: npm run verify:deps
+
+      - name: Install — root
+        run: npm install --no-audit --no-fund
+
+      - name: Install — server
+        working-directory: server
+        run: npm ci
+
+      - name: Install — client
+        working-directory: client
+        run: npm ci
+
+      - name: Server — type-check
+        working-directory: server
+        run: npm run type-check
+
+      - name: Server — lint
+        working-directory: server
+        run: npm run lint
+
+      - name: Server — format
+        working-directory: server
+        run: npm run format:check
+
+      - name: Server — tests with coverage
+        working-directory: server
+        run: npm run test:coverage
+
+      - name: Server — build
+        working-directory: server
+        run: npm run build
+
+      - name: Client — type-check
+        working-directory: client
+        run: npm run type-check
+
+      - name: Client — lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Client — tests with coverage
+        working-directory: client
+        run: npm run test:coverage
+
+      - name: Client — build
+        working-directory: client
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+          NEXT_PUBLIC_WS_URL: ws://localhost:3001/ws
+
+      - name: E2E — install browser
+        run: npx playwright install chromium
+
+      - name: E2E — Playwright
+        run: npx playwright test
+        env:
+          # The server refuses to boot without this (a boot-time check from
+          # SEC-20260721-007). An ephemeral test value, not a real credential —
+          # nothing it protects exists here.
+          WS_JWT_SECRET: ci-e2e-jwt-secret-not-a-real-credential-xx
+
+      # No artifact upload: the runner is the maintainer's own machine, so the
+      # HTML report, traces and failure screenshots are already on disk. Saying
+      # where beats round-tripping them through GitHub's storage.
+      - name: Where the Playwright report is
+        if: failure()
+        run: |
+          Write-Host "Report at $(Join-Path $PWD 'playwright-report\index.html')"

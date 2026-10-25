@@ -1,0 +1,106 @@
+{
+  "$comment": [
+    "Advisories that are known, judged, and deliberately not fixed yet.",
+    "",
+    "`npm audit` has no allowlist, so the choice it leaves you is to fail on",
+    "everything or gate on nothing. Both are useless: a gate that cannot",
+    "express 'we looked at this one' gets switched off the first time it is",
+    "inconvenient, and then it stops catching the advisories that DO matter.",
+    "",
+    "scripts/audit-gate.mjs fails on anything not listed here. Adding an entry",
+    "is a decision with a reason attached, not a way to make a run go green.",
+    "Never add one without reading the advisory and writing down why."
+  ],
+  "allowed": [
+    {
+      "package": "metro",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only because it depends on the image-size above. Metro is the bundler; it runs on this machine and in CI, never on a device.",
+      "whyNotFixed": "Resolves when image-size does.",
+      "realFix": "Expo 52 -> 57.",
+      "addedOn": "2026-08-11"
+    },
+    {
+      "package": "metro-config",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Same chain as metro above.",
+      "whyNotFixed": "Resolves when image-size does.",
+      "realFix": "Expo 52 -> 57.",
+      "addedOn": "2026-08-11"
+    },
+    {
+      "package": "metro-transform-worker",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Same chain as metro above.",
+      "whyNotFixed": "Resolves when image-size does.",
+      "realFix": "Expo 52 -> 57.",
+      "addedOn": "2026-08-11"
+    },
+    {
+      "package": "@react-native/community-cli-plugin",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only because it pulls metro, and so image-size. A build-time CLI plugin, not shipped in the app.",
+      "whyNotFixed": "Resolves when image-size does.",
+      "realFix": "Expo 52 -> 57.",
+      "addedOn": "2026-08-11"
+    },
+    {
+      "package": "react-native",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only as the root of the metro chain above — the advisory is in image-size, not in React Native itself. Worth re-reading rather than assuming next time this appears: an entry on react-native is broad, and a real advisory against React Native proper would be hidden by it.",
+      "whyNotFixed": "Resolves when image-size does.",
+      "realFix": "Expo 52 -> 57, which moves React Native too.",
+      "addedOn": "2026-08-11"
+    },
+    {
+      "package": "image-size",
+      "advisories": ["GHSA-w3rx-r6r6-pgpr", "GHSA-5p2g-fcmc-qvqq"],
+      "severity": "high",
+      "reason": "Reached only through metro, the bundler, on two paths: expo -> expo-file-system -> expo@57 -> @expo/metro, and react-native -> @react-native/community-cli-plugin -> metro. Metro reads image dimensions at bundle time from assets in this repository. It does not run on a device and never parses an image that came from a user or a network.",
+      "whyNotFixed": "Both advisories are denial of service through infinite loops in the ICNS, JXL and HEIF parsers, reachable only by feeding the parser a malformed image. The only images it is fed are our own, committed to the repository. `npm audit fix --force` resolves it by moving metro itself, which is a bundler change on a project whose native build has already been broken once by a dependency bump made to satisfy an audit.",
+      "realFix": "Expo 52 -> 57, the same migration that clears tar. Tracked separately.",
+      "addedOn": "2026-08-10"
+    },
+    {
+      "package": "tar",
+      "advisories": ["GHSA-34x7-hfp2-rc4v", "GHSA-8qq5-rm4j-mr97", "GHSA-83g3-92jg-28cx", "GHSA-qffp-2rhf-9h96", "GHSA-9ppj-qmqm-q256", "GHSA-r6q2-hw4h-h46w", "GHSA-vmf3-w455-68vh", "GHSA-w8wr-v893-vjvp", "GHSA-23hp-3jrh-7fpw", "GHSA-8x88-c5mf-7j5w", "GHSA-gvwx-54wh-qm9j", "GHSA-r292-9mhp-454m"],
+      "severity": "critical",
+      "reason": "Reached only through @expo/cli, which declares tar ^6.2.1 and uses it to unpack the Expo project template at build time. It never runs on a user's device and never sees an archive from anywhere but the npm registry.",
+      "whyNotFixed": "There is no patched 6.x. Forcing tar 7 through overrides was tried on 2026-08-06 and BROKE THE NATIVE BUILD: tar 7 sets __esModule without a default export, so @expo/cli's _interopRequireDefault yields undefined and prebuild dies with \"Cannot read properties of undefined (reading 'extract')\". The audit went green while the app could no longer be built — a worse outcome than the advisory.",
+      "realFix": "Expo 52 → 57, which ships a CLI that uses tar 7 correctly. Tracked separately; it is a five-major migration with a React Native upgrade underneath and is not an audit fix.",
+      "addedOn": "2026-08-06"
+    },
+    {
+      "package": "cacache",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only because it depends on the tar above. Same path, same reasoning.",
+      "whyNotFixed": "Resolves when tar does.",
+      "realFix": "Expo 52 → 57.",
+      "addedOn": "2026-08-06"
+    },
+    {
+      "package": "@expo/cli",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only because it depends on cacache and tar above. Build-time CLI, not shipped.",
+      "whyNotFixed": "Resolves when tar does.",
+      "realFix": "Expo 52 → 57.",
+      "addedOn": "2026-08-06"
+    },
+    {
+      "package": "expo",
+      "advisories": ["*"],
+      "severity": "high",
+      "reason": "Flagged only because it depends on @expo/cli above.",
+      "whyNotFixed": "Resolves when tar does.",
+      "realFix": "Expo 52 → 57.",
+      "addedOn": "2026-08-06"
+    }
+  ]
+}

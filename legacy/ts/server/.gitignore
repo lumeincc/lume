@@ -1,0 +1,5 @@
+# Server-specific overrides (see root .gitignore for defaults)
+data/
+
+# Coverage output (npm run test:coverage)
+coverage/

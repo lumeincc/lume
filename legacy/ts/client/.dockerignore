@@ -1,0 +1,19 @@
+# Keep the Docker build context clean and prevent local secrets/artifacts from
+# being copied into the image. SEC-20260621-015.
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-error.log*
+Dockerfile
+.dockerignore
+README.md
+coverage
+playwright-report
+test-results
+.vscode
+.idea

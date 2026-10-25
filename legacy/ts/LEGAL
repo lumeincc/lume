@@ -1,0 +1,139 @@
+LUME — licensing and third-party notices
+========================================
+
+LUME is source-available software licensed under the terms in `LICENSE`
+(view-only). This is not an open-source or
+free-software licence: you may read and reference the source, but running,
+copying, modifying, or distributing it requires a separate written licence from
+the copyright holder.
+
+Copyright holder: **LUME Inc**. All rights are reserved except the narrow
+viewing grant in `LICENSE`. Every source file carries the same two-line header,
+and the manifests name the same entity:
+
+    // SPDX-License-Identifier: LicenseRef-LUME-Source-Available
+    // Copyright (C) 2026 LUME Inc
+
+This file lists the third-party code LUME depends on and what each licence
+requires. It is a summary for maintainers, not legal advice.
+
+
+Runtime dependencies
+--------------------
+
+Client (`client/package.json`)
+
+  @noble/hashes        MIT
+  @types/qrcode        MIT          (see note below)
+  bip39                ISC
+  idb-keyval           Apache-2.0
+  minidenticons        MIT
+  next                 MIT
+  qrcode               MIT
+  react                MIT
+  react-dom            MIT
+  tweetnacl            Unlicense
+  tweetnacl-util       Unlicense
+  uuid                 MIT
+  zod                  MIT
+  zustand              MIT
+
+Server (`server/package.json`)
+
+  @vitest/coverage-v8  MIT          (see note below)
+  better-sqlite3       MIT
+  compression          MIT
+  cors                 MIT
+  dotenv               BSD-2-Clause
+  express              MIT
+  express-rate-limit   MIT
+  helmet               MIT
+  jsonwebtoken         MIT
+  tweetnacl            Unlicense
+  tweetnacl-util       Unlicense
+  uuid                 MIT
+  web-push             MPL-2.0
+  ws                   MIT
+  zod                  MIT
+
+Two entries are listed above because `dependencies` is where they are declared,
+not because they belong there:
+
+  - `@vitest/coverage-v8` is test tooling declared as a server runtime
+    dependency. It ships into the production image and is never used there.
+  - `@types/qrcode` is a type-only package declared as a client runtime
+    dependency; types are erased at build time.
+
+Both should be `devDependencies`. Moving them is a dependency change and so needs
+a security review pass, not a tidy-up — recorded here rather than done quietly,
+and listed above rather than silently filtered, because this file is meant to say
+what the manifests actually declare.
+
+Licence texts ship inside each package under `node_modules/<name>/`. They are
+not vendored here, so this list is a map, not a substitute for them.
+
+
+What each licence asks of us
+----------------------------
+
+MIT, ISC, BSD-2-Clause
+  Permissive. Keep the copyright notice and licence text with any distribution
+  that includes the code. No obligation to publish our own source.
+
+Apache-2.0 (idb-keyval)
+  Permissive, plus an explicit patent grant. If a package ships a NOTICE file,
+  that notice must be carried through in redistributions. Its terms are
+  permissive, so incorporating Apache-2.0 code into LUME is unproblematic.
+
+Unlicense (tweetnacl, tweetnacl-util)
+  Public-domain dedication. Nothing is required of us. Worth stating plainly
+  because these two carry the cryptographic primitives: no licence obstacle,
+  but also no warranty and no upstream obligation to anyone.
+
+MPL-2.0 (web-push)
+  The only dependency with copyleft attached. It is file-level: if we modify a
+  source file that came from web-push, that file stays MPL-2.0 and its source
+  must be made available. Merely depending on it — which is what we do — carries
+  no such duty, so combining it into LUME is fine.
+
+  If web-push ever gets patched in place rather than upgraded, that patch is the
+  case this paragraph exists for.
+
+
+Assets and branding
+-------------------
+
+Material under `brand/` is project-owned and is not covered by the dependency
+licences above.
+
+LUME is not affiliated with Telegram, Signal, or any other messenger. Where the
+repository documents ideas studied in other projects, those are design
+conclusions written from scratch — no third-party source was copied, and no
+third-party trademark or asset is used.
+
+
+Cryptography and export
+-----------------------
+
+LUME performs end-to-end encryption on the client using X25519, Ed25519,
+HKDF-SHA256 and XSalsa20-Poly1305, via `tweetnacl` and `@noble/hashes`. It
+implements no cryptography of its own design.
+
+Distributing cryptographic software is regulated in some jurisdictions. This
+file does not assess those obligations; anyone redistributing LUME should check
+what applies where they operate.
+
+
+Keeping this file honest
+------------------------
+
+The lists above were generated from the `dependencies` fields of
+`client/package.json` and `server/package.json` and the `license` field of each
+installed package. They cover direct runtime dependencies only — not transitive
+ones, and not `devDependencies`.
+
+Regenerate after any dependency change:
+
+    node -e "const fs=require('fs'),p=require('path');for(const d of ['client','server']){const j=JSON.parse(fs.readFileSync(d+'/package.json','utf8'));console.log('== '+d);for(const n of Object.keys(j.dependencies||{})){let l='?';for(const b of [d+'/node_modules/','node_modules/']){try{l=JSON.parse(fs.readFileSync(p.join(b,n,'package.json'),'utf8')).license||'?';break}catch(e){}}console.log(n+'  '+l)}}"
+
+A dependency that appears in the output but not above means this file is stale.

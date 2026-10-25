@@ -1,0 +1,131 @@
+name: CI
+
+# This repository had no CI at all: `npm run verify` existed, was strong, and
+# nothing ran it except by hand. A gate nobody runs is not a gate.
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  types:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  vendored-crypto:
+    name: Crypto — unchanged from the web client
+    runs-on: ubuntu-latest
+    # The whole anti-drift argument for this app rests on `src/crypto/` being a
+    # byte-identical copy of the web client's. Nothing checked that; it was true
+    # only because it kept being re-checked by hand.
+    #
+    # The web client lives in a private repository, so this job cannot fetch it.
+    # What it can do is prove the copy here is self-consistent: the web client's
+    # own crypto tests are vendored alongside it and must pass unmodified.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run src/__tests__/crypto.keys src/__tests__/crypto.mnemonic src/__tests__/crypto.ratchet src/__tests__/crypto.safetyNumber
+
+  verify:
+    name: Full verify (tests + device sim + export)
+    runs-on: ubuntu-latest
+    # `npm run verify` is the gate this repository already trusted locally:
+    # unit tests, the device simulation, the negative case that proves the
+    # simulation can fail, and a real Expo export. It just never ran anywhere
+    # but on Bogdan's machine.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+
+  secret-scan:
+    name: Secrets — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # A secret that was committed and then removed is still in the objects
+          # being pushed, so the history is what gets scanned, not the tip.
+          fetch-depth: 0
+      # The gitleaks *action* requires a paid licence for organisation-owned
+      # repositories. The CLI is MIT. Pinned by version and checked against the
+      # checksum published with the release — a scanner fetched over the network
+      # is itself supply chain.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSLf -o "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum -c -
+          tar -xzf "$archive" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan history for secrets
+        # --redact so a finding is never printed into the build log, which would
+        # publish the very thing the job exists to catch.
+        run: gitleaks git --redact --no-banner --log-opts="--all" .
+
+  dep-audit:
+    name: Dependencies — Advisory audit
+    runs-on: ubuntu-latest
+    # Most of the Expo toolchain advisories were closed with `overrides`
+    # (`@xmldom/xmldom`, `postcss`, `uuid`) plus direct bumps to `esbuild` and
+    # `vitest`. What remains is the `tar` cluster under @expo/cli, which is
+    # allowlisted with its reasoning — see audit-allowlist.json.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      # Not a bare `npm audit`: it has no allowlist, so it can only fail on
+      # everything or gate on nothing. The gate below fails on anything not
+      # written down in audit-allowlist.json with a reason, which keeps new
+      # advisories loud while letting a judged one stay judged.
+      #
+      # This exists because the alternative was tried. Forcing `tar` to 7
+      # through overrides made `npm audit` report zero — and broke `expo
+      # prebuild`, so the app could not be built at all. A green number is not
+      # the goal.
+      - run: node scripts/audit-gate.mjs

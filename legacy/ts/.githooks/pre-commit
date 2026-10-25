@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Fast gate. Runs on every commit, so it must stay under a few seconds:
+# type-check and lint only for the workspaces that actually changed.
+#
+# The slow, complete gate is pre-push. Splitting them is deliberate — a hook
+# that makes committing feel expensive is a hook people turn off, and a gate
+# that is off is worth less than one that is merely fast.
+#
+# Install: npm run hooks:install
+
+set -e
+
+changed=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$changed" ] && exit 0
+
+run_workspace() {
+	name=$1
+	if echo "$changed" | grep -q "^$name/"; then
+		printf '\n[pre-commit] %s: type-check + lint\n' "$name"
+		(cd "$name" && npm run type-check --silent && npm run lint --silent)
+	fi
+}
+
+run_workspace server
+run_workspace client
+
+# Translations and design tokens are cheap to check and easy to break.
+if echo "$changed" | grep -qE '^client/src/'; then
+	printf '\n[pre-commit] i18n + design tokens\n'
+	npm run check:i18n --silent
+	npm run check:css --silent
+fi
+
+printf '\n[pre-commit] ok\n'

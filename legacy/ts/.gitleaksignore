@@ -1,0 +1,32 @@
+# Findings gitleaks reports that are not secrets.
+#
+# One line per finding, by fingerprint, with the reason. The rule stays on: this
+# is an exemption for six specific historical lines, not a decision to stop
+# looking for the class of thing they resemble.
+#
+# Before adding to this file, be certain. A fingerprint pins a commit, a file and
+# a line, so an entry cannot silently widen — but it also cannot un-leak a real
+# secret. If in doubt, rotate first and argue afterwards.
+
+# --- X3DH handshake headers pasted into the launch write-ups ---------------
+#
+# These are the sample payload dumps produced by `npm run e2e:message`, quoted to
+# show readers exactly what the relay stores. Every field matched is a *public*
+# key by protocol design — the sender identity key, the sender ephemeral, and the
+# recipient's one-time and signed prekeys all travel in cleartext in the message
+# header, which is the whole point of X3DH. gitleaks' generic-api-key rule fires
+# on their base64 entropy, not on any knowledge of what they are.
+#
+# The accounts they belong to were throwaway registrations on the live relay and
+# no longer exist. No private key appears in either document.
+49c731ba7612ba365ddbd304b91ec33529b53574:brand/LUME-for-content.md:generic-api-key:76
+49c731ba7612ba365ddbd304b91ec33529b53574:brand/LUME-for-content.md:generic-api-key:77
+49c731ba7612ba365ddbd304b91ec33529b53574:brand/LUME-for-content.md:generic-api-key:78
+49c731ba7612ba365ddbd304b91ec33529b53574:brand/LUME-for-content.md:generic-api-key:79
+8b82fe798db230d6ab9bba76fae83d592b81c4a9:brand/LUME-proof.md:generic-api-key:109
+
+# --- An algorithm name ------------------------------------------------------
+#
+# `XSalsa20-Poly1305`, in the crypto table of an earlier README revision. Matched
+# purely on shape.
+9656c347365f511d69377f6a08f8e0f4c89bb60b:README.md:generic-api-key:15

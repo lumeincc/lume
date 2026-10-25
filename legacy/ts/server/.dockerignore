@@ -1,0 +1,11 @@
+# Ignore everything by default
+*
+
+# Allow only what the Docker build needs
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+
+# But keep src contents
+!src/**

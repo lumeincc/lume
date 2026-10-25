@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // DOM is included the way Expo's own base config does it: React Native
+    // polyfills fetch/WebSocket/URL/Blob/crypto, whose types live in the DOM lib.
+    // Without it the vendored crypto core fails to type-check on the `Crypto`
+    // interface — and that core must stay byte-identical to the web client.
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src"]
+}

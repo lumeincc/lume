@@ -1,0 +1,36 @@
+{
+  "name": "lume",
+  "version": "0.1.0",
+  "author": "LUME Inc",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": "https://github.com/reactorgrouptech/lume-internal",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "validate": "cd server && npx tsc --noEmit && cd ../client && npx tsc --noEmit",
+    "validate:server": "cd server && npx tsc --noEmit",
+    "validate:client": "cd client && npx tsc --noEmit",
+    "verify": "npm run check:i18n && npm run check:css && npm run check:secrets && npm run verify:deps && npm run verify:server && npm run verify:client && npm run verify:e2e",
+    "verify:deps": "cd server && npm audit --omit=dev --audit-level=moderate && npm audit --audit-level=high && cd ../client && npm audit --omit=dev --audit-level=moderate && npm audit --audit-level=high",
+    "verify:e2e": "npm run clean && playwright test",
+    "verify:docker": "docker build -t lume-server:local server && docker build -t lume-client:local client",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "verify:server": "cd server && npm run type-check && npm run lint && npm run format:check && npm run test:coverage && npm run build",
+    "verify:client": "cd client && npm run type-check && npm run lint && npm run test:coverage && npm run build",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "test": "npm --prefix server test && npm --prefix client test",
+    "test:e2e": "playwright test",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:css": "node scripts/check-css-vars.mjs",
+    "clean": "node scripts/clean-dev-cache.mjs"
+  },
+  "dependencies": {
+    "zod": "^3.23.0",
+    "nanoid": "^5.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

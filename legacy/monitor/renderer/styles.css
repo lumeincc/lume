@@ -1,0 +1,261 @@
+:root {
+  --bg: #0b0b0c;
+  --panel: #141416;
+  --panel-2: #191a1d;
+  --line: #26272b;
+  --text: #e9e9ec;
+  --dim: #8a8b90;
+  --sealed: #35c46a;
+  --metadata: #e0b341;
+  --exposed: #e5534b;
+  --app: #55565c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.dim {
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.status {
+  color: var(--dim);
+  font-size: 12px;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tally {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.tally span {
+  font-size: 20px;
+  font-weight: 600;
+}
+.tally label {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tally.sealed span {
+  color: var(--sealed);
+}
+.tally.metadata span {
+  color: var(--metadata);
+}
+.tally.exposed span {
+  color: var(--exposed);
+}
+.tally.confirmed span {
+  color: var(--text);
+}
+
+.toggle {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 12px;
+  user-select: none;
+}
+
+.stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 9px 12px;
+}
+.row.sealed {
+  border-left-color: var(--sealed);
+}
+.row.metadata {
+  border-left-color: var(--metadata);
+}
+.row.exposed {
+  border-left-color: var(--exposed);
+}
+.row.app {
+  border-left-color: var(--app);
+  opacity: 0.75;
+}
+
+.row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.title {
+  font-weight: 600;
+}
+.meta {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.plain {
+  color: var(--text);
+  margin: 4px 0 0;
+}
+.dir {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+.src {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.src.wire {
+  color: var(--bg);
+  background: var(--text);
+  font-weight: 600;
+}
+.src.app {
+  color: var(--dim);
+  border: 1px solid var(--line);
+}
+
+.chip.confirmed {
+  color: var(--sealed);
+  border-color: color-mix(in srgb, var(--sealed) 45%, var(--line));
+}
+
+.plaintext {
+  margin-top: 7px;
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: var(--dim);
+  border-left: 2px solid var(--metadata);
+  padding: 2px 8px;
+}
+.plaintext b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  background: var(--panel-2);
+}
+.chip.sealed {
+  color: var(--sealed);
+  border-color: color-mix(in srgb, var(--sealed) 45%, var(--line));
+}
+.chip.metadata {
+  color: var(--metadata);
+  border-color: color-mix(in srgb, var(--metadata) 45%, var(--line));
+}
+.chip.exposed {
+  color: var(--exposed);
+  border-color: color-mix(in srgb, var(--exposed) 45%, var(--line));
+}
+
+.evidence {
+  margin-top: 7px;
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: var(--dim);
+  background: #000;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  word-break: break-all;
+}
+.evidence b {
+  color: var(--sealed);
+  font-weight: 600;
+}
+
+.system {
+  color: var(--dim);
+  font-size: 12px;
+  text-align: center;
+  padding: 4px;
+}
+.system.error {
+  color: var(--exposed);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+}
+.legend .chip {
+  font-size: 11px;
+}

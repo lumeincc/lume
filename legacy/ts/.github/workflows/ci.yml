@@ -1,0 +1,282 @@
+name: CI (GitHub-hosted)
+
+# Dormant. This repository is private, so its Actions minutes are metered, and
+# the account's billing is blocked: every job here failed in under thirteen
+# seconds without executing a single step. Left triggering, it would paint every
+# pull request red for a billing reason rather than a code one, which is how a
+# red check stops meaning anything.
+#
+# The gate now runs in ci-self-hosted.yml on a runner registered on the
+# maintainer's machine, which is not metered. This file is kept intact, not
+# deleted, because it is the version that runs on clean Linux VMs and covers the
+# two Docker image builds that the self-hosted job cannot.
+#
+# To bring it back when billing is restored: restore the two triggers below and
+# retire the self-hosted workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Server ──────────────────────────────────────────────
+  server-lint:
+    name: Server — Lint & Type-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm run format:check
+
+  server-test:
+    name: Server — Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      # Coverage thresholds are floors set from measured values; see vitest.config.ts.
+      - run: npm run test:coverage
+
+  server-build:
+    name: Server — Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  # ── Client ──────────────────────────────────────────────
+  client-lint:
+    name: Client — Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      # Explicit, not left to `next build`: the build type-checks the app graph,
+      # which does not include the test files.
+      - run: npm run type-check
+      - run: npm run lint
+
+  client-test:
+    name: Client — Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      # Coverage thresholds are floors set from measured values; the crypto core
+      # is held to a much higher bar than the UI. See vitest.config.ts.
+      - run: npm run test:coverage
+
+  client-build:
+    name: Client — Build
+    needs: [client-lint, client-test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+          NEXT_PUBLIC_WS_URL: ws://localhost:3001/ws
+
+  # ── Docker ──────────────────────────────────────────────
+  docker-build:
+    name: Docker — Build (Server)
+    needs: [server-lint, server-test, server-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: server
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: lume-server:ci
+
+  docker-build-client:
+    name: Docker — Build (Client)
+    needs: [client-lint, client-test, client-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: client
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: lume-client:ci
+
+  # ── Repo hygiene & supply chain ─────────────────────────
+  guards:
+    name: Guards — i18n, design tokens
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      # These use only Node builtins, so no install step is needed.
+      - run: npm run check:i18n
+      - run: npm run check:css
+
+  secret-scan:
+    name: Secrets — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Scan the branch's history, not just its tip: a secret that was
+          # committed and then removed is still in the objects being pushed.
+          fetch-depth: 0
+      # The gitleaks *action* is not used: from v2 it requires a paid licence key
+      # for organisation-owned repositories, and this repository belongs to an
+      # organisation, so the job would fail for a billing reason rather than a
+      # security one. The CLI is MIT and has no such condition.
+      #
+      # Pinned by version and verified against the checksum published with the
+      # release — a scanner fetched over the network is itself supply chain.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSLf -o "$archive"             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum -c -
+          tar -xzf "$archive" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan history for secrets
+        # --redact so a finding never prints the secret into a public build log,
+        # which would publish the very thing the job exists to catch.
+        run: gitleaks git --redact -v --no-banner --log-opts="--all" .
+
+  dep-audit:
+    name: Dependencies — Advisory audit
+    runs-on: ubuntu-latest
+    # Blocking. It was advisory (`continue-on-error: true`) only because it would
+    # have failed on the day it was added — dev-tree highs in both workspaces and
+    # a high in the client production tree, whose fixes were dependency bumps
+    # owned by a security judgement rather than by this job. Those have landed: both
+    # workspaces now measure 0 advisories at every level, production tree and full
+    # tree alike, so the gate can hold the line instead of narrating it.
+    # SEC-20260721-016.
+    #
+    # Two thresholds, because the two trees carry different risk. The production
+    # tree is the code that reaches a user's browser and holds their keys, so a
+    # *moderate* advisory there fails the build. The full tree adds build and test
+    # tooling, which runs on a developer machine and in this runner and never
+    # ships; that is held to *high*. This is the dev-vs-shipped policy the finding
+    # asked to have stated.
+    #
+    # If a newly published advisory reds the branch: fix it (bump, or an
+    # `overrides` entry with the reason). Reverting this job to advisory is a
+    # decision for the owner and belongs in `audit/`, not in a commit message.
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [server, client]
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      # npm audit resolves from the lockfile and the registry — no install needed.
+      - name: Production tree (moderate+ fails)
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: Full tree incl. dev tooling (high+ fails)
+        # `if: always()` so a production failure still reports the dev-tree state
+        # in the same run, rather than hiding it behind the first red step.
+        if: always()
+        run: npm audit --audit-level=high
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    # Blocking. The suite exists to catch regressions in the flows behind the
+    # storage, unlock, PIN-lockout and hidden-chat findings, so it gates the
+    # branch like every other job. It was advisory only while two specs were
+    # still stale; both have been rewritten against the current flows
+    # (registration order, and an auth fixture for the authenticated routes).
+    # SEC-20260721-031.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      # No root lockfile, so install (not ci) the root Playwright + config deps.
+      - run: npm install --no-audit --no-fund
+      - run: cd server && npm ci && npm run build
+      - run: cd client && npm ci
+      - run: npx playwright install --with-deps chromium
+      # Config lives at the repo root; the webServer block starts both servers.
+      # The server refuses to boot without WS_JWT_SECRET (a boot-time check from
+      # SEC-20260721-007). This is an ephemeral CI test value, not a real secret —
+      # nothing it protects exists in CI — mirroring the `'x'.repeat(40)` the unit
+      # tests use.
+      - run: npx playwright test
+        env:
+          WS_JWT_SECRET: ci-e2e-jwt-secret-not-a-real-credential-xx

@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# The complete gate: everything CI runs, before it reaches the remote.
+#
+# The point is not to duplicate CI — it is to find out in two minutes on this
+# machine rather than in ten on a runner, and to keep a red branch from ever
+# being something other people have to look at.
+#
+# Docker is the one thing left out: the image builds need a running daemon, and
+# a check that skips itself when the daemon is down reports green for something
+# it did not do. Run `npm run verify:docker` before a deploy — Render builds
+# from `server/Dockerfile`, so that image is the one that can break a release.
+#
+# Install: npm run hooks:install
+
+set -e
+
+# Git feeds the refs being pushed on stdin, one per line:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# A deletion has an all-zero local sha and carries no commits, so there is
+# nothing to verify. The first version of this hook ran the full suite on every
+# `git push --delete`, which took minutes to prove nothing about a branch being
+# removed — and a gate that wastes your time on a no-op is a gate you start
+# passing --no-verify to, which is how it stops guarding the pushes that matter.
+has_commits=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+	case "$local_sha" in
+	# All zeros — a deletion.
+	*[!0]*) has_commits=1 ;;
+	esac
+done
+
+if [ "$has_commits" -eq 0 ]; then
+	printf '\n[pre-push] nothing to verify (deletion only)\n'
+	exit 0
+fi
+
+printf '\n[pre-push] running the full verify — this is the slow one\n'
+npm run verify
+
+printf '\n[pre-push] ok\n'

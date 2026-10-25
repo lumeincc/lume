@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LUME Monitor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">LUME&nbsp;<span class="dim">Monitor</span></div>
+      <div id="status" class="status">starting…</div>
+    </header>
+
+    <section class="summary">
+      <div class="tally sealed"><span id="n-sealed">0</span><label>sealed</label></div>
+      <div class="tally metadata"><span id="n-metadata">0</span><label>metadata</label></div>
+      <div class="tally exposed"><span id="n-exposed">0</span><label>exposed</label></div>
+      <div class="tally confirmed"><span id="n-confirmed">0</span><label>confirmed</label></div>
+      <label class="toggle"><input type="checkbox" id="hide-app" checked /> hide app noise</label>
+    </section>
+
+    <main id="stream" class="stream" aria-live="polite"></main>
+
+    <footer class="legend">
+      <span class="chip sealed">sealed — content encrypted, relay sees only ciphertext</span>
+      <span class="chip metadata">metadata — visible so the relay can deliver</span>
+      <span class="chip exposed">exposed — readable in the clear</span>
+    </footer>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "lume-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Independent live transparency monitor for LUME. Launches its own Chromium, watches the real network traffic via CDP, and shows in plain language what is sealed (encrypted), what metadata the relay can see, and what is exposed in the clear.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node scripts/smoke.js",
+    "test": "node test/classify.test.js && node test/correlate.test.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.9.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

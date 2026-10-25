@@ -1,0 +1,940 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  /* Core palette (strict monochrome, allow subtle grays for UX) */
+  --background: #f5f5f5;
+  --foreground: #0b0b0b;
+
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-strong: #ffffff;
+  --surface-alt: rgba(11, 11, 11, 0.04);
+  --border: rgba(11, 11, 11, 0.12);
+
+  --text-primary: #0b0b0b;
+  --text-secondary: rgba(11, 11, 11, 0.72);
+  --text-muted: rgba(11, 11, 11, 0.48);
+  --muted: rgba(11, 11, 11, 0.48);
+
+  /* Accent flips between themes (black on light, white on dark) */
+  --accent: #0b0b0b;
+  --accent-hover: #141414;
+  --accent-active: #000000;
+  --accent-disabled: rgba(11, 11, 11, 0.25);
+  --accent-contrast: #ffffff;
+
+  /* Brand signals, as in the deck: green marks what matters, red marks what
+     is destructive. The base UI stays monochrome — these are accents only. */
+  --hl: #16a34a;
+  --danger: #dc2626;
+
+  --shadow-sm: 0 12px 34px rgba(0, 0, 0, 0.1);
+
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  /* Keyboard focus ring. Was 0.16 alpha, which is technically present but not
+     perceivable; a focus indicator needs real contrast to do its job. */
+  --focus-ring: rgba(11, 11, 11, 0.55);
+
+  --scrollbar-thumb: rgba(11, 11, 11, 0.18);
+  --scrollbar-thumb-hover: rgba(11, 11, 11, 0.32);
+
+  /* Deliberately not theme-aware. A QR code needs a light quiet zone to scan;
+     on the dark theme a transparent PNG renders dark-on-dark and stops being
+     readable by a camera. Named so the intent is visible and so it does not
+     read as a stray literal. */
+  --qr-surface: #ffffff;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #050505;
+  --foreground: #f7f7f7;
+
+  --surface: rgba(15, 15, 15, 0.88);
+  --surface-strong: #0f0f0f;
+  --surface-alt: rgba(247, 247, 247, 0.06);
+  --border: rgba(247, 247, 247, 0.14);
+
+  --text-primary: #f7f7f7;
+  --text-secondary: rgba(247, 247, 247, 0.78);
+  --text-muted: rgba(247, 247, 247, 0.52);
+  --muted: rgba(247, 247, 247, 0.52);
+
+  --accent: #f7f7f7;
+  --accent-hover: #ffffff;
+  --accent-active: #e8e8e8;
+  --accent-disabled: rgba(247, 247, 247, 0.25);
+  --accent-contrast: #050505;
+
+  --hl: #4ade80;
+  --danger: #f87171;
+
+  --shadow-sm: 0 12px 34px rgba(0, 0, 0, 0.5);
+
+  --focus-ring: rgba(255, 255, 255, 0.6);
+
+  --scrollbar-thumb: rgba(247, 247, 247, 0.16);
+  --scrollbar-thumb-hover: rgba(247, 247, 247, 0.32);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-disabled: var(--accent-disabled);
+
+  --color-muted: var(--muted);
+  --color-hl: var(--hl);
+  --color-danger: var(--danger);
+  /* Keep legacy/utility mapping if needed, or deprecate */
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-surface-alt: var(--surface-alt);
+
+  --shadow-sm: var(--shadow-sm);
+
+  --font-sans: var(--font-space-grotesk), "Avenir Next", "Segoe UI", sans-serif;
+
+  /* Type steps LUME uses that Tailwind's default scale does not have.
+     Tailwind already covers 12px (text-xs), 14px (text-sm), 16px (text-base)
+     and 20px (text-xl) exactly, so those are NOT redefined — overriding them
+     would silently resize the 33 places already using the named utilities.
+     These four fill the gaps in the scale the interface actually uses.
+     Values are the current ones: adding a name changes nothing on screen. */
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-body: 13px;
+  --text-display: 22px;
+}
+
+/* Russian replaces the stack rather than extending it: Space Grotesk has no
+   Cyrillic, and next/font's generated fallback covers Cyrillic itself, so any
+   face appended after it is never reached. Manrope is what the Russian deck
+   uses (brand/LUME-presentation-ru.html), so product and deck now agree.
+
+   `lang` is set by LocaleLang after hydration, which is what keeps this a pure
+   CSS switch with no font logic in components. */
+html[lang="ru"] {
+  --font-sans: var(--font-manrope), "Segoe UI", system-ui, sans-serif;
+}
+
+/* A conversation renders every message it has — there is no windowing. Letting
+   the browser skip layout and paint for rows outside the viewport costs one
+   declaration and no change in behaviour: the nodes stay in the DOM, so
+   Ctrl+F, screen readers and scroll-to-message all still work.
+
+   Measured on 2000 message-sized rows: forced layout 84ms → 36ms.
+
+   `contain-intrinsic-size: auto 64px` gives an unrendered row a placeholder
+   height so the scrollbar does not jump; `auto` makes the browser remember the
+   real height once a row has been rendered. */
+.message-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+html,
+body {
+  min-height: 100%;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  position: relative;
+  overflow-x: hidden;
+  color: var(--foreground);
+  /* Flat, not lit: the corner radial glows read as smudges on a dark UI. */
+  background: var(--background);
+}
+
+/* Minimal, theme-aware scrollbars — thin floating thumb, no stepper arrows.
+   Blink/WebKit use the ::-webkit-scrollbar pseudo-elements, which let us hide
+   the OS stepper buttons. The standard scrollbar-width/scrollbar-color
+   properties are gated to Firefox via @supports below: setting them in Chrome
+   switches it to the system scrollbar renderer, which re-adds un-removable
+   up/down arrow buttons. */
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 4px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+.auth-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: transparent;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@supports (height: 100dvh) {
+  .auth-shell {
+    min-height: 100dvh;
+  }
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin: 0 auto;
+  overflow: hidden;
+  /* Ensure card never clips on very small screens */
+  min-width: 0;
+}
+
+/* ── Auth (Spotify-style): no card, content floats on the full-bleed shell ── */
+.auth-hero {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Landing hero: wider than the form shell so "Welcome to LUME" holds one line
+   with headroom (it measures ~390px at the 48px cap). */
+.auth-hero--wide {
+  max-width: 430px;
+}
+
+.auth-welcome {
+  text-align: center;
+  font-size: clamp(34px, 8vw, 48px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: var(--text-primary);
+}
+
+.auth-sub {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--hl);
+}
+
+@media (max-width: 767px) {
+  .auth-logo {
+    display: none;
+  }
+}
+
+.auth-title {
+  text-align: center;
+  font-size: clamp(26px, 7vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.auth-hint {
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.auth-field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+
+.auth-pill {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 15px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+  min-height: 50px;
+  transition: opacity 0.1s ease, background-color 0.2s ease;
+}
+
+.auth-pill:hover:not(:active):not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.auth-pill:disabled {
+  background: var(--accent-disabled);
+  color: rgba(255, 255, 255, 0.82);
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .auth-pill:disabled {
+  color: rgba(5, 5, 5, 0.72);
+}
+
+.auth-pill-secondary {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 15px 20px;
+  font-weight: 500;
+  font-size: 15px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 50px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-pill-secondary:hover:not(:active) {
+  background: var(--surface-alt);
+  border-color: var(--text-muted);
+}
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-foot {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-foot-link {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  /* Same trick as the back button: a comfortable touch target without
+     disturbing the sentence it sits in. */
+  padding: 12px 6px;
+  margin: -12px -6px;
+}
+
+.auth-license {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  padding: 0 24px;
+  pointer-events: none;
+}
+
+
+.auth-step-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.auth-step-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  /* The glyph is 16px, but a touch target must clear 44px. Padding grows the
+     hit area; the negative margin keeps the row's visual alignment. */
+  padding: 14px;
+  margin: -14px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.auth-step-back:hover {
+  color: var(--text-primary);
+}
+
+.apple-input {
+  width: 100%;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  --input-py: 14px;
+  --input-px: 16px;
+  --input-pl: var(--input-px);
+  --input-pr: var(--input-px);
+  padding-top: var(--input-py);
+  padding-bottom: var(--input-py);
+  padding-left: var(--input-pl);
+  padding-right: var(--input-pr);
+  /* 16px minimum prevents iOS Safari from zooming on focus */
+  font-size: 16px;
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: none;
+}
+
+.apple-input-icon {
+  /* Extra space so leading icons (like "@", magnifier) never collide with text. */
+  --input-pl: 56px;
+  padding-left: 56px;
+}
+
+/* Auth cards: keep the surface clean (avoid corner artifacts from panel sheen). */
+.auth-card.lume-panel::before {
+  display: none;
+}
+
+.apple-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.apple-input::placeholder {
+  color: var(--text-muted);
+}
+
+.apple-textarea {
+  width: 100%;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 96px;
+}
+
+.apple-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.apple-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+  letter-spacing: 0.01em;
+}
+
+.apple-button {
+  width: 100%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  box-shadow: none;
+  /* Minimum touch target */
+  min-height: 44px;
+}
+
+.apple-button:hover {
+  background: var(--accent-hover);
+}
+
+.apple-button:active {
+  background: var(--accent-active);
+}
+
+.apple-button:disabled {
+  background: var(--accent-disabled);
+  color: rgba(255, 255, 255, 0.82);
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .apple-button:disabled {
+  color: rgba(5, 5, 5, 0.72);
+}
+
+.apple-button-secondary {
+  width: 100%;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  /* Minimum touch target */
+  min-height: 44px;
+}
+
+.apple-button-secondary:hover {
+  background: rgba(11, 11, 11, 0.06);
+}
+
+[data-theme="dark"] .apple-button-secondary:hover {
+  background: rgba(247, 247, 247, 0.1);
+}
+
+/* Button tap feedback — snappy press response */
+button, .apple-button, .apple-button-secondary {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, opacity 0.1s ease, background-color 0.2s ease, color 0.2s ease;
+}
+button:active, .apple-button:active, .apple-button-secondary:active {
+  opacity: 0.9;
+}
+.lume-icon-btn:active {
+  opacity: 0.75;
+}
+
+
+.message-bubble-sent {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 18px 18px 4px 18px;
+}
+
+.message-bubble-received {
+  background: var(--surface-strong);
+  color: var(--text-primary);
+  border-radius: 18px 18px 18px 4px;
+  border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .message-bubble-received {
+  background: #262626;
+  border-color: transparent;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.mono-spinner {
+  border-color: rgba(11, 11, 11, 0.25);
+  border-top-color: var(--accent);
+}
+
+[data-theme="dark"] .mono-spinner {
+  border-color: rgba(247, 247, 247, 0.25);
+  border-top-color: var(--accent);
+}
+
+/* ThemeToggle: avoid SSR/CSR icon mismatches by rendering both icons and using CSS to show the active one. */
+.theme-icon {
+  display: inline-flex;
+}
+
+.theme-icon--sun {
+  display: none;
+}
+
+[data-theme="dark"] .theme-icon--sun {
+  display: inline-flex;
+}
+
+[data-theme="dark"] .theme-icon--moon {
+  display: none;
+}
+
+
+.lume-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.lume-panel {
+  background: var(--surface);
+  position: relative;
+}
+
+.lume-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 280px at 16% -10%, rgba(11, 11, 11, 0.05), transparent 60%),
+    radial-gradient(420px 320px at 120% 22%, rgba(11, 11, 11, 0.04), transparent 60%),
+    linear-gradient(to bottom, rgba(11, 11, 11, 0.025), transparent 44%);
+}
+
+[data-theme="dark"] .lume-panel::before {
+  background:
+    radial-gradient(520px 280px at 16% -10%, rgba(247, 247, 247, 0.06), transparent 60%),
+    radial-gradient(420px 320px at 120% 22%, rgba(247, 247, 247, 0.045), transparent 60%),
+    linear-gradient(to bottom, rgba(247, 247, 247, 0.035), transparent 44%);
+}
+
+.lume-panel > * {
+  position: relative;
+}
+
+/* Ghost icon button — flat, no chrome (editorial).
+   Kept in the `components` layer so Tailwind utilities (e.g. `md:hidden`)
+   still win over its `display`. */
+@layer components {
+  .lume-icon-btn {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    /* Minimum touch target */
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .lume-icon-btn:hover {
+    background: var(--surface-alt);
+    color: var(--text-primary);
+  }
+
+  .lume-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+}
+
+/* Modal backdrop overlay — a plain dim (no full-page blur: it was the main
+   modal-interaction lag source and made the sheet feel like a foreign overlay). */
+.modal-backdrop-blur {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+/* Modal sheet — the same surface colour the rest of the app uses for raised
+   elements, lifted with a soft diffuse shadow (not a hard box) so it reads as a
+   gently raised sheet rather than a foreign card. The inset top hairline gives
+   a quiet lit edge in dark mode. */
+.modal-sheet-glass {
+  background: var(--surface-strong);
+  box-shadow: 0 24px 70px -30px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .modal-sheet-glass {
+  box-shadow:
+    inset 0 1px 0 rgba(247, 247, 247, 0.05),
+    0 30px 80px -32px rgba(0, 0, 0, 0.85);
+}
+
+/* Modal form controls — crisper and less chunky than the default apple
+   controls (scoped to modals so the auth screens keep their look). A modal's
+   fields/buttons should read as part of the app's thin editorial language,
+   not as big rounded pills. */
+.modal-sheet-glass .apple-input,
+.modal-sheet-glass .apple-textarea {
+  background: var(--surface-alt);
+  border-radius: 12px;
+  --input-py: 12px;
+}
+
+.modal-sheet-glass .apple-input-icon {
+  /* Sit the leading glyph (e.g. "@") right next to the text instead of
+     floating it in a wide empty gutter. */
+  padding-left: 34px;
+}
+
+.modal-sheet-glass .apple-button,
+.modal-sheet-glass .apple-button-secondary {
+  border-radius: 12px;
+}
+
+/* Mobile: message action buttons visible on tap (touch devices have no hover) */
+@media (hover: none) and (pointer: coarse) {
+  .group .group-hover\:opacity-60 {
+    opacity: 0.5;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Animations
+
+   Rule: motion explains cause and origin — where a thing came from, or
+   what the user just did. An element enters from the place it belongs to
+   (a sheet from the bottom edge, a reveal from the control that opened it,
+   your message from the composer). Nothing loops for atmosphere. If an
+   animation cannot answer "why is this moving?", it does not belong here.
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Enters from the top edge of the viewport, which is where it lives. */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* A modal is a sheet anchored to the bottom edge on mobile, and a centred
+   dialog on desktop. So it rises from the edge on mobile, and grows in
+   place on desktop — rather than sliding up from nowhere on both. */
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Messages enter from where they came from: yours from the composer at the
+   bottom-right, theirs from the contact's side at the bottom-left. */
+@keyframes messageInSent {
+  from { opacity: 0; transform: translate(8px, 10px) scale(0.98); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
+@keyframes messageInReceived {
+  from { opacity: 0; transform: translate(-8px, 10px) scale(0.98); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
+/* Unfolds downward out of the control that opened it. */
+@keyframes revealDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dotBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-10px); }
+  30% { transform: translateX(10px); }
+  45% { transform: translateX(-8px); }
+  60% { transform: translateX(8px); }
+  75% { transform: translateX(-4px); }
+  90% { transform: translateX(4px); }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Luminous highlight for the moments that matter — same bloom as the deck.
+   A white glow only reads on dark, so it is scoped to the dark theme. */
+[data-theme="dark"] .glow {
+  text-shadow:
+    0 0 16px rgba(255, 255, 255, 0.55),
+    0 0 44px rgba(255, 255, 255, 0.35),
+    0 0 90px rgba(255, 255, 255, 0.2);
+}
+
+/* A brief settle for content that swaps in (page change, skeleton → content).
+   Opacity only and deliberately short: anything longer, or with movement, reads
+   as the whole screen reloading. Never used for button presses. */
+.animate-settle {
+  animation: fadeIn 0.14s ease-out both;
+}
+
+/* Utility classes */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out both;
+}
+
+.animate-overlay-in {
+  animation: overlayIn 0.25s ease-out both;
+}
+
+/* Mobile: rises from the bottom edge it is anchored to.
+   Desktop (sm+): a centred dialog, so it grows in place. */
+.modal-enter {
+  animation: sheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (min-width: 640px) {
+  .modal-enter {
+    animation: dialogIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+/* No fill-mode: a retained end-keyframe transform would leave every message
+   row a permanent stacking context, trapping the z-indexed delete-confirm
+   overlay underneath later sibling bubbles. */
+.message-in-sent {
+  animation: messageInSent 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-in-received {
+  animation: messageInReceived 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-down {
+  animation: revealDown 0.2s ease-out both;
+}
+
+/* PIN dot bounce + shake — direct feedback on the key you pressed. */
+.pin-dot-bounce {
+  animation: dotBounce 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pin-shake {
+  animation: shake 0.5s ease;
+}
+
+/* Page enter transition */
+.page-enter {
+  animation: pageEnter 0.25s ease;
+}
+
+/* Registration steps arrive in reading order. */
+.stagger-1 { animation: fadeInUp 0.5s ease 0s both; }
+.stagger-2 { animation: fadeInUp 0.5s ease 0.15s both; }
+.stagger-3 { animation: fadeInUp 0.5s ease 0.25s both; }
+.stagger-4 { animation: fadeInUp 0.5s ease 0.35s both; }
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-settle,
+  .animate-fade-in,
+  .animate-slide-down,
+  .animate-scale-in,
+  .animate-overlay-in,
+  .modal-enter,
+  .message-in-sent,
+  .message-in-received,
+  .reveal-down,
+  .pin-dot-bounce,
+  .pin-shake,
+  .page-enter,
+  .stagger-1,
+  .stagger-2,
+  .stagger-3,
+  .stagger-4 {
+    animation: none !important;
+  }
+
+  button:active, .apple-button:active, .apple-button-secondary:active,
+  .lume-icon-btn:active {
+    transform: none !important;
+  }
+}
+
+/* Prevent horizontal overflow on all pages */
+html {
+  overflow-x: hidden;
+}
