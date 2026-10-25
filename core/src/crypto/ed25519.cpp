@@ -49,7 +49,8 @@ Result<ByteArray<ed25519_signature_size>> ed25519_sign(const SecretBytes& secret
     }
     detail::ensure_backends_ready();
     ByteArray<ed25519_signature_size> signature{};
-    if (crypto_sign_detached(signature.data(), nullptr, message.data(), message.size(), secret_key.view().data())
+    if (crypto_sign_detached(
+            signature.data(), nullptr, detail::pointer_to(message), message.size(), secret_key.view().data())
         != 0) {
         return std::unexpected(Error::library_failure);
     }
@@ -62,7 +63,9 @@ bool ed25519_verify(ByteView public_key, ByteView message, ByteView signature)
         return false;
     }
     detail::ensure_backends_ready();
-    return crypto_sign_verify_detached(signature.data(), message.data(), message.size(), public_key.data()) == 0;
+    return crypto_sign_verify_detached(
+               signature.data(), detail::pointer_to(message), message.size(), public_key.data())
+        == 0;
 }
 
 }

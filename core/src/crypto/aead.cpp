@@ -36,8 +36,8 @@ Result<Bytes> aead_seal(const SecretBytes& key, ByteView nonce, ByteView associa
     Bytes ciphertext(plaintext.size() + aead_tag_size);
     unsigned long long written = 0;
     if (crypto_aead_xchacha20poly1305_ietf_encrypt(
-            ciphertext.data(), &written, plaintext.data(), plaintext.size(), associated_data.data(),
-            associated_data.size(), nullptr, nonce.data(), key.view().data())
+            ciphertext.data(), &written, detail::pointer_to(plaintext), plaintext.size(),
+            detail::pointer_to(associated_data), associated_data.size(), nullptr, nonce.data(), key.view().data())
         != 0) {
         return std::unexpected(Error::library_failure);
     }
@@ -60,7 +60,7 @@ Result<SecretBytes> aead_open(const SecretBytes& key, ByteView nonce, ByteView a
     std::uint8_t* output = plaintext.empty() ? empty_output.data() : plaintext.writable().data();
     unsigned long long written = 0;
     if (crypto_aead_xchacha20poly1305_ietf_decrypt(
-            output, &written, nullptr, ciphertext.data(), ciphertext.size(), associated_data.data(),
+            output, &written, nullptr, ciphertext.data(), ciphertext.size(), detail::pointer_to(associated_data),
             associated_data.size(), nonce.data(), key.view().data())
         != 0) {
         return std::unexpected(Error::authentication_failed);

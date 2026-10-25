@@ -20,7 +20,7 @@ ByteArray<sha256_size> sha256(std::initializer_list<ByteView> parts)
     crypto_hash_sha256_state state;
     crypto_hash_sha256_init(&state);
     for (const ByteView part : parts) {
-        crypto_hash_sha256_update(&state, part.data(), part.size());
+        crypto_hash_sha256_update(&state, detail::pointer_to(part), part.size());
     }
     ByteArray<sha256_size> digest{};
     crypto_hash_sha256_final(&state, digest.data());
@@ -39,7 +39,7 @@ ByteArray<sha512_size> sha512(std::initializer_list<ByteView> parts)
     crypto_hash_sha512_state state;
     crypto_hash_sha512_init(&state);
     for (const ByteView part : parts) {
-        crypto_hash_sha512_update(&state, part.data(), part.size());
+        crypto_hash_sha512_update(&state, detail::pointer_to(part), part.size());
     }
     ByteArray<sha512_size> digest{};
     crypto_hash_sha512_final(&state, digest.data());

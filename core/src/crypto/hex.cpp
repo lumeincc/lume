@@ -31,7 +31,7 @@ std::string encode_hex(ByteView bytes)
 {
     ensure_backends_ready();
     std::string hex((bytes.size() * 2) + 1, '\0');
-    sodium_bin2hex(hex.data(), hex.size(), bytes.data(), bytes.size());
+    sodium_bin2hex(hex.data(), hex.size(), pointer_to(bytes), bytes.size());
     hex.pop_back();
     return hex;
 }

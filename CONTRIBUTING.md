@@ -106,7 +106,8 @@ CI.
 
 ## C++
 
-- C++23. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion
+- C++23, which needs GCC 13, Clang 19 or MSVC 19.40 at least — older ones
+  lack `std::expected`. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion
   -Wsign-conversion -Wshadow -Wold-style-cast -Werror` on GCC and Clang,
   `/W4 /WX /permissive-` on MSVC — see `cmake/LumeCompilerOptions.cmake`.
 - RAII for every resource. No owning raw pointers, no `new` or `delete`.

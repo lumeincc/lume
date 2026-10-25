@@ -40,8 +40,11 @@ bool same(ByteView left, ByteView right)
 
 Bytes with_first_bit_flipped(ByteView bytes)
 {
+    if (bytes.empty()) {
+        throw std::logic_error("cannot flip a bit of nothing");
+    }
     Bytes copy(bytes.begin(), bytes.end());
-    copy.front() = static_cast<std::uint8_t>(copy.front() ^ 0x01U);
+    copy.at(0) = static_cast<std::uint8_t>(copy.at(0) ^ 0x01U);
     return copy;
 }
 

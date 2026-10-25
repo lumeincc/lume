@@ -26,11 +26,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [linux-gcc-asan, linux-clang-asan, linux-gcc-release]
+        include:
+          - preset: linux-gcc-asan
+          - preset: linux-clang-asan
+            compilers: -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
+          - preset: linux-gcc-release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build autoconf autoconf-archive automake libtool
+      - name: Install Clang 22
+        if: matrix.compilers
+        run: |
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-22
       - name: Prepare vcpkg
         run: |
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
@@ -45,7 +55,7 @@ jobs:
           key: vcpkg-linux-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
           restore-keys: vcpkg-linux-${{ matrix.preset }}-
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }}
+        run: cmake --preset ${{ matrix.preset }} ${{ matrix.compilers }}
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
       - name: Test
