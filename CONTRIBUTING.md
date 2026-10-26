@@ -16,8 +16,8 @@ one of the two — fix the one that is wrong, in the same change.
 ## Layout
 
 ```
-core/      liblume, C++20 — crypto, identity, vault, handshake, ratchet, wire, session, C API
-server/    lume-relay, C++20 — WebSocket over Boost.Beast/Asio, SQLite
+core/      liblume, C++23 — crypto, identity, vault, handshake, ratchet, wire, session, C API
+server/    lume-relay, C++23 — WebSocket over Boost.Beast/Asio, SQLite
 android/   Kotlin + Jetpack Compose; the core through JNI over the C API
 desktop/   WinUI 3 (C++/WinRT); the core linked directly
 docs/      specification
@@ -61,7 +61,8 @@ Files that cannot carry a header (images, binary fixtures) are covered in
 **Carries no comments besides that header.** Code says what it does through
 names, types and small functions; the specification says why. A piece of code
 that needs a paragraph to be understood needs to be rewritten or specified in
-`docs/`.
+`docs/`. [`tools/check_comments.py`](tools/check_comments.py) enforces this in
+CI.
 
 ## Cryptography
 
@@ -80,9 +81,19 @@ that needs a paragraph to be understood needs to be rewritten or specified in
 6. **Bound everything an attacker controls**: skipped keys, message sizes,
    prekey counts, collection lengths.
 7. **Domain-separate every derivation** with a distinct, versioned label from
-   `docs/CRYPTO.md` §12.
+   `docs/CRYPTO.md` §13.
 8. Randomness comes from `randombytes_buf` — never `rand()`, `<random>` or the
    clock.
+9. **Nothing works before the self-test passes.** Every primitive goes through
+   one gate that runs the start-up self-test once; if it failed, every call that would
+   generate, sign, verify, encrypt or decrypt throws instead.
+10. **Private keys are held as seeds.** Ed25519 keeps its 32-byte seed and
+    ML-KEM-768 its 64-byte seed; the expanded forms exist only inside a single
+    signing or decapsulation call, so a stored key cannot be half-replaced.
+11. **Callers never choose a nonce.** `aead_seal` draws a fresh 24-byte nonce
+    and returns `nonce ‖ ciphertext ‖ tag`. Derandomised forms (explicit
+    nonces, ML-KEM encapsulation from given randomness) live in `detail` for
+    known-answer tests only.
 
 ## Wire format
 
@@ -105,23 +116,46 @@ that needs a paragraph to be understood needs to be rewritten or specified in
 
 ## C++
 
-- C++20. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion -Wshadow
-  -Werror` on GCC and Clang, `/W4 /WX /permissive-` on MSVC.
+- C++23, which needs GCC 13, Clang 19 or MSVC 19.40 at least — older ones
+  lack `std::expected`. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion
+  -Wsign-conversion -Wshadow -Wold-style-cast -Werror` on GCC and Clang,
+  `/W4 /WX /permissive-` on MSVC — see `cmake/LumeCompilerOptions.cmake`.
 - RAII for every resource. No owning raw pointers, no `new` or `delete`.
 - No undefined behaviour; sanitizer builds stay clean.
-- Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths; no
-  `reinterpret_cast` over input.
-- Expected failures return a result type. Exceptions never cross the C ABI.
-- `clang-tidy` and `cppcheck` clean.
+- Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths.
+  They are never reinterpreted as anything other than bytes.
+- Expected failures — bad sizes, invalid keys, failed authentication — return
+  `lume::crypto::Result<T>` (`std::expected`). Failures that should never
+  happen — allocation, a failed self-test, a library that stopped working —
+  throw. The C API catches every exception and turns it into an error code;
+  no exception crosses the C ABI.
+- Hardened standard libraries in every build: `_GLIBCXX_ASSERTIONS`, the
+  libc++ extensive hardening mode, `_MSVC_STL_HARDENING`; `_FORTIFY_SOURCE=3`,
+  full RELRO and stack-clash protection outside Debug on Linux and Android.
+- `clang-tidy` 22 with [`.clang-tidy`](.clang-tidy) reports nothing on the
+  library or the tests; CI fails otherwise.
 
 ## Tests
 
 - Every module ships with its tests in the same change: unit tests, published
   test vectors where they exist, property-based tests for codecs and protocol
   invariants, and a fuzz target for every parser.
-- CI runs GCC and Clang with AddressSanitizer, UndefinedBehaviorSanitizer and,
-  for the relay, ThreadSanitizer; MSVC on Windows; the Android build on an
-  emulator. Core coverage below the gate fails the build.
+- CI runs GCC and Clang with AddressSanitizer and UndefinedBehaviorSanitizer,
+  a GCC release build, and MSVC Debug and Release on Windows. ThreadSanitizer
+  for the relay and the Android build on an emulator join when those exist.
+  Coverage of `core/` below 90 % of lines or 70 % of branches fails the build.
+- Generated files (`core/src/crypto/known_answers.hpp` and the like) are
+  regenerated in CI and must match what is committed.
+- Every download in CI is pinned by commit or hash, except the Clang 22
+  packages — apt.llvm.org keeps only its newest build, so only its signing key
+  is pinned — and the tools that come with the runner image; see
+  [`.github/PINS.md`](.github/PINS.md).
+- Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
+  the seed that reproduces it.
+- Build and test locally with the presets: `cmake --preset windows-msvc`,
+  `cmake --build --preset windows-msvc-debug`, `ctest --preset
+  windows-msvc-debug`, and the `linux-*` equivalents. `VCPKG_ROOT` must point
+  at a vcpkg checkout of the commit pinned in `vcpkg.json`.
 - Never weaken or delete an assertion to make a run pass. When a test fails,
   decide first whether the code or the test is wrong, and say which.
 - Report only what was observed. A check that could not run is reported as

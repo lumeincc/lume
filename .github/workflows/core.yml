@@ -1,0 +1,179 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: core
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_COMMIT: 817892b0ecbc6af994dd6df999c73faf795adbf2
+  VCPKG_DISABLE_METRICS: "1"
+
+jobs:
+  linux:
+    name: Linux · ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: linux-gcc-asan
+          - preset: linux-clang-asan
+            compilers: -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
+            llvm: clang-22 libclang-rt-22-dev
+          - preset: linux-gcc-release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build autoconf autoconf-archive automake libtool
+      - name: Install Clang 22
+        if: matrix.llvm
+        run: sh tools/ci/install-llvm.sh ${{ matrix.llvm }}
+      - name: Prepare vcpkg
+        run: sh tools/ci/prepare-vcpkg.sh
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-linux-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
+          restore-keys: vcpkg-linux-${{ matrix.preset }}-
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} ${{ matrix.compilers }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+  coverage:
+    name: Linux · coverage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build autoconf autoconf-archive automake libtool
+          python3 -m venv "$RUNNER_TEMP/gcovr"
+          "$RUNNER_TEMP/gcovr/bin/pip" install --quiet --require-hashes --no-deps -r tools/ci/coverage-requirements.txt
+          echo "$RUNNER_TEMP/gcovr/bin" >> "$GITHUB_PATH"
+      - name: Prepare vcpkg
+        run: sh tools/ci/prepare-vcpkg.sh
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-linux-linux-gcc-coverage-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
+          restore-keys: vcpkg-linux-linux-gcc-coverage-
+      - name: Configure
+        run: cmake --preset linux-gcc-coverage
+      - name: Build
+        run: cmake --build --preset linux-gcc-coverage
+      - name: Test
+        run: ctest --preset linux-gcc-coverage
+      - name: Coverage gate
+        run: >
+          gcovr --root . --filter 'core/src/' --filter 'core/include/'
+          --exclude-throw-branches --exclude-unreachable-branches
+          --print-summary --txt --fail-under-line 90 --fail-under-branch 70
+          build/linux-gcc-coverage
+
+  clang-tidy:
+    name: Linux · clang-tidy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build autoconf autoconf-archive automake libtool
+      - name: Install clang-tidy 22
+        run: sh tools/ci/install-llvm.sh clang-22 clang-tidy-22
+      - name: Prepare vcpkg
+        run: sh tools/ci/prepare-vcpkg.sh
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-linux-clang-tidy-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
+          restore-keys: vcpkg-linux-clang-tidy-
+      - name: Configure
+        run: cmake --preset linux-clang-asan -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
+      - name: Analyse the library and the tests
+        run: clang-tidy-22 -p build/linux-clang-asan --quiet core/src/*/*.cpp core/tests/*/*.cpp
+
+  windows:
+    name: Windows · ${{ matrix.preset }}
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [windows-msvc-ninja, windows-msvc-ninja-release]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Prepare vcpkg
+        shell: pwsh
+        run: |
+          "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" >> $env:GITHUB_ENV
+          "VCPKG_DEFAULT_BINARY_CACHE=$env:RUNNER_TEMP\vcpkg-cache" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\vcpkg-cache" | Out-Null
+          git clone --quiet https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+          git -C "$env:RUNNER_TEMP\vcpkg" checkout --quiet $env:VCPKG_COMMIT
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}\vcpkg-cache
+          key: vcpkg-windows-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
+          restore-keys: vcpkg-windows-${{ matrix.preset }}-
+      - name: Build and test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Import-Module "$vs\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -DevCmdArguments '-arch=x64 -host_arch=x64' -SkipAutomaticLocation
+          $ninja = & "$env:VCPKG_ROOT\vcpkg.exe" fetch ninja | Select-Object -Last 1
+          $env:PATH = "$(Split-Path $ninja);$env:PATH"
+          cmake --preset ${{ matrix.preset }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset ${{ matrix.preset }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --preset ${{ matrix.preset }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  hygiene:
+    name: Licences, secrets, comments, generated files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: REUSE
+        run: |
+          python3 -m venv "$RUNNER_TEMP/reuse"
+          "$RUNNER_TEMP/reuse/bin/pip" install --quiet --require-hashes --no-deps -r tools/ci/reuse-requirements.txt
+          "$RUNNER_TEMP/reuse/bin/reuse" lint
+      - name: No comments in code
+        run: python3 tools/check_comments.py
+      - name: Generated files match their generators
+        run: |
+          node core/tools/generate_known_answers.mjs core/tests/vectors/wycheproof "$RUNNER_TEMP/known_answers.hpp"
+          diff -u core/src/crypto/known_answers.hpp "$RUNNER_TEMP/known_answers.hpp"
+      - name: Secret scan
+        run: |
+          curl -fsSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --no-banner --log-opts="HEAD" .
