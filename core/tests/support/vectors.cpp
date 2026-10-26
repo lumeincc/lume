@@ -42,14 +42,19 @@ crypto::Bytes WycheproofCase::group_bytes(std::string_view field) const
     return from_hex(group.at(std::string(field)).get<std::string>());
 }
 
-nlohmann::json load_wycheproof(std::string_view file_name)
+nlohmann::json load_vectors(std::string_view relative_path)
 {
-    const auto path = std::filesystem::path(LUME_TEST_VECTORS_DIR) / "wycheproof" / file_name;
+    const auto path = std::filesystem::path(LUME_TEST_VECTORS_DIR) / relative_path;
     std::ifstream input(path);
     if (!input) {
         throw std::runtime_error("cannot open test vectors: " + path.string());
     }
     return nlohmann::json::parse(input);
+}
+
+nlohmann::json load_wycheproof(std::string_view file_name)
+{
+    return load_vectors(std::string("wycheproof/") + std::string(file_name));
 }
 
 int for_each_wycheproof_case(const nlohmann::json& suite, const std::function<void(const WycheproofCase&)>& check)

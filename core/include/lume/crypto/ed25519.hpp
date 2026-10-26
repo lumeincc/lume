@@ -26,6 +26,8 @@ struct Ed25519KeyPair {
 
 [[nodiscard]] Result<ByteArray<ed25519_signature_size>> ed25519_sign(const SecretBytes& seed, ByteView message);
 
+[[nodiscard]] bool ed25519_is_valid_public_key(ByteView public_key);
+
 [[nodiscard]] bool ed25519_verify(ByteView public_key, ByteView message, ByteView signature);
 
 }

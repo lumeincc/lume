@@ -24,6 +24,8 @@ struct WycheproofCase {
     [[nodiscard]] crypto::Bytes group_bytes(std::string_view field) const;
 };
 
+[[nodiscard]] nlohmann::json load_vectors(std::string_view relative_path);
+
 [[nodiscard]] nlohmann::json load_wycheproof(std::string_view file_name);
 
 int for_each_wycheproof_case(const nlohmann::json& suite, const std::function<void(const WycheproofCase&)>& check);

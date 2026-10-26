@@ -1,0 +1,214 @@
+{
+  "description": "LUME identity derivation, CRYPTO.md sections 3.1 to 3.3, computed with Node.js crypto (OpenSSL)",
+  "generator": "core/tools/generate_identity_vectors.mjs",
+  "cases": [
+    {
+      "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+      "phrase": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+      "root": "5e9fd780b30590a200f9dd69033f4c6863d20cf038b2564465592fc0b866be75",
+      "signing_seed": "71ad2502778f0a52540864acd26d6cc0729146245fba16efd7b2d906b61598c9",
+      "signing_key": "ecad18e97aa32e3dd6a7232243c5fe0cf7ef1fb6ff201b7f4bf366ad65a85743",
+      "exchange_secret": "034efef010d9056d12d823d454d5100e71211f92eec2f35af52c152892d8b606",
+      "exchange_key": "9c97b6b25a34840937b1fa276204ada51f51a8dc9d4f1f88c5de5220f67c1b4e",
+      "binding": "720c47bf841074c4f65f509fd0a615a740626f9959b8f01a1029295a62746761c0b8772dbacc1c0e49fdc9456d8c2f85825f6ce54188e5aa586eac01140e0500",
+      "device_seed": "57454a279bdc22b440e149e37e1dbfce2b7e8f8f9843369cb2a90c9c77f2576f",
+      "device_key": "73208ecb1fad22a5ec2baafdb67e78c69ca0590aae6bb43ef262a96569583c21",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "c98957c52e92822a58d71d205685dd6bf0d93e5ad8969b75d5a659445246ac5171191b4f8cc69c8e11ab89c5127c577105c1f1e384c2ee59bd4c102ae7837101"
+        },
+        {
+          "generation": 2,
+          "certificate": "012f299eb0987362a99f837fa80c727a1c91ac049ea0b36827bda4695260f892294185e12558d9523cb38aa357a1b0e3dc90bf4538e6db7e5bc5d6e9d6482b06"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "c7519f7ad546eb72cc44e05c47b61725787249f5ff7de01bac651ff789591716a2e2edca6286d6b54c8e84be41c374f95febaf80a471b7b0c2b2902e40e47b0c"
+        }
+      ]
+    },
+    {
+      "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "phrase": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+      "root": "a64a13811fc91532a2c1fd9432dc935b914802c4a0eee752a6f86045dff9f008",
+      "signing_seed": "39f1c2d58e3716b909d4a9f1e542bcde27e3b1ae5e46ac4bcdb99134e8604f04",
+      "signing_key": "df495bf7165f32575d81bf425587f7234ee276ae5f965f1a6b52117ea4be556b",
+      "exchange_secret": "ac976e55c98396c198612955e2b71877f77b58c1c8f9f3093d939e644987ce09",
+      "exchange_key": "920d42217b82cce2a99c261d274761e3364ae99a55352497af75297a7802593c",
+      "binding": "78b767b8f082a92ef14f72473db9bd42dfda560a9b188692397461acbdd8e45d0296fc9844a891be224917524044df099a61c445a41760332041c061fe873506",
+      "device_seed": "88324508f8fad79e89ec04892f76ba771c215a3095b901aa633dd58ee430fe47",
+      "device_key": "079158280055bc86a7c54d8415ce2066926326f54ae886de5c697ca5a7c9de79",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "1d2bee0da0ed1ab039c0043305fd4b9e9068f6f844d880b7ce05db1bd9b9c1ca383ce1a0a4cb583b0bae715c4e9934af19ca8ebe295fc15fb8b6e5758000e40b"
+        },
+        {
+          "generation": 2,
+          "certificate": "3afc4c90fdd507e11af90a5a1dabd0e8b6e2c7fbb5b98ad609a8cc377751d0903c775a1fc2b685a41af7e3603d9c9f5b08df422f0ed7bab446d509339979ab08"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "a6c2b769cc0ffa293db17e8e8509ddaaa5f58e8d4d001680032af23be633bc21cc13ea97b411b58e988da26bd03b635033c9ad8bfc6e2327ccb19b406fbfa303"
+        }
+      ]
+    },
+    {
+      "entropy": "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+      "phrase": "legal winner thank year wave sausage worth useful legal winner thank year wave sausage worth useful legal winner thank year wave sausage worth title",
+      "root": "2bc84b74d91da0768731ce5079dac6ea2b20549adc71ed309e60ee1f8152905b",
+      "signing_seed": "eef85617ced4969894f28f04517c88ccad169098f822c6119ce6b7759e317784",
+      "signing_key": "4a1f30649b088fb7e539fbf06f2d55006189a0e2f49f9e01a8d2ba6609913f99",
+      "exchange_secret": "5f7629d4b9b4a808df5d9245feefca9145981b1532b37d85789848864ee1cccc",
+      "exchange_key": "f98c9f76c3ece27504b0216b598be7110ff355629247d2e17dbadf100263685f",
+      "binding": "abe3246b5a06a928281e83193fbd1b8ac747a4d35d4351292a07bf0fc0eed4a276e021f99f23ea36843c062f1aa37b476b41ff164f274cb640574847da52250e",
+      "device_seed": "53d940e3193e78083e7d5eda6d00cea4882f9e3ef1847c8e79344cbdd2fc5c62",
+      "device_key": "b8ca92e43b0201bc1e9bf00dd2eea31ff7b76085c3cd8236ccf1b4b08ba3ad7f",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "7b63590538b921236bd06f0bcb87a1a91388dd84dc162a4020b05dcecc1d7860990c24d8886af2e5e209853d45cf6f94d395e35f13725675307d9609164d3608"
+        },
+        {
+          "generation": 2,
+          "certificate": "7636c68cef5cc329a5b55390d3607280bdb2437675971428cf5aa206cee7b643e719ce09ffbb08cdf09f969724d1d282eeea5c7074bede375f69691f21c5080c"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "21eb241b33ec2fd26740256bd6e8f4c44d83bed542ce5b456cf91d7bde5ce770299a56f408acfdc99d699668aa2cd1ff1e84ed0d545642bc47f4ac42a74f6307"
+        }
+      ]
+    },
+    {
+      "entropy": "3bc5b7e3665be9f4e71fa91820463bc94a02d5c6ab8c4f2f8a4b9b92088f7ef6",
+      "phrase": "design color web smile salon whip organ vivid blouse acquire moment myth parent helmet boy immense execute labor napkin damp calm element wink senior",
+      "root": "f24360165ce039b6bfcb12cfd6ad78f80933f2b48a792965ddc6c42d4ca3e655",
+      "signing_seed": "ae612f47961932d64c32c523a669c29dfd80296a045d317ac39f91f63d7730b4",
+      "signing_key": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
+      "exchange_secret": "4d7012ec002b62aea90913867a18cfbd8fd33c740dfefe26e1757a4b7e49930c",
+      "exchange_key": "71bdd1f99df7a42b2e42b4c829bedcc4ea5ba8443abdd14dc61c2bfc05f83755",
+      "binding": "7e1662742efda0f4aea02215ef262319b2da4ddc3675508796100bbfcf453bbadbcd864531cf19099456aa7f076730c943d671249c2374372aec04380322b70b",
+      "device_seed": "101d9141e8db10bd45945aa1cccab67682773d562fb9b780a0794f0932b8da62",
+      "device_key": "bb2f502bdcf937c7b675b57ddcb522d7de71db6abe8694ec1c64fef5dc78c6f2",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "5496fe556814adca1e29e2eece3b6583975f945a8359a03e653f6b8c56cc0578a0df25e535e2c4cf168e40e6f01243f66e950ba2f6bf56de1a7f625cd3e40f0d"
+        },
+        {
+          "generation": 2,
+          "certificate": "e09e95a57490846a8c227b8cdd78a2a98f8c93b9ae24c0eae9c76adc9a3cf6ec6b68228175499c0e85eb2db7d7fc2499fd8d3977c0c8a19547884ba6b6e60e07"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "56e88492b49dc90cc58237822dad1d8e21ff5046df6f5570c6ac882191f8c21a590e24aa35b5390613841fe7bb51c8295a915d5bcbb86f784ca69d6356967d0f"
+        }
+      ]
+    },
+    {
+      "entropy": "df0c4cc7ea6b182fadd257adf3a3565281aca8ae875bed5a2f61f9fb3c4c8105",
+      "phrase": "tenant give cradle state ranch blind resemble enough pupil other stereo pink bracket february ring twin unhappy sphere such view record chaos advice quote",
+      "root": "e8b18a5850e76bc790c5ec51195e1061ee3cf3b09f6f26cdaad5a26b0f6f0dab",
+      "signing_seed": "0a9a18546dedee0b4bbeb6ae24c107707f5cc58a81fdf77b92c2f3b117b767dc",
+      "signing_key": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "exchange_secret": "e4788c65f78aa203f40e83d1aafa0fa035b4fa6967d0c24df0e5c05c8b418184",
+      "exchange_key": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
+      "binding": "39aeee3dab3b35cd30f2c096dff8f37c2adada22d41449d93d9a73aff8fc73532c8d975f97baa0c3f2f406a7c1601b71d70bdd8a55086bcce5d0b1aa9f995e07",
+      "device_seed": "c3504ec7bcd7e98e968bf09f958bcb6eeb2ec6d18bd336c41d1e46ac5ce8f871",
+      "device_key": "727366f4044d744ba10d57c0eeaed22ab45778195421f4914d35181038440613",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "0bc8eafa64b496ae658101b7b41323ea1006f5464dabd1581ab74b02879d771eb9f350d751430aab1be5c31600f9bcd2ed21bd6f0109ca47babe0b72014d1f02"
+        },
+        {
+          "generation": 2,
+          "certificate": "f9d4eb869bcafdf9d0f716dcb0871a060614ca9f98a15916dc3ac7e9ae75e30e985aad5833b038d4c6c9bdab58e147f4bd6b1b4aa45fa2ca0e6a0991e88b0f0b"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "ff2860b130cdfdd8b6d43639662db58d93df0dd4161eef73a24e5de31ddfc2b9ad9ae4766aa33f4e9bf242299c159aeb2b08626800ceeefb289e3a74989aa601"
+        }
+      ]
+    },
+    {
+      "entropy": "361554026cadcf67b7f1e6f4342cb222c88658059d6151fafff5b988dd45b941",
+      "phrase": "current primary above sun table record thank devote vintage pause clutch easily mask clown biology promote faint subject word indoor miss people topic corn",
+      "root": "64edcf3151f02a2dd7c842d98b1ea1b863dabe77a523c34fa56f0396eb2643a0",
+      "signing_seed": "376b7530fe6b8455e6a8124dc5854e6be053fbf3c330c163f6c12e57e65e874f",
+      "signing_key": "9ffda429f1fefb1a2be989a4ae152f908afec595e5e1e15b303c9e6e13bd3ae1",
+      "exchange_secret": "66f6c295b57d24fb6f2d7465a97752ba8b4309f196ad4cf60e3e6c7f3a18af8d",
+      "exchange_key": "acdc2fb914ea95968da10368310a58f70a2d533cd622e01c274bd501d8c9c474",
+      "binding": "34f13583ef7b41e9cd33368640ab91b1945580eba0a83c94fc2224627eb434463b1fd98230e2e11caa8cb21ec28af4ba5f7880ed485f86c5ce34eb834444d40c",
+      "device_seed": "874cb5b0df10250c91c26078e7655111b039fcf0ce17c70b96d7530786656514",
+      "device_key": "3ef45d11a9a39419a85b1b30b3c175b8b0b1d4b06f8f8698d4b50c04373d3ae6",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "c93195aef3be9679290a298600c927e706a3430f7a90cf60f065f824a48a897bc6ee118e44d026578b1d0db4f00c9619480c5856031cebc30e1d626f3fd7ee02"
+        },
+        {
+          "generation": 2,
+          "certificate": "65fcb5bd63487806e48d6b5c45210a514e8b0ce1c786644e8432ad97cd48c76bfafd3ecd9cd6fcdd09797d14f4d0158fe6622f841f0e077fc4e9e94a596dda05"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "8feee6f4c71d3ef711d1942c745d7d9dc6e396b355fcd20919f81cf8b58865379ac91298de004229826bf65c437f9abd422bdc2dd85ac10372f3eb082ff06603"
+        }
+      ]
+    },
+    {
+      "entropy": "03c583682930b3893e377387a78e4ece6fad94e7431c141f3e4f76b853a8386b",
+      "phrase": "adult clown sure fame arctic setup web unveil marble detect neck orphan width skill other glory beef wheat need uniform lunch staff ticket indicate",
+      "root": "1a0d83ff927c064ee9caf9ed24c071a2f4c77855087dc76be821b53e28fcd2a1",
+      "signing_seed": "b28b1f350680c7c8cbf2d992c6c7915c9b143135f46a75e9e119aece120ba239",
+      "signing_key": "85e08b24ce5ee3a9b3a5f4f29f6aa0979b0fe296e70d4c820838d71d3d3ca272",
+      "exchange_secret": "a3b36532c83743be246584552572bcf19fa697ac0a8c54c6bfefcfa9e889749d",
+      "exchange_key": "6b4d22d474b8158c31084cbf7c3fa674392626486a33c0618ad2021afe568e7d",
+      "binding": "715b4e3804c5a696b77ff64ba6df1ec5f56d7654512d021b6bea36b71afb8459e11ac257183238ff0d8fd40a16504ca7df02429ef33e99ab07b9fa2dafa68807",
+      "device_seed": "35223800085807d4fc95289ac4af03d9aca7e70267b0b668495b76a94578a7ba",
+      "device_key": "19c8b0b9930040fa26c373176d4c66e94a18c64f0a2cb49292ca34475a14c97c",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "7073a3d160f99e28f953c8935473c610f7f330366e8780fb1a368b53e7edcc2deb7a6d08a505c3ec4aa2b837e0e8dba99a7592bf2c6f671ca0a03eaceca2ec06"
+        },
+        {
+          "generation": 2,
+          "certificate": "8b189c1cec501aaa948d4faf4ab2edff91be75826387030422359080ff863e991e7783a3fd1a152bffa8a28d01027d466bab25217c488f2148913e781a3e4f09"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "265dd3e9cc765e00ca144fb6a6088a46922e6d2be7a98377fd52f556ec969bdbf6ce274ee85110bdc1d8263381132c2838c91712c8bb9731f8811e5287f61102"
+        }
+      ]
+    },
+    {
+      "entropy": "832a42356c6aa76480032c7cb599df0dd48da6c3288ab1f5e7375bf48df1df74",
+      "phrase": "lobster faith minute sugar price rather abandon grain lake proud jelly brick emotion square arrow bacon rapid quality soccer retire emotion wedding lava oven",
+      "root": "0fdd83b4b5a6e1d0810e2fc24e0cd8302fbf746047ed1c8dea047dcb87d0db93",
+      "signing_seed": "30098d8c35f73aa6d54727ba1ba9e24f72e64df456747c15d6357503a4f5f5d9",
+      "signing_key": "8bb9e15be20ef7ab9c9e1ed788ae440869fd97489de2970349afbff662f2b4df",
+      "exchange_secret": "0b340650d34b928f6c40d0aec9c0aba6572f1a36d592005cef310118bb9e3834",
+      "exchange_key": "398ce401fcd148542286ab9e908c2709c5f83db31e70be700d67a68e53ce587c",
+      "binding": "e875a1c44a96e2a89c70c9319a89eff9fb8ab02ba901e5a8ef8f5e1ef01a23d63699596d4e9c630ef2425d50b2c7ff3f5869c4ba17b6a205b47e7e2a96a31805",
+      "device_seed": "712675a9c6f8f4c725f72eb806ea37895be9d7b380e784fe367101c7291e9a8f",
+      "device_key": "105a9ae81b0faddba6c633aa68c2a59f87b29ff14836250bff19a046f55a24eb",
+      "certificates": [
+        {
+          "generation": 1,
+          "certificate": "d0c504442b06189d061129717e2c816cf44ef7b1e5fda74975ac187761e841dea55f69e9dc9a29f9dfacabf04045be656d4e85c863f0e89a15132574de0c240f"
+        },
+        {
+          "generation": 2,
+          "certificate": "4a820e0c5fbf0201f73a535d80b296c0d6b1961bc2ba070ad78ec7921e382b472c090c141ffed094878e155b75eff329b0d98f17c727aa363b1ab6971accda07"
+        },
+        {
+          "generation": 4294967295,
+          "certificate": "fabc96b2dde5a736c318237da3cffc06fe8e7d7e99fc2b4d8ebf72c507c0f2d2adea29b3f38531b37cf452211578e4c62a16990debbffe2c392816808731be0b"
+        }
+      ]
+    }
+  ]
+}

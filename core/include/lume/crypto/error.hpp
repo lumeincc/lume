@@ -15,6 +15,7 @@ enum class Error : std::uint8_t {
     authentication_failed,
     self_test_failed,
     library_failure,
+    out_of_range,
 };
 
 template <typename T>

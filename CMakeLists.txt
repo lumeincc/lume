@@ -13,6 +13,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(LUME_BUILD_TESTS "Build the test suites" ON)
 option(LUME_COVERAGE "Instrument the build for coverage" OFF)
+option(LUME_BUILD_FUZZERS "Build the libFuzzer targets, Clang only" OFF)
 set(LUME_SANITIZERS "" CACHE STRING "Sanitizers to enable, for example address;undefined")
 
 include(cmake/LumeCompilerOptions.cmake)

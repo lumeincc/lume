@@ -111,6 +111,36 @@ jobs:
       - name: Analyse the library and the tests
         run: clang-tidy-22 -p build/linux-clang-asan --quiet core/src/*/*.cpp core/tests/*/*.cpp
 
+  fuzz:
+    name: Linux · fuzz
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build autoconf autoconf-archive automake libtool
+      - name: Install Clang 22
+        run: sh tools/ci/install-llvm.sh clang-22 libclang-rt-22-dev
+      - name: Prepare vcpkg
+        run: sh tools/ci/prepare-vcpkg.sh
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-linux-linux-clang-fuzz-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg/ports/**') }}
+          restore-keys: vcpkg-linux-linux-clang-fuzz-
+      - name: Configure
+        run: cmake --preset linux-clang-fuzz -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
+      - name: Build
+        run: cmake --build --preset linux-clang-fuzz
+      - name: Fuzz every parser for two minutes
+        run: |
+          for fuzzer in build/linux-clang-fuzz/core/fuzz/lume_*_fuzzer; do
+            name=$(basename "$fuzzer" _fuzzer | cut -d_ -f2-)
+            mkdir -p "$RUNNER_TEMP/corpus/$name"
+            "$fuzzer" -max_total_time=120 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 "$RUNNER_TEMP/corpus/$name" "core/fuzz/corpus/$name"
+          done
+
   windows:
     name: Windows · ${{ matrix.preset }}
     runs-on: windows-2025
@@ -171,6 +201,10 @@ jobs:
         run: |
           node core/tools/generate_known_answers.mjs core/tests/vectors/wycheproof "$RUNNER_TEMP/known_answers.hpp"
           diff -u core/src/crypto/known_answers.hpp "$RUNNER_TEMP/known_answers.hpp"
+          node core/tools/generate_wordlist.mjs core/third_party/bip39/english.txt "$RUNNER_TEMP/wordlist.hpp"
+          diff -u core/src/identity/wordlist.hpp "$RUNNER_TEMP/wordlist.hpp"
+          node core/tools/generate_identity_vectors.mjs core/third_party/bip39/english.txt core/tests/vectors/trezor/bip39_vectors.json "$RUNNER_TEMP/identity.json"
+          diff -u core/tests/vectors/lume/identity.json "$RUNNER_TEMP/identity.json"
       - name: Secret scan
         run: |
           curl -fsSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
