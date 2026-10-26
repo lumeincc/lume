@@ -212,5 +212,18 @@ RC_GTEST_PROP(IdentityProperties, ACertificateIsNotABinding, ())
     RC_ASSERT_FALSE(verify_binding(published));
 }
 
+TEST(Identity, ABindingOverANonCanonicalExchangeKeyIsRefused)
+{
+    const auto identity = identity_from(Bytes(entropy_size, 4));
+    auto published = public_identity(identity);
+    published.exchange_key.back() = static_cast<std::uint8_t>(published.exchange_key.back() | 0x80U);
+    const auto binding = crypto::ed25519_sign(
+        identity.signing.seed,
+        crypto::Encoder{}.label("identity/bind").raw(published.signing_key).raw(published.exchange_key).take());
+    ASSERT_TRUE(binding.has_value());
+    published.binding = *binding;
+    EXPECT_FALSE(verify_binding(published));
+}
+
 }
 }

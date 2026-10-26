@@ -91,7 +91,7 @@ crypto::Result<Identity> derive_identity(const SecretBytes& entropy)
 
 bool verify_binding(const PublicIdentity& identity)
 {
-    return crypto::ed25519_verify(
+    return crypto::x25519_is_canonical(identity.exchange_key) && crypto::ed25519_verify(
         identity.signing_key, binding_message(identity.signing_key, identity.exchange_key), identity.binding);
 }
 

@@ -18,6 +18,8 @@ struct X25519KeyPair {
     SecretBytes secret_key;
 };
 
+[[nodiscard]] bool x25519_is_canonical(ByteView public_key);
+
 [[nodiscard]] X25519KeyPair x25519_generate();
 
 [[nodiscard]] Result<X25519KeyPair> x25519_from_secret(SecretBytes secret_key);
