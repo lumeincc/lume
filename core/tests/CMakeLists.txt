@@ -21,6 +21,8 @@ add_executable(lume_core_tests
     crypto/x25519_test.cpp
     identity/identity_test.cpp
     identity/phrase_test.cpp
+    wire/codec_test.cpp
+    wire/structures_test.cpp
 )
 
 target_include_directories(lume_core_tests PRIVATE . ../src)
