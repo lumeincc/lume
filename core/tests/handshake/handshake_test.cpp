@@ -41,6 +41,11 @@ Bytes field(const nlohmann::json& object, const char* name)
     return test::from_hex(object.at(name).get<std::string>());
 }
 
+std::string signature_hex(const wire::PrekeyX& prekey)
+{
+    return prekey.signature ? test::to_hex(*prekey.signature) : std::string();
+}
+
 identity::Identity identity_from(const Bytes& entropy)
 {
     return must(identity::derive_identity(SecretBytes::copy_of(entropy)));
@@ -179,9 +184,9 @@ TEST(Handshake, MatchesTheLumeVectors)
                 bob, PrekeyFacts{.kind = wire::PrekeyKind::seal_key, .id = ssk_vector.at("id").get<std::uint32_t>(), .created_at = at, .generation = generation},
                 ssk.public_key)),
             .one_time_prekey = std::nullopt};
-        EXPECT_EQ(test::to_hex(*bundle.signed_prekey.signature), spk_vector.at("signature").get<std::string>());
+        EXPECT_EQ(signature_hex(bundle.signed_prekey), spk_vector.at("signature").get<std::string>());
         EXPECT_EQ(test::to_hex(bundle.kem_prekey.signature), vector.at("kem_prekey").at("signature").get<std::string>());
-        EXPECT_EQ(test::to_hex(*bundle.seal_key.signature), ssk_vector.at("signature").get<std::string>());
+        EXPECT_EQ(signature_hex(bundle.seal_key), ssk_vector.at("signature").get<std::string>());
 
         std::optional<crypto::X25519KeyPair> one_time;
         if (!vector.at("one_time_prekey").is_null()) {
