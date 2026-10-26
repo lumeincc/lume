@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -34,8 +35,8 @@ void append_chunk(std::string& digits, std::span<const std::uint8_t> chunk)
     }
     value %= chunk_modulus;
     std::string group(chunk_digits, '0');
-    for (auto position = group.rbegin(); position != group.rend(); ++position) {
-        *position = static_cast<char>('0' + (value % 10));
+    for (char& digit : std::views::reverse(group)) {
+        digit = static_cast<char>('0' + (value % 10));
         value /= 10;
     }
     digits += group;
