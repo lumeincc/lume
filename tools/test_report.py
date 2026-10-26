@@ -15,6 +15,7 @@ MODULES = (
     ("Identity and recovery phrase", ("DeviceCertificate", "Identity", "Phrase", "Wordlist")),
     ("Safety numbers", ("SafetyNumber", "IdentityMatching")),
     ("PQXDH handshake", ("Handshake", "Prekey")),
+    ("Double Ratchet", ("Ratchet",)),
     ("Wire codec", ("WireCodec", "WireStructure", "WireStructures")),
     ("Live walkthrough", ("lab",)),
     ("Test support", ("Hex",)),

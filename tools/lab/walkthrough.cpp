@@ -13,6 +13,7 @@
 #include "lume/handshake/prekey.hpp"
 #include "lume/identity/identity.hpp"
 #include "lume/identity/phrase.hpp"
+#include "lume/ratchet/ratchet.hpp"
 #include "lume/safety/safety_number.hpp"
 #include "lume/wire/structures.hpp"
 
@@ -60,6 +61,12 @@ T must(std::expected<T, E> result, std::string_view step)
         throw std::runtime_error(std::format("the lab could not {}", step));
     }
     return std::move(*result);
+}
+
+template <typename T, typename E>
+bool fails_with(const std::expected<T, E>& result, E error)
+{
+    return !result && result.error() == error;
 }
 
 std::uint64_t now_seconds()
@@ -237,20 +244,26 @@ void cheating_relay(Report& report, const handshake::Bundle& bundle, const ident
     report.section("The relay tries to cheat Alice");
     auto forged = bundle;
     forged.signed_prekey.key.front() = static_cast<std::uint8_t>(forged.signed_prekey.key.front() ^ 1U);
-    report.check("a replaced signed prekey is refused", handshake::check_bundle(forged, std::nullopt, now).error() == handshake::Error::invalid_prekey);
+    report.check("a replaced signed prekey is refused", fails_with(handshake::check_bundle(forged, std::nullopt, now), handshake::Error::invalid_prekey));
 
     auto recovered = bundle;
     recovered.generation = first_generation + 1;
-    report.check("a fake recovery (generation 2 without Bob's signature) is refused", handshake::check_bundle(recovered, std::nullopt, now).error() == handshake::Error::invalid_prekey);
+    report.check("a fake recovery (generation 2 without Bob's signature) is refused", fails_with(handshake::check_bundle(recovered, std::nullopt, now), handshake::Error::invalid_prekey));
 
-    report.check("keys more than 9 days old are refused", handshake::check_bundle(bundle, std::nullopt, now + ten_days).error() == handshake::Error::prekey_not_usable);
+    report.check("keys more than 9 days old are refused", fails_with(handshake::check_bundle(bundle, std::nullopt, now + ten_days), handshake::Error::prekey_not_usable));
 
     report.check(
         "once Alice has pinned Bob, someone else's bundle is refused",
-        handshake::check_bundle(bundle, identity::public_identity(stranger), now).error() == handshake::Error::identity_changed);
+        fails_with(handshake::check_bundle(bundle, identity::public_identity(stranger), now), handshake::Error::identity_changed));
 }
 
-void session(Report& report, const Account& alice, const Account& bob, const Published& published, std::uint64_t now)
+struct Conversation {
+    ratchet::State alice;
+    ratchet::State bob;
+};
+
+std::optional<Conversation> session(
+    Report& report, const Account& alice, const Account& bob, const Published& published, std::uint64_t now)
 {
     report.section("Alice starts a post-quantum session with Bob (PQXDH)");
     const auto initiation = must(handshake::initiate(alice.identity, published.bundle, std::nullopt, now), "initiate the handshake");
@@ -268,7 +281,7 @@ void session(Report& report, const Account& alice, const Account& bob, const Pub
     auto replay = initiation.header;
     replay.ephemeral_key.back() = static_cast<std::uint8_t>(replay.ephemeral_key.back() | 0x80U);
     const auto replayed = handshake::respond(bob.identity, replay, responder_keys(published));
-    report.check("a second encoding of Alice's ephemeral key is refused, so the replay guard holds", !replayed && replayed.error() == handshake::Error::non_canonical_key);
+    report.check("a second encoding of Alice's ephemeral key is refused, so the replay guard holds", fails_with(replayed, handshake::Error::non_canonical_key));
 
     auto altered = initiation.header;
     altered.kem_ciphertext.front() = static_cast<std::uint8_t>(altered.kem_ciphertext.front() ^ 1U);
@@ -278,6 +291,50 @@ void session(Report& report, const Account& alice, const Account& bob, const Pub
     auto truncated = sent;
     truncated.pop_back();
     report.check("a truncated header is refused by the wire decoder", !wire::decode(truncated, wire::read_initial_header));
+
+    auto alice_ratchet = ratchet::start_as_alice(initiation.keys, initiation.peer_ratchet_key);
+    if (!response || !alice_ratchet) {
+        return std::nullopt;
+    }
+    return Conversation{.alice = std::move(*alice_ratchet), .bob = ratchet::start_as_bob(*response, published.signed_prekey)};
+}
+
+bool reads(ratchet::State& receiver, const wire::RatchetMessage& message, std::string_view expected, std::uint64_t now)
+{
+    const auto opened = ratchet::decrypt(receiver, message, now);
+    return opened && text_of(opened->view()) == expected;
+}
+
+void conversation(Report& report, Conversation& chat, std::uint64_t now)
+{
+    report.section("Alice and Bob exchange messages (Double Ratchet with encrypted headers)");
+    report.check("Bob cannot write first: his sending chain starts with Alice's first message", fails_with(ratchet::encrypt(chat.bob, bytes_of("too early")), ratchet::Error::cannot_send));
+
+    constexpr std::string_view hello = "Hi Bob, it's Alice.";
+    const auto first = must(ratchet::encrypt(chat.alice, bytes_of(hello)), "encrypt a message");
+    note(std::format("the relay sees {} bytes: an {}-byte encrypted header and the encrypted body, not who wrote it or its number", wire::encode(first).size(), wire::encrypted_header_size));
+    report.check(std::format("Bob reads \"{}\"", hello), reads(chat.bob, first, hello, now));
+
+    const auto alice_key_before = chat.alice.sending_ratchet.public_key;
+    constexpr std::string_view reply = "Hi Alice! Got it.";
+    const auto answer = must(ratchet::encrypt(chat.bob, bytes_of(reply)), "encrypt the reply");
+    report.check(std::format("Alice reads Bob's reply \"{}\"", reply), reads(chat.alice, answer, reply, now));
+    report.check("Alice's ratchet key turned over after the reply, so a stolen key stops working", chat.alice.sending_ratchet.public_key != alice_key_before);
+
+    std::vector<wire::RatchetMessage> burst;
+    for (int number = 1; number <= 3; ++number) {
+        burst.push_back(must(ratchet::encrypt(chat.alice, bytes_of(std::format("message {}", number))), "encrypt a message"));
+    }
+    const bool in_any_order = reads(chat.bob, burst.at(2), "message 3", now) && reads(chat.bob, burst.at(0), "message 1", now)
+        && reads(chat.bob, burst.at(1), "message 2", now);
+    report.check("three messages that arrive out of order (3, 1, 2) all open", in_any_order);
+    report.check("a message the relay replays is refused", fails_with(ratchet::decrypt(chat.bob, burst.at(0), now), ratchet::Error::old_or_duplicate));
+
+    const auto last = must(ratchet::encrypt(chat.alice, bytes_of("message 4")), "encrypt a message");
+    auto altered = last;
+    altered.body.back() = static_cast<std::uint8_t>(altered.body.back() ^ 1U);
+    report.check("a message changed on the way is refused", fails_with(ratchet::decrypt(chat.bob, altered, now), ratchet::Error::authentication_failed));
+    report.check("and the session is untouched: the genuine message still opens", reads(chat.bob, last, "message 4", now));
 }
 
 void safety_numbers(Report& report, const Account& alice, const Account& bob, const Account& carol)
@@ -334,7 +391,9 @@ void walk_through(Report& report)
 
     const auto carol = create_account();
     cheating_relay(report, published.bundle, carol.identity, now);
-    session(report, alice, bob, published, now);
+    if (auto chat = session(report, alice, bob, published, now)) {
+        conversation(report, *chat, now);
+    }
     safety_numbers(report, alice, bob, carol);
     device(report, alice);
 }
