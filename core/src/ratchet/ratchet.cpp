@@ -441,6 +441,9 @@ Result<SecretBytes> decrypt(State& state, const wire::RatchetMessage& message, s
     if (auto skipped = skip_message_keys(work, header->message_number, now); !skipped) {
         return std::unexpected(skipped.error());
     }
+    if (!work.receiving_chain) {
+        return std::unexpected(Error::unknown_header);
+    }
     auto step = kdf_ck(*work.receiving_chain);
     auto plaintext = crypto::aead_open(step.message_key, body_associated_data, message.body);
     if (!plaintext) {
