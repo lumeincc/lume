@@ -20,6 +20,8 @@ add_library(lume_core STATIC
     src/identity/identity.cpp
     src/identity/phrase.cpp
     src/safety/safety_number.cpp
+    src/wire/codec.cpp
+    src/wire/structures.cpp
 )
 add_library(lume::core ALIAS lume_core)
 

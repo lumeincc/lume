@@ -14,3 +14,4 @@ function(lume_add_fuzzer name source)
 endfunction()
 
 lume_add_fuzzer(lume_phrase_fuzzer phrase_fuzzer.cpp)
+lume_add_fuzzer(lume_wire_fuzzer wire_fuzzer.cpp)
