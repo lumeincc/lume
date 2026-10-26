@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Relay protocol
 
-Status: **draft**, revision 7.
+Status: **draft**, revision 8.
 Companion to [CRYPTO.md](CRYPTO.md), which defines every key and construction
 named here.
 

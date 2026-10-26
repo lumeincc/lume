@@ -9,6 +9,7 @@
 #include "support/properties.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <utility>
 
@@ -90,6 +91,17 @@ RC_GTEST_PROP(SecretBytesProperties, EqualsDetectsAnySingleBitChange, (const Byt
     RC_PRE(!bytes.empty());
     const auto secret = SecretBytes::copy_of(bytes);
     RC_ASSERT_FALSE(secret.equals(test::flip_random_bit(bytes)));
+}
+
+TEST(SecretBytes, JoinedConcatenatesThePartsInOrder)
+{
+    const Bytes first{1, 2};
+    const Bytes empty;
+    const Bytes second{3, 4, 5};
+    const std::array<ByteView, 3> parts{first, empty, second};
+    const auto joined = SecretBytes::joined(parts);
+    EXPECT_TRUE(joined.equals(Bytes{1, 2, 3, 4, 5}));
+    EXPECT_TRUE(SecretBytes::joined({}).empty());
 }
 
 }

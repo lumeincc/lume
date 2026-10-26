@@ -8,7 +8,9 @@
 
 #include <sodium.h>
 
+#include <algorithm>
 #include <expected>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -16,6 +18,17 @@ namespace lume::crypto {
 
 static_assert(crypto_scalarmult_BYTES == x25519_key_size);
 static_assert(crypto_scalarmult_SCALARBYTES == x25519_key_size);
+
+bool x25519_is_canonical(ByteView public_key)
+{
+    static constexpr ByteArray<x25519_key_size> field_prime{
+        0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
+    if (public_key.size() != x25519_key_size) {
+        return false;
+    }
+    return std::ranges::lexicographical_compare(public_key | std::views::reverse, field_prime | std::views::reverse);
+}
 
 X25519KeyPair x25519_generate()
 {

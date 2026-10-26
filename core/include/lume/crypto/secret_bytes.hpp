@@ -17,6 +17,7 @@ public:
     explicit SecretBytes(std::size_t size);
 
     static SecretBytes copy_of(ByteView bytes);
+    static SecretBytes joined(std::span<const ByteView> parts);
 
     SecretBytes(const SecretBytes&) = delete;
     SecretBytes& operator=(const SecretBytes&) = delete;

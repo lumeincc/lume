@@ -34,6 +34,20 @@ SecretBytes SecretBytes::copy_of(ByteView bytes)
     return secret;
 }
 
+SecretBytes SecretBytes::joined(std::span<const ByteView> parts)
+{
+    std::size_t size = 0;
+    for (const ByteView part : parts) {
+        size += part.size();
+    }
+    SecretBytes secret(size);
+    auto next = secret.writable().begin();
+    for (const ByteView part : parts) {
+        next = std::ranges::copy(part, next).out;
+    }
+    return secret;
+}
+
 SecretBytes::SecretBytes(SecretBytes&& other) noexcept
     : data_(std::exchange(other.data_, nullptr))
     , size_(std::exchange(other.size_, 0))

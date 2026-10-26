@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Cryptography
 
-Status: **draft**, revision 7.
+Status: **draft**, revision 8.
 Nothing here is implemented until this document says it is; code that
 disagrees with it is a bug in one of the two.
 
@@ -102,7 +102,7 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 | `SHA256`, `SHA512` | SHA-2 | `crypto_hash_sha256`, `crypto_hash_sha512` |
 | `HMAC(k, m)` | HMAC-SHA256 | `crypto_auth_hmacsha256_*` |
 | `HKDF(salt, ikm, info, L)` | HKDF-SHA256, RFC 5869 | `crypto_kdf_hkdf_sha256_extract` / `_expand` |
-| `DH(sk, pk)` | X25519, RFC 7748 | `crypto_scalarmult`; **a non-zero return (low-order point) aborts the operation** |
+| `DH(sk, pk)` | X25519, RFC 7748 | `crypto_scalarmult`; **a non-zero return (low-order point) aborts the operation**, and **a public key that is not canonical** — top bit set, or not below 2^255 − 19 — is refused wherever one arrives from another party, so every key has exactly one encoding |
 | `Sign`, `Verify` | Ed25519, RFC 8032 | `crypto_sign_detached`, `crypto_sign_verify_detached`; **a public key outside the prime-order subgroup is refused** (`crypto_core_ed25519_is_valid_point`), so one private key has one public key |
 | `AEAD(k, n, ad, m)` | XChaCha20-Poly1305-IETF | `crypto_aead_xchacha20poly1305_ietf_encrypt` / `_decrypt` |
 | `Stream` | XChaCha20-Poly1305 secretstream | `crypto_secretstream_xchacha20poly1305_*` |
@@ -365,7 +365,10 @@ envelope is dropped.
 3. Otherwise look up the private prekeys by kind and id; an unknown id aborts.
 4. **Replay guard.** When no one-time key was used, reject an initial header
    whose `SHA256(EK_A ‖ CT)` was already accepted under the same `SPK`/`PQSPK`.
-   The set is dropped with the key.
+   The set is dropped with the key. The guard holds because `EK_A` must be
+   canonical (§2): X25519 ignores the top bit of a public key, so a second
+   encoding of the same key would otherwise give the same session under a new
+   tag.
 5. Recompute `SK, HKa, NHKb, AD`, initialise the ratchet as Bob (§6.3), and
    decrypt **on a scratch copy**. Only if it authenticates: store the session,
    delete the used one-time private keys, pin Alice. Otherwise discard

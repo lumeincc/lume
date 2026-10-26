@@ -17,6 +17,8 @@ add_library(lume_core STATIC
     src/crypto/secret_bytes.cpp
     src/crypto/self_test.cpp
     src/crypto/x25519.cpp
+    src/handshake/handshake.cpp
+    src/handshake/prekey.cpp
     src/identity/identity.cpp
     src/identity/phrase.cpp
     src/safety/safety_number.cpp

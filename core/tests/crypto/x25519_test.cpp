@@ -87,5 +87,32 @@ RC_GTEST_PROP(X25519Properties, DifferentPeersGiveDifferentSecrets, ())
     RC_ASSERT_FALSE(with_bob->equals(with_carol->view()));
 }
 
+TEST(X25519, OnlyOneEncodingOfEachKeyIsCanonical)
+{
+    Bytes key(x25519_key_size, 0);
+    EXPECT_TRUE(x25519_is_canonical(key));
+    std::ranges::fill(key, std::uint8_t{0xff});
+    key.back() = 0x7f;
+    EXPECT_FALSE(x25519_is_canonical(key));
+    key.front() = 0xed;
+    EXPECT_FALSE(x25519_is_canonical(key));
+    key.front() = 0xec;
+    EXPECT_TRUE(x25519_is_canonical(key));
+    key.back() = 0xff;
+    EXPECT_FALSE(x25519_is_canonical(key));
+    EXPECT_FALSE(x25519_is_canonical(Bytes(31)));
+    EXPECT_FALSE(x25519_is_canonical(Bytes(33)));
+}
+
+RC_GTEST_PROP(X25519Properties, GeneratedKeysAreCanonicalAndTheTopBitIsNot, ())
+{
+    auto key = x25519_from_secret(SecretBytes::copy_of(test::random_bytes_of(x25519_key_size)));
+    RC_ASSERT(key.has_value());
+    RC_ASSERT(x25519_is_canonical(key->public_key));
+    auto flagged = key->public_key;
+    flagged.back() = static_cast<std::uint8_t>(flagged.back() | 0x80U);
+    RC_ASSERT_FALSE(x25519_is_canonical(flagged));
+}
+
 }
 }
