@@ -21,6 +21,7 @@ add_executable(lume_core_tests
     crypto/x25519_test.cpp
     identity/identity_test.cpp
     identity/phrase_test.cpp
+    safety/safety_number_test.cpp
 )
 
 target_include_directories(lume_core_tests PRIVATE . ../src)
@@ -41,7 +42,14 @@ lume_configure_target(lume_core_tests)
 
 include(GoogleTest)
 set(LUME_PROPERTY_RUNS 500 CACHE STRING "Cases each property test checks")
+set(LUME_FINGERPRINT_PROPERTY_RUNS 100 CACHE STRING "Cases each property over the 5200-round fingerprint checks")
 gtest_discover_tests(lume_core_tests
     DISCOVERY_TIMEOUT 120
+    DISCOVERY_EXTRA_ARGS --gtest_filter=-SafetyNumberProperties.*
     PROPERTIES ENVIRONMENT "RC_PARAMS=max_success=${LUME_PROPERTY_RUNS}"
+)
+gtest_discover_tests(lume_core_tests
+    DISCOVERY_TIMEOUT 120
+    DISCOVERY_EXTRA_ARGS --gtest_filter=SafetyNumberProperties.*
+    PROPERTIES ENVIRONMENT "RC_PARAMS=max_success=${LUME_FINGERPRINT_PROPERTY_RUNS}"
 )
