@@ -155,10 +155,17 @@ CI.
   5200-round safety-number fingerprint, which run 100 cases
   (`LUME_FINGERPRINT_PROPERTY_RUNS`); the fingerprint itself is checked
   against independent vectors in both orders.
-- Build and test locally with the presets: `cmake --preset windows-msvc`,
-  `cmake --build --preset windows-msvc-debug`, `ctest --preset
-  windows-msvc-debug`, and the `linux-*` equivalents. `VCPKG_ROOT` must point
-  at a vcpkg checkout of the commit pinned in `vcpkg.json`.
+- Run everything with one command — configure, build, every test, and an
+  HTML report grouped by module (`build/<preset>/test-report.html`):
+  `pwsh tools/test.ps1` on Windows, `sh tools/test.sh` on Linux. Both are
+  `cmake --workflow --preset windows` (or `linux`) plus the report.
+  `VCPKG_ROOT` must point at a vcpkg checkout of the commit pinned in
+  `vcpkg.json`.
+- See the core work: `lume-lab` (built next to the tests, in
+  `build/<preset>/tools/lab/`) walks through accounts, recovery, the PQXDH
+  handshake, attacks and safety numbers on the real core and marks every check
+  `[ ok ]` or `[FAIL]`; `lume-lab new` creates a throwaway account, and
+  `lume-lab phrase` checks a phrase you type. The walkthrough is also a test.
 - Never weaken or delete an assertion to make a run pass. When a test fails,
   decide first whether the code or the test is wrong, and say which.
 - Report only what was observed. A check that could not run is reported as

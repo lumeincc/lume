@@ -195,7 +195,8 @@
       "name": "test-base",
       "hidden": true,
       "output": {
-        "outputOnFailure": true
+        "outputOnFailure": true,
+        "outputJUnitFile": "test-results.xml"
       },
       "execution": {
         "noTestsAction": "error"
@@ -247,6 +248,44 @@
       "name": "linux-gcc-release",
       "inherits": "test-base",
       "configurePreset": "linux-gcc-release"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "windows",
+      "displayName": "Windows, MSVC: configure, build and run every test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-debug"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-debug"
+        }
+      ]
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux, GCC with sanitizers: configure, build and run every test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "linux-gcc-asan"
+        },
+        {
+          "type": "build",
+          "name": "linux-gcc-asan"
+        },
+        {
+          "type": "test",
+          "name": "linux-gcc-asan"
+        }
+      ]
     }
   ]
 }
