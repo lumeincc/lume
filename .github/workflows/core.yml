@@ -109,7 +109,7 @@ jobs:
       - name: Configure
         run: cmake --preset linux-clang-asan -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
       - name: Analyse the library and the tests
-        run: clang-tidy-22 -p build/linux-clang-asan --quiet core/src/*/*.cpp core/tests/*/*.cpp
+        run: clang-tidy-22 -p build/linux-clang-asan --quiet core/src/*/*.cpp core/tests/*/*.cpp tools/lab/*.cpp
 
   fuzz:
     name: Linux · fuzz

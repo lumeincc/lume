@@ -14,6 +14,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 option(LUME_BUILD_TESTS "Build the test suites" ON)
 option(LUME_COVERAGE "Instrument the build for coverage" OFF)
 option(LUME_BUILD_FUZZERS "Build the libFuzzer targets, Clang only" OFF)
+option(LUME_BUILD_LAB "Build lume-lab, the live demonstration of the core" ON)
 set(LUME_SANITIZERS "" CACHE STRING "Sanitizers to enable, for example address;undefined")
 
 include(cmake/LumeCompilerOptions.cmake)
@@ -23,3 +24,7 @@ if(LUME_BUILD_TESTS)
 endif()
 
 add_subdirectory(core)
+
+if(LUME_BUILD_LAB)
+    add_subdirectory(tools/lab)
+endif()
