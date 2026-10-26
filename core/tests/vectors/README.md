@@ -53,11 +53,13 @@ Node.js `crypto`, which is OpenSSL — so that both sides have to agree.
 | `identity.json` | recovery phrase, identity keys, binding and device certificates, CRYPTO.md §3 |
 | `safety.json` | fingerprints, safety numbers and invite fingerprints of the identities above, CRYPTO.md §12 |
 | `handshake.json` | prekey signatures and both sides of the PQXDH handshake, with and without a one-time key, CRYPTO.md §4 and §5; the ML-KEM-768 values are the Wycheproof `mlkem_768_test.json` case each entry names, not copied |
+| `ratchet.json` | a 14-step Double Ratchet conversation with header encryption: skipped, reordered and late messages across DH steps, every header and body byte, CRYPTO.md §6; computed by an independent JavaScript implementation whose XChaCha20 is checked against Wycheproof first |
 
 ```bash
 node core/tools/generate_identity_vectors.mjs core/third_party/bip39/english.txt core/tests/vectors/trezor/bip39_vectors.json core/tests/vectors/lume/identity.json
 node core/tools/generate_safety_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/lume/safety.json
 node core/tools/generate_handshake_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/wycheproof core/tests/vectors/lume/handshake.json
+node core/tools/generate_ratchet_vectors.mjs core/tests/vectors/lume/handshake.json core/tests/vectors/wycheproof core/tests/vectors/lume/ratchet.json
 ```
 
 The generator checks its own phrase encoding against the Trezor vectors before

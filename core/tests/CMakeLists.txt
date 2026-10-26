@@ -23,6 +23,7 @@ add_executable(lume_core_tests
     handshake/prekey_test.cpp
     identity/identity_test.cpp
     identity/phrase_test.cpp
+    ratchet/ratchet_test.cpp
     safety/safety_number_test.cpp
     wire/codec_test.cpp
     wire/structures_test.cpp

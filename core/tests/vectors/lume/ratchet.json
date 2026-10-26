@@ -1,0 +1,108 @@
+{
+  "description": "LUME Double Ratchet with header encryption, CRYPTO.md section 6, computed with Node.js crypto (OpenSSL) and a JavaScript HChaCha20; the session keys are case 0 of handshake.json, and every random draw comes from SHA-256(seed || u64 counter) in the order the steps make them",
+  "generator": "core/tools/generate_ratchet_vectors.mjs",
+  "random_seeds": {
+    "alice": "LUME ratchet vector alice",
+    "bob": "LUME ratchet vector bob"
+  },
+  "steps": [
+    {
+      "action": "send",
+      "party": "alice",
+      "id": "A0",
+      "plaintext": "6d6573736167652041302066726f6d20616c696365",
+      "encrypted_header": "c37ffc0fe5168e320dcc906e3aec3ec293db12ab2367f19365a79e2a2adafd2248b4db35e50bfbc695f19e70a3487d30eeb757c911bdbd459c28e689ba6f4093c775720c9801ea850374ce2951438d71",
+      "body": "13568862e4acaa944a3a8d06daa816ded5e8e5e59ee693537360b7927fc2c32a17f4cf66bafbe6952bf99f733035a7eabeb1b7432c333175c68406c7f9"
+    },
+    {
+      "action": "send",
+      "party": "alice",
+      "id": "A1",
+      "plaintext": "6d6573736167652041312066726f6d20616c696365",
+      "encrypted_header": "965b92eb70fa59f2cd7a9304da87c5619ed0912e91baded8e904de82ba345ec8aa23f3e3c72ff0d4d358ca833926f2e80a34230cf9613ea546248cf50d18d6c0f7bdad1131ab885633d6a34af5493729",
+      "body": "ae63386e8ed3b1f9c0137556d2db09fcbff89f686d218382e7b85b8f455ef4ea22b5f177f179bedb2f9f60a004d9a2e2cdb76246b486684390e554305c"
+    },
+    {
+      "action": "send",
+      "party": "alice",
+      "id": "A2",
+      "plaintext": "6d6573736167652041322066726f6d20616c696365",
+      "encrypted_header": "e7bb903e2296b5cf1ebb956f5482d4bcb28b43d768268a5e86cd714cf5ac08d01b33f7bd950df5ddecfaf65968d28ba9292afc10f77838fbecc9215f3930ed26ec43e50c773850511844564b7b4e3b21",
+      "body": "352b60953d15c9c6509870d4319ed86f74d8a0e9a8af2cc3a87ebca045df76e41aee63e18d812148aded25d838001c4251dab3c4ac2ce536beace04586"
+    },
+    {
+      "action": "receive",
+      "party": "bob",
+      "id": "A0",
+      "plaintext": "6d6573736167652041302066726f6d20616c696365"
+    },
+    {
+      "action": "receive",
+      "party": "bob",
+      "id": "A2",
+      "plaintext": "6d6573736167652041322066726f6d20616c696365"
+    },
+    {
+      "action": "send",
+      "party": "bob",
+      "id": "B0",
+      "plaintext": "6d6573736167652042302066726f6d20626f62",
+      "encrypted_header": "ad344e31da60bd554fdb38ba696b092209063b6a6ac006ce224f469c065dd3b33e24e9d5980ecd26975518a59f9da3464371eeeada1f17faa4cbdc8db0c308a0bdb59a7d013f71218bd88c8196c138da",
+      "body": "e666299de6108da52c802f34b090954453604ec353f762c92f4d0eb868615ae5f4abef1f60ce6e0cab1a370d82c431961dc564339dc3ed3566ffdc"
+    },
+    {
+      "action": "send",
+      "party": "bob",
+      "id": "B1",
+      "plaintext": "6d6573736167652042312066726f6d20626f62",
+      "encrypted_header": "324f770028d2f82ebe8112df67f235b1dc63a045f338267fb0d4296ccc9e4b7553eabe2d9bea507f9a5c73901afc5d58dbe2181b2c238eca3f3194d1441850887d3cfaccfacddb16d097113b11c40c32",
+      "body": "636a184d7ffdee022722b83f891290899e8560c4bbbc2f735d814d08923d6092b659bacb707036a2278441ba4215d34d315a78060543766b4b0e45"
+    },
+    {
+      "action": "receive",
+      "party": "alice",
+      "id": "B1",
+      "plaintext": "6d6573736167652042312066726f6d20626f62"
+    },
+    {
+      "action": "receive",
+      "party": "alice",
+      "id": "B0",
+      "plaintext": "6d6573736167652042302066726f6d20626f62"
+    },
+    {
+      "action": "send",
+      "party": "alice",
+      "id": "A3",
+      "plaintext": "6d6573736167652041332066726f6d20616c696365",
+      "encrypted_header": "2792c28c7412d56b2103e690d0c5223f70ca52734dbad0780522b63300adb3cb5397b59ad41bf7d6e7f23edefd8f19e1a91d8fec13f4ceec9c5ea62de68a711172a9ac56ade433b4668ed9a861a6e920",
+      "body": "512b91123fab9462a888a3f870bcbadbc8262847d6d0beba4a260a5d34306f51be52d5ec1f732f7cb31100052a844997d0b967fd9d44d7db9ee1380bf3"
+    },
+    {
+      "action": "receive",
+      "party": "bob",
+      "id": "A1",
+      "plaintext": "6d6573736167652041312066726f6d20616c696365"
+    },
+    {
+      "action": "receive",
+      "party": "bob",
+      "id": "A3",
+      "plaintext": "6d6573736167652041332066726f6d20616c696365"
+    },
+    {
+      "action": "send",
+      "party": "bob",
+      "id": "B2",
+      "plaintext": "6d6573736167652042322066726f6d20626f62",
+      "encrypted_header": "00a9e2722708fccda7925e5044f717bb1e7c85c3b0cbf4f919009c57948da5256238bd06b67ed48c8f444aaae75b9f84f8809450dd6cfeb553b22c71bc680ac13733180b1e58307c2ac0eb1e547963b4",
+      "body": "7605e4db9242079fa09294dc5c4ecdf05bb8ef8d30b4fda9c0a3c95aac7ce4a3aedde7e9553956853a4e87c892e4ffc30d05a1b2e66b72d8f9b43b"
+    },
+    {
+      "action": "receive",
+      "party": "alice",
+      "id": "B2",
+      "plaintext": "6d6573736167652042322066726f6d20626f62"
+    }
+  ]
+}
