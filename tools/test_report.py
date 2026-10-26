@@ -85,11 +85,11 @@ def group(cases: list[Case]) -> list[Module]:
 
 
 STYLE = """
-:root { --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
-        --pass: #1f7a3f; --fail: #b3261e; --pass-bg: #e6f4ea; --fail-bg: #fbe9e7; }
+:root { --bg: rgb(247 247 245); --card: rgb(255 255 255); --text: rgb(29 29 27); --muted: rgb(107 107 102); --line: rgb(227 227 222);
+        --pass: rgb(31 122 63); --fail: rgb(179 38 30); --pass-bg: rgb(230 244 234); --fail-bg: rgb(251 233 231); }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #121211; --card: #1c1c1a; --text: #ecece8; --muted: #9a9a94; --line: #2e2e2b;
-          --pass: #7fd69a; --fail: #ff8a80; --pass-bg: #16301f; --fail-bg: #3a1714; }
+  :root { --bg: rgb(18 18 17); --card: rgb(28 28 26); --text: rgb(236 236 232); --muted: rgb(154 154 148); --line: rgb(46 46 43);
+          --pass: rgb(127 214 154); --fail: rgb(255 138 128); --pass-bg: rgb(22 48 31); --fail-bg: rgb(58 23 20); }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
