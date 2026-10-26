@@ -202,6 +202,19 @@ TEST(Phrase, ExactlyEightLastWordsCompleteTwentyThreeWords)
     EXPECT_EQ(original, 1);
 }
 
+TEST(Phrase, ReportsErrorsInAFixedOrder)
+{
+    const std::string phrase(zero_entropy_phrase);
+    const auto words = words_of(zero_entropy_phrase);
+    EXPECT_EQ(error_of(phrase + " art 1"), PhraseError::invalid_character);
+    EXPECT_EQ(error_of(phrase + " " + phrase + " 1"), PhraseError::invalid_character);
+    EXPECT_EQ(error_of("lume " + phrase), PhraseError::wrong_word_count);
+    auto unknown_and_bad_checksum = words;
+    unknown_and_bad_checksum.front() = "lume";
+    unknown_and_bad_checksum.back() = "abandon";
+    EXPECT_EQ(error_of(joined(unknown_and_bad_checksum, " ")), PhraseError::unknown_word);
+}
+
 TEST(Phrase, RejectsEntropyOfTheWrongSize)
 {
     EXPECT_EQ(phrase_from_entropy(SecretBytes(entropy_size - 1)).error(), crypto::Error::invalid_size);
@@ -270,7 +283,24 @@ RC_GTEST_PROP(PhraseProperties, ReplacingAWordIsNeverSilentlyAccepted, ())
     }
 }
 
-RC_GTEST_PROP(PhraseProperties, ArbitraryBytesAreDecodedOrRejected, (const Bytes& input))
+RC_GTEST_PROP(PhraseProperties, AnyTwentyFourListWordsDecodeOnlyWithTheirChecksum, ())
+{
+    std::vector<std::string> words;
+    for (std::size_t position = 0; position < phrase_word_count; ++position) {
+        const auto index = *rc::gen::resize(rc::kNominalSize, rc::gen::inRange<std::size_t>(0, detail::words.size()));
+        words.emplace_back(detail::words.at(index));
+    }
+    const auto phrase = joined(words, " ");
+    const auto decoded = entropy_from_phrase(text(phrase));
+    if (!decoded) {
+        RC_ASSERT(decoded.error() == PhraseError::checksum_mismatch);
+        return;
+    }
+    RC_ASSERT(decoded->size() == entropy_size);
+    RC_ASSERT(random_phrase(*decoded) == phrase);
+}
+
+RC_GTEST_PROP(PhraseProperties, ArbitraryBytesNeverCrashTheDecoder, (const Bytes& input))
 {
     const auto decoded = entropy_from_phrase(input);
     if (decoded) {

@@ -121,6 +121,9 @@ struct Match {
 
 [[nodiscard]] std::expected<Tokens, PhraseError> split_words(ByteView phrase)
 {
+    if (!std::ranges::all_of(phrase, [](std::uint8_t byte) { return is_letter(byte) || is_space(byte); })) {
+        return std::unexpected(PhraseError::invalid_character);
+    }
     Tokens tokens{};
     std::size_t count = 0;
     std::size_t offset = 0;
@@ -128,8 +131,6 @@ struct Match {
     for (const std::uint8_t byte : phrase) {
         if (is_space(byte)) {
             inside_word = false;
-        } else if (!is_letter(byte)) {
-            return std::unexpected(PhraseError::invalid_character);
         } else {
             if (!inside_word) {
                 if (count == tokens.size()) {
@@ -171,7 +172,7 @@ crypto::Result<SecretBytes> phrase_from_entropy(const SecretBytes& entropy)
     const auto checksum_slot = std::ranges::copy(entropy.view(), encoded.writable().begin()).out;
     *checksum_slot = checksum_of(entropy.view());
 
-    SecretBytes text(longest_phrase);
+    SecretBytes text(longest_phrase + detail::longest_word);
     const auto output = text.writable();
     auto next = output.begin();
     std::uint32_t buffer = 0;
@@ -187,10 +188,11 @@ crypto::Result<SecretBytes> phrase_from_entropy(const SecretBytes& entropy)
             *next++ = separator;
         }
         const std::uint64_t word = select_word((buffer >> buffered) & index_mask);
-        const std::size_t length = letters_in(word);
-        for (std::size_t shift = 0; shift < length * bits_per_byte; shift += bits_per_byte) {
-            *next++ = static_cast<std::uint8_t>(word >> shift);
+        auto slot = next;
+        for (std::size_t shift = 0; shift < detail::longest_word * bits_per_byte; shift += bits_per_byte) {
+            *slot++ = static_cast<std::uint8_t>(word >> shift);
         }
+        next += static_cast<std::ptrdiff_t>(letters_in(word));
         buffer &= (1U << buffered) - 1U;
     }
     const auto length = static_cast<std::size_t>(next - output.begin());

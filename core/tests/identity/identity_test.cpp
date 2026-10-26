@@ -3,6 +3,7 @@
 
 #include "lume/identity/identity.hpp"
 
+#include "lume/crypto/encoding.hpp"
 #include "lume/identity/phrase.hpp"
 #include "support/mutate.hpp"
 #include "support/vectors.hpp"
@@ -104,6 +105,19 @@ TEST(DeviceCertificate, RefusesGenerationZeroAndWrongSizes)
         identity.signing.public_key, device.public_key, first_generation, crypto::ByteView(*certificate).first(device_certificate_size - 1)));
 }
 
+TEST(DeviceCertificate, RefusesDeviceKeysOutsideThePrimeOrderSubgroup)
+{
+    const auto identity = identity_from(Bytes(entropy_size, 3));
+    Bytes identity_point(crypto::ed25519_public_key_size, 0);
+    identity_point.front() = 1;
+    EXPECT_EQ(certify_device(identity, identity_point, first_generation).error(), crypto::Error::invalid_key);
+    const auto certificate = crypto::ed25519_sign(
+        identity.signing.seed,
+        crypto::Encoder{}.label("device").raw(identity_point).u32(first_generation).take());
+    ASSERT_TRUE(certificate.has_value());
+    EXPECT_FALSE(verify_device_certificate(identity.signing.public_key, identity_point, first_generation, *certificate));
+}
+
 TEST(DeviceCertificate, CoversTheLargestGeneration)
 {
     const auto identity = identity_from(Bytes(entropy_size, 2));
@@ -188,9 +202,12 @@ RC_GTEST_PROP(IdentityProperties, ACertificateNamesOneDeviceOneGenerationOneIden
 RC_GTEST_PROP(IdentityProperties, ACertificateIsNotABinding, ())
 {
     const auto identity = random_identity();
-    auto published = public_identity(identity);
-    const auto certificate = certify_device(identity, published.exchange_key, first_generation);
+    const auto device = crypto::ed25519_from_seed(SecretBytes::copy_of(test::random_bytes_of(crypto::ed25519_seed_size)));
+    RC_ASSERT(device.has_value());
+    const auto certificate = certify_device(identity, device->public_key, first_generation);
     RC_ASSERT(certificate.has_value());
+    auto published = public_identity(identity);
+    published.exchange_key = device->public_key;
     published.binding = *certificate;
     RC_ASSERT_FALSE(verify_binding(published));
 }

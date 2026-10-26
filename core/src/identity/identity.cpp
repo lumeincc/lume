@@ -101,6 +101,9 @@ crypto::Result<DeviceCertificate> certify_device(
     if (device_key.size() != crypto::ed25519_public_key_size) {
         return std::unexpected(crypto::Error::invalid_size);
     }
+    if (!crypto::ed25519_is_valid_public_key(device_key)) {
+        return std::unexpected(crypto::Error::invalid_key);
+    }
     if (generation < first_generation) {
         return std::unexpected(crypto::Error::out_of_range);
     }
@@ -110,7 +113,7 @@ crypto::Result<DeviceCertificate> certify_device(
 bool verify_device_certificate(
     ByteView signing_key, ByteView device_key, std::uint32_t generation, ByteView certificate)
 {
-    if (device_key.size() != crypto::ed25519_public_key_size || generation < first_generation) {
+    if (generation < first_generation || !crypto::ed25519_is_valid_public_key(device_key)) {
         return false;
     }
     return crypto::ed25519_verify(signing_key, device_message(device_key, generation), certificate);

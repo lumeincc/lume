@@ -11,11 +11,11 @@ namespace lume::crypto {
 enum class Error : std::uint8_t {
     invalid_size,
     invalid_key,
-    out_of_range,
     weak_public_key,
     authentication_failed,
     self_test_failed,
     library_failure,
+    out_of_range,
 };
 
 template <typename T>

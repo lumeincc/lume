@@ -75,13 +75,18 @@ Result<ByteArray<ed25519_signature_size>> ed25519_sign(const SecretBytes& seed, 
     return signature;
 }
 
-bool ed25519_verify(ByteView public_key, ByteView message, ByteView signature)
+bool ed25519_is_valid_public_key(ByteView public_key)
 {
-    if (public_key.size() != ed25519_public_key_size || signature.size() != ed25519_signature_size) {
+    if (public_key.size() != ed25519_public_key_size) {
         return false;
     }
     detail::require_operational();
-    if (crypto_core_ed25519_is_valid_point(public_key.data()) != 1) {
+    return crypto_core_ed25519_is_valid_point(public_key.data()) == 1;
+}
+
+bool ed25519_verify(ByteView public_key, ByteView message, ByteView signature)
+{
+    if (signature.size() != ed25519_signature_size || !ed25519_is_valid_public_key(public_key)) {
         return false;
     }
     return crypto_sign_verify_detached(

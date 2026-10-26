@@ -6,7 +6,12 @@ import { createHash, createPrivateKey, createPublicKey, hkdfSync, sign } from "n
 
 const [wordlistFile, trezorFile, outputFile] = process.argv.slice(2);
 
-const words = readFileSync(wordlistFile, "ascii").split("\n").filter((line) => line !== "");
+const wordlist = readFileSync(wordlistFile);
+const wordlistSha256 = createHash("sha256").update(wordlist).digest("hex");
+if (wordlistSha256 !== "2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda") {
+  throw new Error(`unexpected wordlist ${wordlistSha256}`);
+}
+const words = wordlist.toString("ascii").split("\n").filter((line) => line !== "");
 if (words.length !== 2048) throw new Error("the wordlist must have 2048 words");
 
 const sha256 = (data) => createHash("sha256").update(data).digest();
