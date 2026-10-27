@@ -172,7 +172,7 @@ crypto::Result<SecretBytes> phrase_from_entropy(const SecretBytes& entropy)
     const auto checksum_slot = std::ranges::copy(entropy.view(), encoded.writable().begin()).out;
     *checksum_slot = checksum_of(entropy.view());
 
-    SecretBytes text(longest_phrase + detail::longest_word);
+    SecretBytes text(longest_phrase);
     const auto output = text.writable();
     auto next = output.begin();
     std::uint32_t buffer = 0;
