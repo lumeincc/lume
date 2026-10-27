@@ -16,7 +16,9 @@
 #include "lume/ratchet/ratchet.hpp"
 #include "lume/safety/safety_number.hpp"
 #include "lume/wire/structures.hpp"
+#include "support/curve.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -232,10 +234,16 @@ void recovery(Report& report, const Account& alice)
         !misspelt && misspelt.error() == identity::PhraseError::unknown_word);
 
     words = words_of(text);
-    std::swap(words.at(0), words.at(1));
+    const auto different = std::ranges::find_if(words, [&words](const std::string& word) { return word != words.front(); });
+    if (different == words.end()) {
+        return;
+    }
+    std::swap(words.front(), *different);
     const auto swapped = identity::entropy_from_phrase(bytes_of(joined(words)));
     report.check(
-        std::format("two swapped words are caught: {}", swapped ? "accepted as another account" : phrase_problem(swapped.error())),
+        std::format(
+            "two different words swapped do not restore Alice's account: {}",
+            swapped ? "they happen to form another valid phrase, for a different account" : phrase_problem(swapped.error())),
         !swapped || !swapped->equals(alice.entropy.view()));
 }
 
@@ -252,15 +260,65 @@ void cheating_relay(Report& report, const handshake::Bundle& bundle, const ident
 
     report.check("keys more than 9 days old are refused", fails_with(handshake::check_bundle(bundle, std::nullopt, now + ten_days), handshake::Error::prekey_not_usable));
 
+    const handshake::Pin stranger_pin{.identity = identity::public_identity(stranger), .generation = first_generation};
     report.check(
         "once Alice has pinned Bob, someone else's bundle is refused",
-        fails_with(handshake::check_bundle(bundle, identity::public_identity(stranger), now), handshake::Error::identity_changed));
+        fails_with(handshake::check_bundle(bundle, stranger_pin, now), handshake::Error::identity_changed));
+
+    const handshake::Pin recovered_pin{.identity = bundle.identity, .generation = first_generation + 1};
+    report.check(
+        "once Alice knows Bob recovered to generation 2, his old generation-1 bundle is refused",
+        fails_with(handshake::check_bundle(bundle, recovered_pin, now), handshake::Error::generation_went_down));
 }
 
 struct Conversation {
     ratchet::State alice;
     ratchet::State bob;
 };
+
+bool same_agreement(const SecretBytes& secret_key, crypto::ByteView first, crypto::ByteView second)
+{
+    const auto left = crypto::x25519_shared_secret(secret_key, first);
+    const auto right = crypto::x25519_shared_secret(secret_key, second);
+    return left && right && left->equals(right->view());
+}
+
+void altered_first_message(
+    Report& report, const Account& bob, const Published& published, const handshake::Initiation& initiation,
+    const ratchet::State& alice, std::uint64_t now)
+{
+    report.section("An attacker alters or re-encodes Alice's first message");
+    auto top_bit = initiation.header;
+    top_bit.ephemeral_key.back() = static_cast<std::uint8_t>(top_bit.ephemeral_key.back() | 0x80U);
+    report.check(
+        "Alice's ephemeral key with its unused top bit set is refused",
+        fails_with(handshake::respond(bob.identity, top_bit, responder_keys(published), std::nullopt), handshake::Error::non_canonical_key));
+
+    auto twin = initiation.header;
+    twin.ephemeral_key = test::x25519_twin(initiation.header.ephemeral_key);
+    const auto twin_keys = handshake::respond(bob.identity, twin, responder_keys(published), std::nullopt);
+    report.check(
+        "the same key written as 1/u gives Bob the same X25519 result, yet other session keys",
+        same_agreement(published.signed_prekey.secret_key, twin.ephemeral_key, initiation.header.ephemeral_key) && twin_keys
+            && !same_session(*twin_keys, initiation.keys));
+    auto probe = ratchet::clone(alice);
+    const auto first = ratchet::encrypt(probe, bytes_of("first message"));
+    if (twin_keys && first) {
+        auto second_session = ratchet::start_as_bob(*twin_keys, published.signed_prekey);
+        report.check(
+            "so Alice's first message cannot be replayed into a second session",
+            fails_with(ratchet::decrypt(second_session, *first, now), ratchet::Error::unknown_header));
+    }
+
+    auto altered = initiation.header;
+    altered.kem_ciphertext.front() = static_cast<std::uint8_t>(altered.kem_ciphertext.front() ^ 1U);
+    const auto tampered = handshake::respond(bob.identity, altered, responder_keys(published), std::nullopt);
+    report.check("a changed KEM ciphertext gives Bob an unrelated key, so nothing would decrypt", tampered && !tampered->root_key.equals(initiation.keys.root_key.view()));
+
+    auto truncated = wire::encode(initiation.header);
+    truncated.pop_back();
+    report.check("a truncated header is refused by the wire decoder", !wire::decode(truncated, wire::read_initial_header));
+}
 
 std::optional<Conversation> session(
     Report& report, const Account& alice, const Account& bob, const Published& published, std::uint64_t now)
@@ -272,28 +330,17 @@ std::optional<Conversation> session(
 
     const auto received = wire::decode(sent, wire::read_initial_header);
     report.check("Bob decodes exactly what Alice sent", received.has_value() && *received == initiation.header);
-    const auto response = handshake::respond(bob.identity, received.value(), responder_keys(published));
+    const auto response = handshake::respond(bob.identity, received.value(), responder_keys(published), std::nullopt);
     report.check("Bob accepts the handshake", response.has_value());
     report.check("both sides derive the same root key, header keys and associated data", response && same_session(*response, initiation.keys));
     note("root key fingerprint (SHA-256 of the key, never the key)  " + short_hex(crypto::sha256(initiation.keys.root_key.view())));
 
-    report.section("An attacker replays or alters Alice's first message");
-    auto replay = initiation.header;
-    replay.ephemeral_key.back() = static_cast<std::uint8_t>(replay.ephemeral_key.back() | 0x80U);
-    const auto replayed = handshake::respond(bob.identity, replay, responder_keys(published));
-    report.check("a second encoding of Alice's ephemeral key is refused, so the replay guard holds", fails_with(replayed, handshake::Error::non_canonical_key));
-
-    auto altered = initiation.header;
-    altered.kem_ciphertext.front() = static_cast<std::uint8_t>(altered.kem_ciphertext.front() ^ 1U);
-    const auto tampered = handshake::respond(bob.identity, altered, responder_keys(published));
-    report.check("a changed KEM ciphertext gives Bob an unrelated key, so nothing would decrypt", tampered && !tampered->root_key.equals(initiation.keys.root_key.view()));
-
-    auto truncated = sent;
-    truncated.pop_back();
-    report.check("a truncated header is refused by the wire decoder", !wire::decode(truncated, wire::read_initial_header));
-
     auto alice_ratchet = ratchet::start_as_alice(initiation.keys, initiation.peer_ratchet_key);
-    if (!response || !alice_ratchet) {
+    if (!alice_ratchet) {
+        return std::nullopt;
+    }
+    altered_first_message(report, bob, published, initiation, *alice_ratchet, now);
+    if (!response) {
         return std::nullopt;
     }
     return Conversation{.alice = std::move(*alice_ratchet), .bob = ratchet::start_as_bob(*response, published.signed_prekey)};

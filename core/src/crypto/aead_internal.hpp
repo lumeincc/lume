@@ -7,6 +7,9 @@
 #include "lume/crypto/error.hpp"
 #include "lume/crypto/secret_bytes.hpp"
 
+#include <cstdint>
+#include <span>
+
 namespace lume::crypto::detail {
 
 [[nodiscard]] Result<Bytes> aead_encrypt(
@@ -14,5 +17,10 @@ namespace lume::crypto::detail {
 
 [[nodiscard]] Result<SecretBytes> aead_decrypt(
     const SecretBytes& key, ByteView nonce, ByteView associated_data, ByteView ciphertext);
+
+[[nodiscard]] Result<SecretBytes> aead_open(ByteView key, ByteView associated_data, ByteView sealed);
+
+[[nodiscard]] Result<void> aead_open_into(
+    ByteView key, ByteView associated_data, ByteView sealed, std::span<std::uint8_t> plaintext);
 
 }

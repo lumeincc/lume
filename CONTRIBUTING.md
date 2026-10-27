@@ -92,8 +92,10 @@ CI.
     signing or decapsulation call, so a stored key cannot be half-replaced.
 11. **Callers never choose a nonce.** `aead_seal` draws a fresh 24-byte nonce
     and returns `nonce ‖ ciphertext ‖ tag`. Derandomised forms (explicit
-    nonces, ML-KEM encapsulation from given randomness) live in `detail` for
-    known-answer tests only.
+    nonces, ML-KEM encapsulation from given randomness, a ratchet or handshake
+    fed its random bytes) live in `detail`, declared in the module's internal
+    header under `core/src`, for known-answer tests only; the working path never
+    calls them.
 
 ## Wire format
 

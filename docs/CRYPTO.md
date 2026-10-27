@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME — Cryptography
 
-Status: **draft**, revision 8.
+Status: **draft**, revision 9.
 Nothing here is implemented until this document says it is; code that
 disagrees with it is a bug in one of the two.
 
@@ -102,7 +102,7 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 | `SHA256`, `SHA512` | SHA-2 | `crypto_hash_sha256`, `crypto_hash_sha512` |
 | `HMAC(k, m)` | HMAC-SHA256 | `crypto_auth_hmacsha256_*` |
 | `HKDF(salt, ikm, info, L)` | HKDF-SHA256, RFC 5869 | `crypto_kdf_hkdf_sha256_extract` / `_expand` |
-| `DH(sk, pk)` | X25519, RFC 7748 | `crypto_scalarmult`; **a non-zero return (low-order point) aborts the operation**, and **a public key that is not canonical** — top bit set, or not below 2^255 − 19 — is refused wherever one arrives from another party, so every key has exactly one encoding |
+| `DH(sk, pk)` | X25519, RFC 7748 | `crypto_scalarmult`; **a non-zero return (low-order point) aborts the operation**, and **a public key that is not canonical** — top bit set, or not below 2^255 − 19 — is refused wherever one arrives from another party. That still leaves keys that differ and give the same results: X25519 multiplies by a multiple of 8, so `pk` and `pk` plus a point of small order — for the point of order 2, `1/u` — agree with every private key. No construction relies on one key having one value; each one that must tell keys apart hashes their exact bytes (§5.1) |
 | `Sign`, `Verify` | Ed25519, RFC 8032 | `crypto_sign_detached`, `crypto_sign_verify_detached`; **a public key outside the prime-order subgroup is refused** (`crypto_core_ed25519_is_valid_point`), so one private key has one public key |
 | `AEAD(k, n, ad, m)` | XChaCha20-Poly1305-IETF | `crypto_aead_xchacha20poly1305_ietf_encrypt` / `_decrypt` |
 | `Stream` | XChaCha20-Poly1305 secretstream | `crypto_secretstream_xchacha20poly1305_*` |
@@ -144,7 +144,11 @@ proves it with Wycheproof's modulus-overflow vectors.
   [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures); every structured value
   that crosses a trust boundary — on the wire or in storage — uses it.
 - Secret material lives in `SecretBytes` (sodium_malloc, guard pages, wiped on
-  release).
+  release). Many keys of one kind that live together — a session's skipped
+  message keys, its skipped header keys — share one `SecretBytes` each, so their
+  number does not multiply the guard pages. Values that exist only inside one
+  function call — a recovery-phrase word while it is looked up, its index, an
+  intermediate bit buffer — sit on the stack and in registers and are not wiped.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.
@@ -252,10 +256,15 @@ private half is deleted once it is more than **40 days** past its
 margin. Time alone decides: no envelope sealed to the key can still be waiting
 on the relay by then, and nothing the relay does can keep the key alive longer.
 Deleting needs the unlocked vault, so a key outlives its 40 days only until the
-app is next unlocked.
+app is next unlocked. The 9 days are judged by the sender's clock and the 40 by
+the recipient's: a sender whose clock is behind by more than the day of margin
+can seal to a key whose private half is gone when the envelope arrives. That
+envelope cannot be opened and gets no receipt; like any unacknowledged message
+it is resent (§7.2) and arrives once the sender's clock is right again. Only
+delivery suffers, never secrecy.
 
 **One-time keys** (`PQOPK`, `OPK`) have no age limit: a one-time key is valid
-while it is published.
+while it is published, as long as its `created_at` is not in the future.
 
 **Pre-signed generations.** Rotation needs `IKsig.sk`, which exists only while
 the vault is unlocked. So on every unlock the client withdraws the generations
@@ -296,13 +305,28 @@ which ids were handed out and:
 Follows Signal's PQXDH specification, revision 3, with LUME's two-key identity.
 Alice starts a session with Bob.
 
+**Deviations from PQXDH:**
+
+- The identity is two keys bound together (§3.2), not one XEdDSA key, so `AD`
+  carries both keys of each side.
+- HKDF's `info` is `L("pqxdh")` followed by the hash of the whole transcript,
+  `TH`, instead of a fixed string, and `AD` ends with `TH`. A header that
+  differs from Alice's in any byte therefore derives other keys, even where
+  X25519 alone would not notice (§2).
+- HKDF produces 96 bytes: `SK` and the two header keys the ratchet's header
+  encryption starts with (§6.3).
+- Bob keeps a replay guard for handshakes that used no one-time key (§5.4);
+  PQXDH leaves replays to the application.
+- Non-canonical X25519 keys are refused (§2).
+
 ### 5.1 Alice
 
 1. Obtain Bob's bundle (PROTOCOL §4.3) or an introduction card from him (§11.2):
    `IKsig_B, IKdh_B, bind_B, SPK_B, PQPK_B (kind 2 or 3), SSK_B, [OPK_B]`.
 2. **Verify before computing anything**: `bind_B`, every signature, every
-   `created_at` against §4. If Bob is pinned, `(IKsig_B, IKdh_B)` must equal the
-   pin — anything else is a refusal, not a warning.
+   `created_at` against §4, and that the bundle's generation is not below the
+   one Alice already holds for Bob (§3.3). If Bob is pinned, `(IKsig_B, IKdh_B)`
+   must equal the pin — anything else is a refusal, not a warning.
 3. `EK_A` = fresh X25519 key pair.
 4. ```
    DH1 = DH(IKdh_A.sk, SPK_B)      DH2 = DH(EK_A.sk, IKdh_B)
@@ -310,10 +334,14 @@ Alice starts a session with Bob.
    (CT, SS) = KEM.Encaps(PQPK_B)
    ```
 5. ```
+   TH              = SHA256(L("transcript") ‖ IKsig_A ‖ IKdh_A ‖ EK_A ‖ IKsig_B ‖ IKdh_B
+                            ‖ SPK_B ‖ [OPK_B] ‖ PQPK_B ‖ CT)
    IKM             = 0xFF^32 ‖ DH1 ‖ DH2 ‖ DH3 ‖ [DH4] ‖ SS
-   (SK, HKa, NHKb) = HKDF(0^32, IKM, L("pqxdh"), 96)
-   AD              = L("ad") ‖ IKsig_A ‖ IKdh_A ‖ IKsig_B ‖ IKdh_B ‖ SHA256(PQPK_B ‖ CT)
+   (SK, HKa, NHKb) = HKDF(0^32, IKM, L("pqxdh") ‖ TH, 96)
+   AD              = L("ad") ‖ IKsig_A ‖ IKdh_A ‖ IKsig_B ‖ IKdh_B ‖ TH
    ```
+   Every key in `TH` is the exact public-key bytes, as sent or published; all
+   have fixed sizes, so whether `OPK_B` is present follows from the length.
    Then wipe `EK_A.sk`, `DH1…DH4`, `SS`, `IKM`.
 6. Initialise the ratchet as Alice (§6.3).
 
@@ -365,10 +393,10 @@ envelope is dropped.
 3. Otherwise look up the private prekeys by kind and id; an unknown id aborts.
 4. **Replay guard.** When no one-time key was used, reject an initial header
    whose `SHA256(EK_A ‖ CT)` was already accepted under the same `SPK`/`PQSPK`.
-   The set is dropped with the key. The guard holds because `EK_A` must be
-   canonical (§2): X25519 ignores the top bit of a public key, so a second
-   encoding of the same key would otherwise give the same session under a new
-   tag.
+   The set is dropped with the key. A replay that changes `EK_A` or `CT` to get
+   past the tag — even to a key that gives the same X25519 results, such as
+   `1/u` (§2) — changes `TH`, so Bob derives other keys, Alice's first message
+   does not authenticate in step 5, and nothing is stored.
 5. Recompute `SK, HKa, NHKb, AD`, initialise the ratchet as Bob (§6.3), and
    decrypt **on a scratch copy**. Only if it authenticates: store the session,
    delete the used one-time private keys, pin Alice. Otherwise discard
@@ -406,12 +434,27 @@ flaw in the newer KEM still leaves the classical exchange.
 Follows Signal's Double Ratchet specification, §4 "Double Ratchet with header
 encryption", with XChaCha20-Poly1305 as the AEAD.
 
+**Deviations from the Double Ratchet specification:**
+
+- `ENCRYPT` uses `MK` directly as the AEAD key with a random 24-byte nonce
+  (§2.1), instead of deriving a key and IV from `MK` with HKDF.
+- The first header keys come from the handshake (§5.1), and `KDF_RK` is HKDF
+  with the label as `info`.
+- The skipped-key store has fixed bounds and a lifetime (§6.6), and expired
+  keys are deleted without waiting for a message.
+- Nothing is written to the state until a message's body authenticates (§6.5).
+
 ### 6.1 State
 
 `DHs`, `DHr`, `RK`, `CKs`, `CKr`, `HKs`, `HKr`, `NHKs`, `NHKr`, `Ns`, `Nr`,
-`PN`, the skipped-key store, `AD`, the handshake's `(EK_A, CT)`, whether a
-message has been received, and whether the session is receive-only. Serialised
-only into the vault.
+`PN`, the skipped-key store, `AD`, and whether a message has been received. The
+session record that holds this state adds the handshake's `(EK_A, CT)` (§5.4)
+and whether the session is receive-only (§5.5). Both are serialised only into
+the vault.
+
+The skipped-key store groups keys by receiving chain: for each chain its header
+key and `DHr`, then each skipped message number with the time it was stored and
+its `MK`, oldest first.
 
 ### 6.2 KDFs
 
@@ -456,8 +499,11 @@ Ns += 1;   wipe MK
 
 ### 6.5 Decrypting
 
-Runs on a **copy** of the state; the copy replaces the state only when the body
-authenticates. Any failure leaves the session exactly as it was.
+First, skipped keys past their lifetime are deleted (§6.6) — the one change a
+failed decryption keeps. Everything after works on scratch values that replace
+the state only when the body authenticates; any other failure leaves the
+session exactly as it was. Trying header keys writes nothing, so a forged
+envelope costs at most ten AEAD attempts and no copy of the state.
 
 1. Try each distinct header key in the skipped store once; if one opens
    `enc_header` and holds a key for `(dh, n)`, decrypt with it and delete it.
@@ -479,9 +525,11 @@ authenticates. Any failure leaves the session exactly as it was.
 | | Value | Why |
 |---|---|---|
 | Skips in one step | 256 | larger `n − Nr` or `pn − Nr` is rejected before deriving any key |
-| Skipped keys per session | 1024, oldest evicted | bounds memory and vault size |
+| Skipped keys per session | 1024, oldest evicted | bounds memory and vault size: about 32 KiB of keys in one locked allocation |
+| Skipped keys per session the user has not accepted — a first contact on the introduction lane or a request (§9.3) | 32, oldest evicted | a stranger's envelopes cannot make the recipient hold more |
+| Such unaccepted sessions | 50 in all, oldest deleted first | matches the relay's queue of pending introductions (PROTOCOL §6) |
 | Distinct header keys in the skipped store | 8, oldest chain evicted | bounds trial decryptions per incoming header |
-| Skipped key lifetime | 14 days | |
+| Skipped key lifetime | 14 days | deleted at every unlock, at least once a day while the app runs, and before every decryption, whether or not messages arrive |
 | Sessions per contact | 3 (§5.5) | bounds trial decryptions across sessions |
 
 ### 6.7 What the ratchet heals against
@@ -866,7 +914,7 @@ Each is used exactly once, always as `L(name)`.
 | `identity/salt`, `identity/root`, `identity/ed25519`, `identity/x25519`, `identity/bind` | §3.2 |
 | `device` | §3.3 |
 | `prekey` | §4 |
-| `pqxdh`, `ad` | §5.1 |
+| `pqxdh`, `transcript`, `ad` | §5.1 |
 | `ratchet/root` | §6.2 |
 | `seal/key`, `seal/ad` | §8 |
 | `token` | §9.1 |

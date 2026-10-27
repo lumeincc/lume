@@ -12,6 +12,7 @@
 #include <array>
 #include <cstdint>
 #include <expected>
+#include <span>
 
 namespace lume::crypto {
 
@@ -24,16 +25,62 @@ namespace detail {
 
 namespace {
 
-bool has_valid_sizes(const SecretBytes& key, ByteView nonce)
+bool has_valid_sizes(ByteView key, ByteView nonce)
 {
     return key.size() == aead_key_size && nonce.size() == aead_nonce_size;
+}
+
+Result<void> check_ciphertext(ByteView key, ByteView nonce, ByteView ciphertext)
+{
+    if (!has_valid_sizes(key, nonce) || ciphertext.size() > aead_max_plaintext_size + aead_tag_size) {
+        return std::unexpected(Error::invalid_size);
+    }
+    if (ciphertext.size() < aead_tag_size) {
+        return std::unexpected(Error::authentication_failed);
+    }
+    return {};
+}
+
+Result<void> decrypt_into(
+    ByteView key, ByteView nonce, ByteView associated_data, ByteView ciphertext, std::span<std::uint8_t> plaintext)
+{
+    if (auto checked = check_ciphertext(key, nonce, ciphertext); !checked) {
+        return checked;
+    }
+    if (plaintext.size() != ciphertext.size() - aead_tag_size) {
+        return std::unexpected(Error::invalid_size);
+    }
+    require_operational();
+
+    std::array<std::uint8_t, 1> empty_output{};
+    std::uint8_t* output = plaintext.empty() ? empty_output.data() : plaintext.data();
+    unsigned long long written = 0;
+    if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+            output, &written, nullptr, ciphertext.data(), ciphertext.size(), pointer_to(associated_data),
+            associated_data.size(), nonce.data(), key.data())
+        != 0) {
+        return std::unexpected(Error::authentication_failed);
+    }
+    return {};
+}
+
+Result<SecretBytes> decrypt(ByteView key, ByteView nonce, ByteView associated_data, ByteView ciphertext)
+{
+    if (auto checked = check_ciphertext(key, nonce, ciphertext); !checked) {
+        return std::unexpected(checked.error());
+    }
+    SecretBytes plaintext(ciphertext.size() - aead_tag_size);
+    if (auto opened = decrypt_into(key, nonce, associated_data, ciphertext, plaintext.writable()); !opened) {
+        return std::unexpected(opened.error());
+    }
+    return plaintext;
 }
 
 }
 
 Result<Bytes> aead_encrypt(const SecretBytes& key, ByteView nonce, ByteView associated_data, ByteView plaintext)
 {
-    if (!has_valid_sizes(key, nonce) || plaintext.size() > aead_max_plaintext_size) {
+    if (!has_valid_sizes(key.view(), nonce) || plaintext.size() > aead_max_plaintext_size) {
         return std::unexpected(Error::invalid_size);
     }
     require_operational();
@@ -52,25 +99,29 @@ Result<Bytes> aead_encrypt(const SecretBytes& key, ByteView nonce, ByteView asso
 
 Result<SecretBytes> aead_decrypt(const SecretBytes& key, ByteView nonce, ByteView associated_data, ByteView ciphertext)
 {
-    if (!has_valid_sizes(key, nonce) || ciphertext.size() > aead_max_plaintext_size + aead_tag_size) {
+    return decrypt(key.view(), nonce, associated_data, ciphertext);
+}
+
+Result<SecretBytes> aead_open(ByteView key, ByteView associated_data, ByteView sealed)
+{
+    if (key.size() != aead_key_size) {
         return std::unexpected(Error::invalid_size);
     }
-    if (ciphertext.size() < aead_tag_size) {
+    if (sealed.size() < aead_overhead) {
         return std::unexpected(Error::authentication_failed);
     }
-    require_operational();
+    return decrypt(key, sealed.first(aead_nonce_size), associated_data, sealed.subspan(aead_nonce_size));
+}
 
-    SecretBytes plaintext(ciphertext.size() - aead_tag_size);
-    std::array<std::uint8_t, 1> empty_output{};
-    std::uint8_t* output = plaintext.empty() ? empty_output.data() : plaintext.writable().data();
-    unsigned long long written = 0;
-    if (crypto_aead_xchacha20poly1305_ietf_decrypt(
-            output, &written, nullptr, ciphertext.data(), ciphertext.size(), pointer_to(associated_data),
-            associated_data.size(), nonce.data(), key.view().data())
-        != 0) {
+Result<void> aead_open_into(ByteView key, ByteView associated_data, ByteView sealed, std::span<std::uint8_t> plaintext)
+{
+    if (key.size() != aead_key_size) {
+        return std::unexpected(Error::invalid_size);
+    }
+    if (sealed.size() < aead_overhead) {
         return std::unexpected(Error::authentication_failed);
     }
-    return plaintext;
+    return decrypt_into(key, sealed.first(aead_nonce_size), associated_data, sealed.subspan(aead_nonce_size), plaintext);
 }
 
 }
@@ -89,14 +140,7 @@ Result<Bytes> aead_seal(const SecretBytes& key, ByteView associated_data, ByteVi
 
 Result<SecretBytes> aead_open(const SecretBytes& key, ByteView associated_data, ByteView sealed)
 {
-    if (key.size() != aead_key_size) {
-        return std::unexpected(Error::invalid_size);
-    }
-    if (sealed.size() < aead_overhead) {
-        return std::unexpected(Error::authentication_failed);
-    }
-    return detail::aead_decrypt(
-        key, sealed.first(aead_nonce_size), associated_data, sealed.subspan(aead_nonce_size));
+    return detail::aead_open(key.view(), associated_data, sealed);
 }
 
 }
