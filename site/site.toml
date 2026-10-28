@@ -150,14 +150,13 @@ summary = { en = "The LUME relay protocol specification." }
 
 [[images]]
 source = "brand/logo 2.png"
-margin = 0
-outputs = [["assets/logo-night.png", 500]]
-
+margin = 300
+outputs = [["apple-touch-icon.png", 180]]
 
 [[images]]
-source = "brand/logo 2.png"
-margin = 300
-outputs = [["apple-touch-icon.png", 180], ["favicon.png", 32]]
+source = "brand/lume-favicon.png"
+margin = 0
+outputs = [["favicon.png", 32]]
 
 
 [strings.en]

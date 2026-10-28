@@ -208,6 +208,7 @@ class Site:
         (self.output / "style.css").write_text(stylesheet, encoding="utf-8", newline="\n")
         shutil.copytree(SITE / "fonts", self.output / "fonts")
         shutil.copyfile(SITE / SCRIPT_NAME, self.output / SCRIPT_NAME)
+        shutil.copyfile(ROOT / "brand" / "lume-favicon.svg", self.output / "favicon.svg")
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))
         for page in self.pages:
