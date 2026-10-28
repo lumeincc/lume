@@ -130,8 +130,12 @@ const encrypt = (state, plaintext) => {
   return { header, body };
 };
 
+const maxSkip = 256;
+let keysStoredAtADhStep = 0;
+
 const skipTo = (state, until) => {
   if (!state.CKr) return;
+  if (until > state.Nr && until - state.Nr > maxSkip) throw new Error("too_many_skipped");
   while (state.Nr < until) {
     const [chainKey, messageKey] = kdfChain(state.CKr);
     state.skipped.push({ hk: state.HKr, dh: state.DHr, n: state.Nr, mk: messageKey });
@@ -155,11 +159,14 @@ const decrypt = (state, message) => {
   let header;
   if (plain) {
     header = decodeHeader(plain);
-    if (header.n < state.Nr) throw new Error("old message");
+    if (!header.dh.equals(state.DHr)) throw new Error("unknown_header");
+    if (header.n < state.Nr) throw new Error("old_or_duplicate");
   } else {
     plain = opened(state.NHKr, state.AD, message.header);
-    if (!plain) throw new Error("unknown header");
+    if (!plain) throw new Error("unknown_header");
     header = decodeHeader(plain);
+    if (header.n > maxSkip) throw new Error("too_many_skipped");
+    if (state.CKr && header.pn > state.Nr) keysStoredAtADhStep += header.pn - state.Nr;
     skipTo(state, header.pn);
     state.PN = state.Ns;
     state.Ns = 0;
@@ -209,7 +216,22 @@ const script = [
   ["send", "alice", "A3"],
   ["receive", "bob", "A1"], ["receive", "bob", "A3"],
   ["send", "bob", "B2"], ["receive", "alice", "B2"],
+  ["send", "alice", "A4"], ["send", "alice", "A5"],
+  ["receive", "bob", "A4"],
+  ["send", "bob", "B3"], ["receive", "alice", "B3"],
+  ["send", "alice", "A6"],
+  ["receive", "bob", "A6"], ["receive", "bob", "A5"],
+  ["replay", "bob", "A6"], ["replay", "bob", "A5"],
 ];
+
+const refusal = (party, id) => {
+  try {
+    decrypt(parties[party], messages[id]);
+  } catch (error) {
+    return error.message;
+  }
+  throw new Error(`${party} opened ${id} a second time`);
+};
 
 const steps = script.map(([action, party, id]) => {
   if (action === "send") {
@@ -217,13 +239,16 @@ const steps = script.map(([action, party, id]) => {
     messages[id] = encrypt(parties[party], plaintext);
     return { action, party, id, plaintext: hex(plaintext), encrypted_header: hex(messages[id].header), body: hex(messages[id].body) };
   }
+  if (action === "replay") return { action, party, id, error: refusal(party, id) };
   const plaintext = decrypt(parties[party], messages[id]);
   if (!plaintext) throw new Error(`${party} could not open ${id}`);
   return { action, party, id, plaintext: hex(plaintext) };
 });
 
+if (keysStoredAtADhStep === 0) throw new Error("no step stores skipped keys at a DH step");
+
 const document = {
-  description: "LUME Double Ratchet with header encryption, CRYPTO.md section 6, computed with Node.js crypto (OpenSSL) and a JavaScript HChaCha20; the session keys are case 0 of handshake.json, and every random draw comes from SHA-256(seed || u64 counter) in the order the steps make them",
+  description: "LUME Double Ratchet with header encryption, CRYPTO.md section 6, computed with Node.js crypto (OpenSSL) and a JavaScript HChaCha20; the session keys are case 0 of handshake.json, and every random draw comes from SHA-256(seed || u64 counter) in the order the steps make them; a replay step must be refused with the error it names and change nothing",
   generator: "core/tools/generate_ratchet_vectors.mjs",
   random_seeds: { alice: "LUME ratchet vector alice", bob: "LUME ratchet vector bob" },
   steps,

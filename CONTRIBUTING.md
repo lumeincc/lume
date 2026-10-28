@@ -78,7 +78,9 @@ CI.
    unencrypted data, and never to a silent fallback to a weaker mode.
 5. **Commit state only on success.** Ratchet and handshake state change only
    after an authenticated decrypt succeeds; every failure leaves the session
-   exactly as it was.
+   exactly as it was, except that skipped keys past their lifetime are deleted
+   first, even when the message is refused (CRYPTO.md §6.5). Nothing after the
+   body authenticates may fail: memory it needs is reserved before.
 6. **Bound everything an attacker controls**: skipped keys, message sizes,
    prekey counts, collection lengths.
 7. **Domain-separate every derivation** with a distinct, versioned label from
@@ -93,8 +95,10 @@ CI.
     signing or decapsulation call, so a stored key cannot be half-replaced.
 11. **Callers never choose a nonce.** `aead_seal` draws a fresh 24-byte nonce
     and returns `nonce ‖ ciphertext ‖ tag`. Derandomised forms (explicit
-    nonces, ML-KEM encapsulation from given randomness) live in `detail` for
-    known-answer tests only.
+    nonces, ML-KEM encapsulation from given randomness, a ratchet or handshake
+    fed its random bytes) live in `detail`, declared in the module's internal
+    header under `core/src`, for known-answer tests only; the working path never
+    calls them.
 
 ## Wire format
 

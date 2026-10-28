@@ -3,8 +3,11 @@
 
 #include "lume/handshake/handshake.hpp"
 
+#include "handshake/handshake_internal.hpp"
 #include "lume/handshake/prekey.hpp"
 #include "lume/identity/phrase.hpp"
+#include "lume/ratchet/ratchet.hpp"
+#include "support/curve.hpp"
 #include "support/mutate.hpp"
 #include "support/vectors.hpp"
 
@@ -142,6 +145,39 @@ void expect_same_keys(const SessionKeys& left, const SessionKeys& right)
     EXPECT_EQ(left.associated_data, right.associated_data);
 }
 
+bool shares_any_key(const SessionKeys& left, const SessionKeys& right)
+{
+    return left.root_key.equals(right.root_key.view()) || left.header_key_alice.equals(right.header_key_alice.view())
+        || left.next_header_key_bob.equals(right.next_header_key_bob.view())
+        || left.associated_data == right.associated_data;
+}
+
+wire::InitialHeader with_twin_key(const wire::InitialHeader& header)
+{
+    auto twin = header;
+    twin.ephemeral_key = test::x25519_twin(header.ephemeral_key);
+    return twin;
+}
+
+bool same_agreement(const SecretBytes& secret_key, crypto::ByteView first, crypto::ByteView second)
+{
+    const auto left = crypto::x25519_shared_secret(secret_key, first);
+    const auto right = crypto::x25519_shared_secret(secret_key, second);
+    return left && right && left->equals(right->view());
+}
+
+bool opens_first_message(const Initiation& initiation, const SessionKeys& response, const Responder& bob)
+{
+    auto alice = ratchet::start_as_alice(initiation.keys, initiation.peer_ratchet_key);
+    if (!alice) {
+        return false;
+    }
+    const Bytes text{'h', 'i'};
+    const auto message = ratchet::encrypt(*alice, text);
+    auto receiver = ratchet::start_as_bob(response, bob.signed_prekey);
+    return message && ratchet::decrypt(receiver, *message, now, ratchet::max_skipped_keys).has_value();
+}
+
 TEST(Handshake, MatchesTheLumeVectors)
 {
     const auto identities = test::load_vectors("lume/identity.json").at("cases");
@@ -220,9 +256,15 @@ TEST(Handshake, MatchesTheLumeVectors)
             .kem_prekey = std::cref(kem),
             .one_time_prekey_id = initiation->header.opk_id,
             .one_time_prekey = one_time ? std::optional(std::cref(*one_time)) : std::nullopt};
-        const auto response = respond(bob, initiation->header, keys);
+        const auto response = respond(bob, initiation->header, keys, std::nullopt);
         ASSERT_TRUE(response.has_value());
         expect_same_keys(*response, initiation->keys);
+
+        const auto twin = with_twin_key(initiation->header);
+        EXPECT_EQ(test::to_hex(twin.ephemeral_key), vector.at("ephemeral_key_twin").get<std::string>());
+        const auto twin_response = respond(bob, twin, keys, std::nullopt);
+        ASSERT_TRUE(twin_response.has_value());
+        EXPECT_FALSE(shares_any_key(*twin_response, initiation->keys));
     }
 }
 
@@ -237,8 +279,10 @@ TEST(Handshake, RefusesABundleThatDoesNotCheckOut)
     flip_first_bit(bad_binding.identity.binding);
     EXPECT_EQ(check_bundle(bad_binding, std::nullopt, now).error(), Error::invalid_binding);
 
-    EXPECT_EQ(check_bundle(good, identity::public_identity(alice), now).error(), Error::identity_changed);
-    EXPECT_TRUE(check_bundle(good, identity::public_identity(bob.identity), now).has_value());
+    EXPECT_EQ(
+        check_bundle(good, Pin{.identity = identity::public_identity(alice), .generation = 1}, now).error(),
+        Error::identity_changed);
+    EXPECT_TRUE(check_bundle(good, Pin{.identity = identity::public_identity(bob.identity), .generation = 1}, now).has_value());
 
     auto wrong_generation = good;
     wrong_generation.generation = good.generation + 1;
@@ -301,24 +345,65 @@ TEST(Handshake, RefusesALowOrderSignedPrekey)
     EXPECT_EQ(initiate(alice, bundle, std::nullopt, now).error(), Error::weak_key);
 }
 
-TEST(Handshake, AnEphemeralKeyHasOneEncoding)
+TEST(Handshake, AGenerationNeverGoesDown)
+{
+    auto bob = fixed_responder();
+    bob.generation = 2;
+    const auto bundle = bundle_of(bob, created_at);
+    const auto known = [&bob](std::uint32_t generation) {
+        return Pin{.identity = identity::public_identity(bob.identity), .generation = generation};
+    };
+    EXPECT_TRUE(check_bundle(bundle, known(1), now).has_value());
+    EXPECT_TRUE(check_bundle(bundle, known(2), now).has_value());
+    EXPECT_EQ(check_bundle(bundle, known(3), now).error(), Error::generation_went_down);
+    const auto alice = identity_from(Bytes(identity::entropy_size, 0x41));
+    EXPECT_EQ(initiate(alice, bundle, known(3), now).error(), Error::generation_went_down);
+}
+
+TEST(Handshake, TheResponderChecksThePin)
 {
     const auto alice = identity_from(Bytes(identity::entropy_size, 0x41));
     const auto bob = fixed_responder();
     const auto initiation = initiate(alice, bundle_of(bob, created_at), std::nullopt, now);
     ASSERT_TRUE(initiation.has_value());
-    ASSERT_TRUE(respond(bob.identity, initiation->header, keys_of(bob)).has_value());
+    EXPECT_TRUE(respond(bob.identity, initiation->header, keys_of(bob), identity::public_identity(alice)).has_value());
+    EXPECT_EQ(
+        respond(bob.identity, initiation->header, keys_of(bob), identity::public_identity(bob.identity)).error(),
+        Error::identity_changed);
+}
+
+TEST(Handshake, AnEphemeralKeyIsBoundByItsExactBytes)
+{
+    const auto alice = identity_from(Bytes(identity::entropy_size, 0x41));
+    const auto bob = fixed_responder();
+    const auto initiation = initiate(alice, bundle_of(bob, created_at), std::nullopt, now);
+    ASSERT_TRUE(initiation.has_value());
+    const auto response = respond(bob.identity, initiation->header, keys_of(bob), std::nullopt);
+    ASSERT_TRUE(response.has_value());
+    EXPECT_TRUE(opens_first_message(*initiation, *response, bob));
+
+    const auto twin = with_twin_key(initiation->header);
+    EXPECT_NE(twin.ephemeral_key, initiation->header.ephemeral_key);
+    EXPECT_TRUE(crypto::x25519_is_canonical(twin.ephemeral_key));
+    EXPECT_TRUE(same_agreement(bob.identity.exchange.secret_key, twin.ephemeral_key, initiation->header.ephemeral_key));
+    EXPECT_TRUE(same_agreement(bob.signed_prekey.secret_key, twin.ephemeral_key, initiation->header.ephemeral_key));
+    EXPECT_NE(replay_tag(twin), replay_tag(initiation->header));
+    EXPECT_TRUE(initiator_of(twin, std::nullopt).has_value());
+    const auto twin_response = respond(bob.identity, twin, keys_of(bob), std::nullopt);
+    ASSERT_TRUE(twin_response.has_value());
+    EXPECT_FALSE(shares_any_key(*twin_response, initiation->keys));
+    EXPECT_FALSE(opens_first_message(*initiation, *twin_response, bob));
 
     auto top_bit = initiation->header;
     top_bit.ephemeral_key.back() = static_cast<std::uint8_t>(top_bit.ephemeral_key.back() | 0x80U);
     EXPECT_NE(replay_tag(top_bit), replay_tag(initiation->header));
     EXPECT_EQ(initiator_of(top_bit, std::nullopt).error(), Error::non_canonical_key);
-    EXPECT_EQ(respond(bob.identity, top_bit, keys_of(bob)).error(), Error::non_canonical_key);
+    EXPECT_EQ(respond(bob.identity, top_bit, keys_of(bob), std::nullopt).error(), Error::non_canonical_key);
 
     auto above_prime = initiation->header;
     above_prime.ephemeral_key.fill(0xff);
     above_prime.ephemeral_key.back() = 0x7f;
-    EXPECT_EQ(respond(bob.identity, above_prime, keys_of(bob)).error(), Error::non_canonical_key);
+    EXPECT_EQ(respond(bob.identity, above_prime, keys_of(bob), std::nullopt).error(), Error::non_canonical_key);
 }
 
 TEST(Handshake, RefusesANonCanonicalBundleKey)
@@ -344,20 +429,20 @@ TEST(Handshake, ResponderRefusesKeysThatDoNotMatchTheHeader)
 
     auto keys = keys_of(bob);
     keys.signed_prekey_id += 1;
-    EXPECT_EQ(respond(bob.identity, initiation->header, keys).error(), Error::unknown_prekey);
+    EXPECT_EQ(respond(bob.identity, initiation->header, keys, std::nullopt).error(), Error::unknown_prekey);
 
     keys = keys_of(bob);
     keys.one_time_prekey.reset();
     keys.one_time_prekey_id.reset();
-    EXPECT_EQ(respond(bob.identity, initiation->header, keys).error(), Error::unknown_prekey);
+    EXPECT_EQ(respond(bob.identity, initiation->header, keys, std::nullopt).error(), Error::unknown_prekey);
 
     keys = keys_of(bob);
     keys.kem_kind = wire::PrekeyKind::kem_one_time;
-    EXPECT_EQ(respond(bob.identity, initiation->header, keys).error(), Error::unknown_prekey);
+    EXPECT_EQ(respond(bob.identity, initiation->header, keys, std::nullopt).error(), Error::unknown_prekey);
 
     auto forged = initiation->header;
     flip_first_bit(forged.bind);
-    EXPECT_EQ(respond(bob.identity, forged, keys_of(bob)).error(), Error::invalid_binding);
+    EXPECT_EQ(respond(bob.identity, forged, keys_of(bob), std::nullopt).error(), Error::invalid_binding);
     EXPECT_EQ(initiator_of(forged, std::nullopt).error(), Error::invalid_binding);
     EXPECT_EQ(
         initiator_of(initiation->header, identity::public_identity(bob.identity)).error(), Error::identity_changed);
@@ -371,12 +456,26 @@ RC_GTEST_PROP(HandshakeProperties, BothSidesDeriveTheSameKeys, (bool with_one_ti
     const auto initiation = initiate(alice, bundle_of(bob, created_at), std::nullopt, now);
     RC_ASSERT(initiation.has_value());
     RC_ASSERT(initiation->header.opk_id.has_value() == with_one_time_prekey);
-    const auto response = respond(bob.identity, initiation->header, keys_of(bob));
+    const auto response = respond(bob.identity, initiation->header, keys_of(bob), std::nullopt);
     RC_ASSERT(response.has_value());
     RC_ASSERT(response->root_key.equals(initiation->keys.root_key.view()));
     RC_ASSERT(response->header_key_alice.equals(initiation->keys.header_key_alice.view()));
     RC_ASSERT(response->next_header_key_bob.equals(initiation->keys.next_header_key_bob.view()));
     RC_ASSERT(response->associated_data == initiation->keys.associated_data);
+}
+
+RC_GTEST_PROP(HandshakeProperties, ADhEquivalentEphemeralKeyNeverOpensTheFirstMessage, (bool with_one_time_prekey))
+{
+    const auto alice = identity_from(test::random_bytes_of(identity::entropy_size));
+    const auto bob = random_responder(with_one_time_prekey);
+    const auto initiation = initiate(alice, bundle_of(bob, created_at), std::nullopt, now);
+    RC_ASSERT(initiation.has_value());
+    const auto twin = with_twin_key(initiation->header);
+    RC_ASSERT(same_agreement(bob.signed_prekey.secret_key, twin.ephemeral_key, initiation->header.ephemeral_key));
+    const auto response = respond(bob.identity, twin, keys_of(bob), std::nullopt);
+    RC_ASSERT(response.has_value());
+    RC_ASSERT_FALSE(shares_any_key(*response, initiation->keys));
+    RC_ASSERT_FALSE(opens_first_message(*initiation, *response, bob));
 }
 
 RC_GTEST_PROP(HandshakeProperties, EveryHandshakeHasFreshKeys, ())
@@ -406,7 +505,7 @@ RC_GTEST_PROP(HandshakeProperties, ATamperedKeyMaterialFieldGivesDifferentKeys, 
         const auto flipped = test::flip_random_bit(forged.kem_ciphertext);
         std::ranges::copy(flipped, forged.kem_ciphertext.begin());
     }
-    const auto response = respond(bob.identity, forged, keys_of(bob));
+    const auto response = respond(bob.identity, forged, keys_of(bob), std::nullopt);
     if (response) {
         RC_ASSERT_FALSE(response->root_key.equals(initiation->keys.root_key.view()));
     } else {

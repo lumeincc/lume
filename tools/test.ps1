@@ -29,8 +29,9 @@ try {
         exit $(if ($status -ne 0) { $status } else { 1 })
     }
     python (Join-Path $root 'tools\test_report.py') $results $report
-    if (-not $NoBrowser) { Start-Process $report }
-    exit $status
+    $reportStatus = $LASTEXITCODE
+    if (-not $NoBrowser -and (Test-Path $report)) { Start-Process $report }
+    exit $(if ($status -ne 0) { $status } else { $reportStatus })
 }
 finally {
     Pop-Location

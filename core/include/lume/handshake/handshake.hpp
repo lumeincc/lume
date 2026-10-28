@@ -28,10 +28,16 @@ enum class Error : std::uint8_t {
     unknown_prekey,
     non_canonical_key,
     library_failure,
+    generation_went_down,
 };
 
 template <typename T>
 using Result = std::expected<T, Error>;
+
+struct Pin {
+    identity::PublicIdentity identity{};
+    std::uint32_t generation = 0;
+};
 
 struct Bundle {
     identity::PublicIdentity identity{};
@@ -65,27 +71,18 @@ struct ResponderKeys {
     std::optional<std::reference_wrapper<const crypto::X25519KeyPair>> one_time_prekey;
 };
 
-[[nodiscard]] Result<void> check_bundle(
-    const Bundle& bundle, const std::optional<identity::PublicIdentity>& pinned, std::uint64_t now);
+[[nodiscard]] Result<void> check_bundle(const Bundle& bundle, const std::optional<Pin>& pinned, std::uint64_t now);
 
 [[nodiscard]] Result<Initiation> initiate(
-    const identity::Identity& alice, const Bundle& bob, const std::optional<identity::PublicIdentity>& pinned,
-    std::uint64_t now);
+    const identity::Identity& alice, const Bundle& bob, const std::optional<Pin>& pinned, std::uint64_t now);
 
 [[nodiscard]] Result<identity::PublicIdentity> initiator_of(
     const wire::InitialHeader& header, const std::optional<identity::PublicIdentity>& pinned);
 
 [[nodiscard]] Result<SessionKeys> respond(
-    const identity::Identity& bob, const wire::InitialHeader& header, const ResponderKeys& keys);
+    const identity::Identity& bob, const wire::InitialHeader& header, const ResponderKeys& keys,
+    const std::optional<identity::PublicIdentity>& pinned);
 
 [[nodiscard]] crypto::ByteArray<crypto::sha256_size> replay_tag(const wire::InitialHeader& header);
-
-namespace detail {
-
-[[nodiscard]] Result<Initiation> initiate_with(
-    const identity::Identity& alice, const Bundle& bob, const std::optional<identity::PublicIdentity>& pinned,
-    std::uint64_t now, crypto::SecretBytes ephemeral_secret, const crypto::MlKemEncapsulation& encapsulation);
-
-}
 
 }

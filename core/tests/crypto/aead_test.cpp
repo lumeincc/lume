@@ -72,6 +72,33 @@ TEST(XChaCha20Poly1305, InputShorterThanTheOverheadIsRejected)
     EXPECT_EQ(decrypted.error(), Error::authentication_failed);
 }
 
+TEST(XChaCha20Poly1305, OpensIntoTheCallersBufferOnlyWhenEverythingFits)
+{
+    const auto key = random_secret(aead_key_size);
+    const Bytes associated_data{'a', 'd'};
+    const Bytes plaintext{'h', 'e', 'a', 'd', 'e', 'r'};
+    const auto sealed = aead_seal(key, associated_data, plaintext);
+    ASSERT_TRUE(sealed.has_value());
+
+    Bytes output(plaintext.size());
+    ASSERT_TRUE(detail::aead_open_into(key.view(), associated_data, *sealed, output).has_value());
+    EXPECT_EQ(output, plaintext);
+
+    Bytes wrong_size(plaintext.size() + 1);
+    EXPECT_EQ(detail::aead_open_into(key.view(), associated_data, *sealed, wrong_size).error(), Error::invalid_size);
+    EXPECT_EQ(detail::aead_open_into(key.view().first(aead_key_size - 1), associated_data, *sealed, output).error(), Error::invalid_size);
+    EXPECT_EQ(
+        detail::aead_open_into(key.view(), associated_data, Bytes(aead_overhead - 1), output).error(),
+        Error::authentication_failed);
+    const auto forged = test::flip_bit(*sealed, sealed->size() - 1, 0);
+    EXPECT_EQ(detail::aead_open_into(key.view(), associated_data, forged, output).error(), Error::authentication_failed);
+
+    const auto opened = detail::aead_open(key.view(), associated_data, *sealed);
+    ASSERT_TRUE(opened.has_value());
+    EXPECT_TRUE(opened->equals(plaintext));
+    EXPECT_EQ(detail::aead_open(key.view().first(1), associated_data, *sealed).error(), Error::invalid_size);
+}
+
 TEST(XChaCha20Poly1305, EmptyPlaintextRoundTrips)
 {
     const auto key = SecretBytes(aead_key_size);

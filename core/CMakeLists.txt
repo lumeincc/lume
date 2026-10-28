@@ -22,6 +22,7 @@ add_library(lume_core STATIC
     src/identity/identity.cpp
     src/identity/phrase.cpp
     src/ratchet/ratchet.cpp
+    src/ratchet/skipped_keys.cpp
     src/safety/safety_number.cpp
     src/wire/codec.cpp
     src/wire/structures.cpp
