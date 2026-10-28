@@ -234,6 +234,15 @@ void commit_turn(State& state, const RatchetKey& their_key, Turn turned)
     state.next_sending_header_key = std::move(turned.sending.next_header_key);
 }
 
+void store_skipped(State& state, ByteView message_keys, std::uint32_t first_number, const Delivery& delivery)
+{
+    if (state.receiving_header_key && state.receiving_ratchet) {
+        state.skipped.add(
+            *state.receiving_header_key, *state.receiving_ratchet, first_number, message_keys, delivery.now,
+            delivery.limit);
+    }
+}
+
 void commit_message(State& state, SecretBytes chain_key, std::uint32_t number)
 {
     state.receiving_chain = std::move(chain_key);
@@ -274,9 +283,7 @@ Result<SecretBytes> continue_chain(State& state, const wire::RatchetHeader& head
     if (!plaintext) {
         return std::unexpected(Error::authentication_failed);
     }
-    state.skipped.add(
-        *state.receiving_header_key, *state.receiving_ratchet, state.received, skipped->message_keys.view(),
-        delivery.now, delivery.limit);
+    store_skipped(state, skipped->message_keys.view(), state.received, delivery);
     commit_message(state, std::move(step.chain_key), header.message_number);
     return std::move(*plaintext);
 }
@@ -308,13 +315,10 @@ Result<SecretBytes> next_chain(
         return std::unexpected(Error::authentication_failed);
     }
     if (*previous) {
-        state.skipped.add(
-            *state.receiving_header_key, *state.receiving_ratchet, state.received, (*previous)->message_keys.view(),
-            delivery.now, delivery.limit);
+        store_skipped(state, (*previous)->message_keys.view(), state.received, delivery);
     }
     commit_turn(state, header.ratchet_key, std::move(*turned));
-    state.skipped.add(
-        *state.receiving_header_key, header.ratchet_key, 0, current->message_keys.view(), delivery.now, delivery.limit);
+    store_skipped(state, current->message_keys.view(), 0, delivery);
     commit_message(state, std::move(step.chain_key), header.message_number);
     return std::move(*plaintext);
 }

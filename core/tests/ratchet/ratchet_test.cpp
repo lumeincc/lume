@@ -143,6 +143,14 @@ wire::RatchetMessage forged(const SecretBytes& header_key, const Bytes& associat
     return message;
 }
 
+const SecretBytes& sending_header_key_of(const State& state)
+{
+    if (!state.sending_header_key) {
+        throw std::runtime_error("the state has no sending header key");
+    }
+    return *state.sending_header_key;
+}
+
 Error refusal(State& receiver, const wire::RatchetMessage& message)
 {
     const auto before = fingerprint(receiver);
@@ -427,7 +435,7 @@ TEST(Ratchet, ASkipAcrossADhStepIsBounded)
 TEST(Ratchet, AWeakOrNonCanonicalRatchetKeyIsRefused)
 {
     auto pair = new_pair();
-    const auto& first_header_key = *pair.alice.sending_header_key;
+    const auto& first_header_key = sending_header_key_of(pair.alice);
     const auto header_with = [](const RatchetKey& key) {
         return wire::RatchetHeader{.ratchet_key = key, .previous_chain_length = 0, .message_number = 0};
     };
@@ -443,7 +451,7 @@ TEST(Ratchet, ExhaustedCountersAreRefused)
 {
     auto pair = new_pair();
     const auto last = std::numeric_limits<std::uint32_t>::max();
-    const auto& first_header_key = *pair.alice.sending_header_key;
+    const auto& first_header_key = sending_header_key_of(pair.alice);
     const wire::RatchetHeader at_the_end{
         .ratchet_key = pair.alice.sending_ratchet.public_key, .previous_chain_length = 0, .message_number = last};
     EXPECT_EQ(refusal(pair.bob, forged(first_header_key, pair.alice.associated_data, at_the_end)), Error::exhausted);
