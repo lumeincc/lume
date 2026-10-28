@@ -22,6 +22,7 @@ android/   Kotlin + Jetpack Compose; the core through JNI over the C API
 desktop/   WinUI 3 (C++/WinRT); the core linked directly
 docs/      specification
 legal/     privacy policy, terms and the other user-facing policies
+company/   filings of LUME Inc. — the Astana Hub application
 brand/     name and logo — trademarks, not covered by the code licence
 ```
 
