@@ -32,10 +32,10 @@ This summary is not the licence; [the full text](/licence/) is what applies.
 
 ## The name and logo are not under the code licence
 
-The LUME name and logo are trademarks of LUME Inc. Someone who installs an app
-called LUME, with the LUME logo, has to be able to rely on it being the build
-LUME Inc. publishes, not a modified copy that might log messages. Forks are
-welcome; they need their own name and icon. See [Trademarks](/trademarks/).
+The LUME name and logo belong to LUME Inc. Someone who installs an app called
+LUME, with the LUME logo, has to be able to rely on it being the build LUME Inc.
+publishes, not a modified copy that might log messages. Forks are welcome; they
+need their own name and icon. See [Name and logo](/trademarks/).
 
 ## What LUME is built on
 

@@ -5,55 +5,56 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # Privacy on the LUME website
 
-**Status: draft.** Takes effect on the day the website is first published;
-that date will replace this line.
+**Status: draft.** Takes effect on the day the website is first published; this
+line will then be replaced by that date.
 Русская версия: [WEBSITE.ru.md](WEBSITE.ru.md).
 Қазақша нұсқа: [WEBSITE.kk.md](WEBSITE.kk.md).
 
-This page covers the LUME website only. The apps and the relay are covered by
+This page covers only the LUME website. The apps and the relay are covered by
 the [Privacy Policy](PRIVACY.md).
 
-## 1. The short version
+## 1. In short
 
-- **No cookies**, and nothing else stored in your browser.
-- **No analytics, no trackers, no advertising**, no visitor counters and no
+- **No cookies** and nothing else stored in your browser, so the site shows no
+  cookie banner — there is nothing to ask about.
+- **No analytics, trackers or ads**, no visitor counters and no browser
   fingerprinting.
-- **No scripts.** The pages are plain HTML with one stylesheet.
-- **Nothing from other servers.** No external fonts, content delivery
-  networks, embedded videos, maps or social buttons: your browser talks only to
-  the server of this website. A strict Content Security Policy makes the
-  browser enforce this.
-- **No forms.** The website asks you for nothing.
-- **No referrer.** When you follow a link to another website, your browser is
-  asked not to tell it which page you came from.
+- **No scripts.** Pages are plain HTML and one stylesheet; all animation is
+  done in the stylesheet and switches off when your system asks for reduced
+  motion.
+- **Nothing from other servers.** Fonts and images are served by this site;
+  there are no CDNs, embedded videos, maps or social buttons. A strict Content
+  Security Policy makes the browser enforce this.
+- **No forms.** The site asks you for nothing.
+- **No referrer.** When you follow a link to another site, your browser is told
+  not to reveal which page you came from.
 
 ## 2. What the web server receives
 
-Like any website, ours receives what your browser sends to fetch a page: your
-IP address, the address of the page, the time of the request and your
-browser's user-agent string. The server needs them to send the page back.
+Like any website, ours receives what your browser sends to load a page: your IP
+address, the page address, the time of the request and your browser's
+user-agent string. The server needs them to send the page back.
 
 > [!IMPORTANT]
-> **To be filled in before release:** the hosting provider that serves the
-> website, the country where its server is located, and whether that server
-> keeps access logs — and if it does, what they contain and for how long. Under
-> the law of the Republic of Kazakhstan, IP addresses in such logs may count as
-> personal data, which brings the requirement to store personal data in
-> Kazakhstan; the choice of hosting needs a lawyer's review.
+> **To be filled in before release:** the website's hosting provider, the
+> country its server is in, and whether that server keeps access logs — and if
+> it does, what they record and for how long. IP addresses in such logs may
+> count as personal data, which must be stored in the Republic of Kazakhstan;
+> the choice of hosting is to be agreed with a lawyer.
 
-## 3. Links to other websites
+## 3. Links to other sites
 
-The website links to GitHub, where the source code is, and to the websites of
-the libraries LUME uses. Nothing is loaded from those websites until you follow
-a link; once you do, their own privacy policies apply.
+The site links to GitHub, where the source code lives, and to the websites of
+the libraries LUME uses. Nothing is loaded from them until you follow a link;
+after that, their own privacy policies apply.
 
 ## 4. Your rights
 
-Your rights are those described in section 8 of the
-[Privacy Policy](PRIVACY.md), as far as the website holds anything about you.
-How to reach us is on the [contact page](CONTACT.md).
+Your rights are those in section 9 of the [Privacy Policy](PRIVACY.md), to the
+extent the site holds anything about you. How to reach us is on the
+[contact page](CONTACT.md).
 
 ## 5. Changes
 
-Changes to this page are made in our public repository, where its full history
+Changes to this page are made in our public repository, where its whole history
 is visible.

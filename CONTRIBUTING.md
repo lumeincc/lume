@@ -23,7 +23,7 @@ desktop/   WinUI 3 (C++/WinRT); the core linked directly
 docs/      specification
 legal/     privacy policy, terms and the other user-facing policies
 site/      the website, generated from legal/, docs/ and its own pages
-brand/     name and logo — trademarks, not covered by the code licence
+brand/     name and logo of LUME Inc., not covered by the code licence
 ```
 
 Dependencies come from vcpkg in manifest mode with a pinned baseline. A new

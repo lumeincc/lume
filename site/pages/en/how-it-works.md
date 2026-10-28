@@ -74,8 +74,10 @@ gets its own key, and a key is deleted once it has been used.
 - **No groups on the server.** Group names, members and roles exist only on the
   members' devices ([§11.2](/spec/crypto/#112-groups)).
 - **No IP addresses on disk.** The relay uses your address in memory to deliver
-  messages and limit abuse, and never writes it down
-  ([Privacy Policy](/legal/privacy/)).
+  messages and limit abuse, and never writes it down. The one exception: a
+  message from a stranger without an invite carries a hash of their network,
+  keyed with a key that changes every day; the address cannot be recovered from
+  it, and it is deleted with the message ([Privacy Policy](/legal/privacy/)).
 
 ## What stays on your device
 
