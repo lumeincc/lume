@@ -21,7 +21,7 @@ the [Privacy Policy](PRIVACY.md).
 - **No analytics, trackers or ads**, no visitor counters and no browser
   fingerprinting.
 - **One script**, `site.js`, from this same site. It shows the cookie window,
-  saves your choice and, on the home page, lets the text appear out of a
+  saves your choice and lets the home page's headline appear out of a
   "cipher"; it does nothing else and sends nothing anywhere. The site works
   fully without it: the text is there at once, except that the cookie window
   does not appear and no cookie is set. Other animation is done in the

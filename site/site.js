@@ -109,7 +109,7 @@
 
   const glyphs = "#%&*+=?<>|01ABCDEFabcdef";
   const kept = new Set(" \n\t.,:;!?()-«»—–·");
-  const blocks = "main h1, main h2, main h3, main p, main li, main .btn";
+  const blocks = ".hero h1, .hero .btn, .chooser h1, .chooser .tagline span, .chooser .btn";
 
   const mix = (text, shown) => {
     let out = "";
@@ -181,21 +181,8 @@
   }, { rootMargin: "0px 0px 30% 0px" });
 
   for (const element of document.querySelectorAll(blocks)) {
-    if (!element.closest("[data-cipher]") && !element.parentElement.closest(blocks)) {
+    if (!element.parentElement.closest(blocks)) {
       near.observe(element);
     }
-  }
-
-  for (const box of document.querySelectorAll("[data-cipher]")) {
-    const nodes = collect(box);
-    let visible = false;
-    new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-    }).observe(box);
-    setInterval(() => {
-      if (visible && !document.hidden) {
-        paint(nodes, 0);
-      }
-    }, 140);
   }
 })();
