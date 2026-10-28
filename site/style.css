@@ -164,7 +164,6 @@ td.right, th.right { text-align: right; }
 .site-footer { margin-top: clamp(110px, 13vw, 170px); padding: 40px 0 44px; box-shadow: inset 0 1px 0 var(--line); font-family: var(--font-ui); font-size: 13px; color: var(--fg-3); }
 .footer-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
 .wordmark { font-size: 20px; letter-spacing: .08em; color: var(--fg); text-decoration: none; }
-.footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
 .imprint { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; }
 .imprint a { color: var(--fg-2); text-decoration: none; }
 .imprint a:hover { color: var(--fg); }
