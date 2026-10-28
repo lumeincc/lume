@@ -34,20 +34,7 @@ HEADERS = {
 }
 REVISION = re.compile(r"\brevision (\d+)\b")
 TOKEN = re.compile(r"\{\{([a-z0-9-]+)\}\}")
-DOTS = re.compile(r"dots-(\d+)")
 STYLE_URL = re.compile(r"url\(([^)]*)\)")
-DIGITS = {
-    "0": (".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."),
-    "1": ("..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."),
-    "2": (".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"),
-    "3": ("#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###."),
-    "4": ("...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."),
-    "5": ("#####", "#....", "####.", "....#", "....#", "#...#", ".###."),
-    "6": ("..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."),
-    "7": ("#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."),
-    "8": (".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."),
-    "9": (".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."),
-}
 DOCS_GROUPS = ("guide", "open-source", "legal", "spec")
 LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.S)
 LEADING_STYLE_COMMENT = re.compile(r"\A\s*/\*.*?\*/\s*", re.S)
@@ -105,18 +92,6 @@ def relative(start: PurePosixPath, target: PurePosixPath, directory: bool) -> st
 
 def strip_leading_comment(text: str) -> str:
     return LEADING_COMMENT.sub("", text, count=1)
-
-
-def dot_matrix(number: str) -> str:
-    circles = []
-    for position, digit in enumerate(number):
-        left = position * 6
-        for row, line in enumerate(DIGITS[digit]):
-            for column, cell in enumerate(line):
-                lit = "" if cell == "#" else ' class="off"'
-                circles.append(f'<circle{lit} cx="{left + column + 0.5}" cy="{row + 0.5}" r="0.4"/>')
-    width = len(number) * 6 - 1
-    return f'<svg class="dots" viewBox="0 0 {width} 7" aria-hidden="true" focusable="false">{"".join(circles)}</svg>'
 
 
 def spec_revision() -> str:
@@ -207,9 +182,6 @@ class Site:
 
     def substitute(self, page: Page, text: str) -> str:
         def token(match: re.Match[str]) -> str:
-            digits = DOTS.fullmatch(match[1])
-            if digits is not None:
-                return dot_matrix(digits[1])
             if match[1] not in self.tokens:
                 raise BuildError(f"{page.source}: unknown token {match[0]}")
             return self.tokens[match[1]]
@@ -235,6 +207,7 @@ class Site:
         stylesheet = LEADING_STYLE_COMMENT.sub("", (SITE / "style.css").read_text(encoding="utf-8"), count=1)
         (self.output / "style.css").write_text(stylesheet, encoding="utf-8", newline="\n")
         shutil.copytree(SITE / "fonts", self.output / "fonts")
+        shutil.copytree(SITE / "art", self.output / "art")
         shutil.copyfile(SITE / SCRIPT_NAME, self.output / SCRIPT_NAME)
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))

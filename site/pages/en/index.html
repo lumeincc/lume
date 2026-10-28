@@ -3,7 +3,8 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<div class="field" aria-hidden="true"><i></i><i class="p2"></i><i class="p3"></i><i class="p4"></i><i class="p5"></i><i class="p6"></i></div>
+<img class="art" src="/art/hero.svg" alt="" width="1600" height="1000" decoding="async">
+<img class="art sparkles" src="/art/sparkles.svg" alt="" width="1600" height="1000" decoding="async">
 <div class="hero-inner">
 <h1>What you write <em>stays between you.</em></h1>
 <div class="actions">
@@ -12,31 +13,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 </section>
 
-<div class="stats">
-<div class="stat">{{dots-0}}<p>phone numbers or e-mail addresses. Your account comes from a recovery phrase</p></div>
-<div class="stat">{{dots-2}}<p>key exchanges at the start of every conversation: X25519 and post-quantum ML-KEM-768</p></div>
-<div class="stat">{{dots-1}}<p>key per message. A key is deleted as soon as it has been used</p></div>
-<div class="stat">{{dots-60}}<p>digits in a safety number. If they match on both phones, nobody is in the middle</p></div>
-</div>
-
 <section class="section">
 <h2>The server carries your messages <em>but cannot read them</em></h2>
 <p class="lead">LUME is a messenger for Android and Windows. A message is encrypted on the sender's device and decrypted only on the recipient's, and the server that delivers it is not told who sent it.</p>
 <div class="grid pairs">
 <div class="card">
+<p class="kicker">Account</p>
 <h3>No phone number or e-mail</h3>
 <p>Your account is created on your device from a 24-word recovery phrase. LUME never asks for a phone number, an e-mail address or a name, and the phrase never leaves your device.</p>
 </div>
 <div class="card">
-<h3>Encrypted on the device</h3>
+<p class="kicker">Encryption</p>
+<h3>On the device</h3>
 <p>The sender encrypts a message and the recipient decrypts it. The server has no keys.</p>
 </div>
 <div class="card">
-<h3>Post-quantum key exchange</h3>
+<p class="kicker">Keys</p>
+<h3>Post-quantum exchange</h3>
 <p>A conversation starts with two key exchanges, X25519 and ML-KEM-768. Reading it would take breaking both.</p>
 </div>
 <div class="card">
-<h3>Open source</h3>
+<p class="kicker">Code</p>
+<h3>Open to inspection</h3>
 <p>The code is public under the GNU AGPL. The cryptography comes from libsodium and liboqs, and every construction is checked against published test vectors.</p>
 </div>
 </div>
@@ -46,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <h2>What LUME protects <em>and what it does not</em></h2>
 <div class="grid pairs">
 <div class="card yes">
-<h3>Protects</h3>
+<h3 class="kicker">Protects</h3>
 <ul>
 <li><strong>What you write</strong>, against our server, the network and anyone who later gets the server's storage, including someone who records traffic today and has a quantum computer later.</li>
 <li><strong>Old messages</strong>, if your device is taken later: a message key is deleted once it has been used.</li>
@@ -57,7 +55,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </ul>
 </div>
 <div class="card no">
-<h3>Does not protect</h3>
+<h3 class="kicker">Does not protect</h3>
 <ul>
 <li><strong>Your IP address and timing.</strong> The server sees where every connection comes from, and someone watching it live can match senders and recipients. Use Tor or a VPN if that matters to you.</li>
 <li><strong>How much you receive and when.</strong></li>
@@ -76,7 +74,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <p class="lead">The specification is a draft, revision {{spec-revision}}, and can still change.</p>
 <div class="grid">
 <div class="card done">
-<h3>Ready</h3>
+<h3 class="kicker">Ready</h3>
 <ul>
 <li>The cryptographic core in C++, on libsodium and liboqs, with a self-test at start-up</li>
 <li>Accounts from a 24-word recovery phrase</li>
@@ -87,7 +85,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </ul>
 </div>
 <div class="card todo">
-<h3>In progress</h3>
+<h3 class="kicker">In progress</h3>
 <ul>
 <li>Message content and sealed sender</li>
 <li>Encrypted storage on the device</li>
@@ -97,7 +95,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <li>An independent security audit</li>
 </ul>
 </div>
-<div class="card notice">
+<div class="card">
+<p class="kicker">Download</p>
 <h3>No app yet</h3>
 <p>LUME is not in any app store yet. If someone offers you a LUME download, it is not ours.</p>
 <p>Android and Windows come first. There will be no web version.</p>
@@ -108,11 +107,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <section class="section links">
 <h2>Documentation</h2>
 <div class="grid">
-<a class="card" href="/how-it-works/"><h3>How it works</h3><p>Accounts, encryption, the server and the limits of the protection.</p></a>
-<a class="card" href="/safety-number/"><h3>Safety number</h3><p>How to make sure nobody is between you and your contact.</p></a>
-<a class="card" href="/security/"><h3>Security</h3><p>How to report a security problem.</p></a>
-<a class="card" href="/open-source/"><h3>Open source</h3><p>The repository, the licence, building and checking.</p></a>
-<a class="card" href="/legal/"><h3>Legal</h3><p>The privacy policy, the terms and the other documents.</p></a>
-<a class="card" href="/spec/crypto/"><h3>Specification</h3><p>Every key and construction.</p></a>
+<a class="card" href="/how-it-works/"><p class="kicker">Guide</p><h3>How it works</h3><p>Accounts, encryption, the server and the limits of the protection.</p></a>
+<a class="card" href="/safety-number/"><p class="kicker">Guide</p><h3>Safety number</h3><p>How to make sure nobody is between you and your contact.</p></a>
+<a class="card" href="/security/"><p class="kicker">Guide</p><h3>Security</h3><p>How to report a security problem.</p></a>
+<a class="card" href="/open-source/"><p class="kicker">Open source</p><h3>Code and licence</h3><p>The repository, the licence, building and checking.</p></a>
+<a class="card" href="/legal/"><p class="kicker">Legal</p><h3>Policies and terms</h3><p>The privacy policy, the terms and the other documents.</p></a>
+<a class="card" href="/spec/crypto/"><p class="kicker">Specification</p><h3>Cryptography</h3><p>Every key and construction.</p></a>
 </div>
 </section>
