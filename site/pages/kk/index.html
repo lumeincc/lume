@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<img class="art" src="/art/hero.svg" alt="" width="1600" height="1000" decoding="async">
+<div class="light" aria-hidden="true"><i class="rays"></i><i class="bloom"></i><i class="core"></i></div>
 <img class="art sparkles" src="/art/sparkles.svg" alt="" width="1600" height="1000" decoding="async">
 <div class="hero-inner">
 <h1>Жазғаныңыздың бәрі <em>өз араларыңызда қалады.</em></h1>
@@ -13,9 +13,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 </section>
 
-<section class="section">
+<section class="section talk">
+<div class="talk-head">
 <h2>Сервер хабарламаларды жеткізеді, <em>бірақ оларды оқи алмайды</em></h2>
-<p class="lead">LUME — Android мен Windows-қа арналған мессенджер. Хабарлама жіберушінің құрылғысында шифрланып, тек алушының құрылғысында ашылады, ал оны жеткізетін серверге жіберушінің кім екені айтылмайды.</p>
+<p class="lead">Хабарлама жіберушінің телефонында шифрланып, тек алушыда ашылады. Сервер конверттің кімге арналғанын көреді, бірақ ішінде не барын және оны кім жібергенін көрмейді.</p>
+</div>
+<div class="scene">
+<div class="view server">
+<p class="kicker">Сервер осылай көреді</p>
+<div class="chat" data-cipher aria-hidden="true">
+<p class="msg in">9fA2#c7E0b&lt;d=41aE?3b%f8C</p>
+<p class="msg out">e1D|5a&amp;0Fc9|b7</p>
+<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8</p>
+<p class="msg out">b0E%7c3A|f9d</p>
+</div>
+<p class="view-note">Жіберуші: белгісіз</p>
+</div>
+<div class="view">
+<p class="kicker">Әңгімелесуші осылай көреді</p>
+<div class="chat">
+<p class="msg in">Сәлем! Бүгін үйдесің бе?</p>
+<p class="msg out">Иә, алтыдан кейін</p>
+<p class="msg in">Онда жетіде кездесейік</p>
+<p class="msg out">Келістік</p>
+</div>
+<p class="view-note">Құрылғыда ашылды</p>
+</div>
+</div>
+</section>
+
+<section class="section">
+<h2>Хабарламаның жолы</h2>
+<ol class="track">
+<li class="step"><h3>Шифрланады</h3><p>Жіберушінің телефонында, тек екі құрылғыда бар кілтпен.</p></li>
+<li class="step"><h3>Мөрленеді</h3><p>Жіберушінің аты конверттің ішіне кетеді. Сыртында тек алушы.</p></li>
+<li class="step"><h3>Серверде күтеді</h3><p>Алушы қосылғанша, бірақ 30 күннен аспайды.</p></li>
+<li class="step"><h3>Ашылады</h3><p>Тек алушының құрылғысында.</p></li>
+<li class="step"><h3>Кілт жойылады</h3><p>Пайдаланылған кілт бірден өшіріледі.</p></li>
+<li class="run" aria-hidden="true"></li>
+</ol>
+</section>
+
+<section class="section">
+<h2>LUME қалай жасалған</h2>
 <div class="grid pairs">
 <div class="card">
 <p class="kicker">Аккаунт</p>
