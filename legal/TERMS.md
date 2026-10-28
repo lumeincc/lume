@@ -117,5 +117,8 @@ account.
 
 ## 12. Contact
 
-The contact address will be published here before the first release. Security
-issues: [SECURITY.md](../SECURITY.md).
+> [!IMPORTANT]
+> **To be filled in before release:** the contact address (see the
+> [contact page](CONTACT.md)).
+
+Security issues: [SECURITY.md](../SECURITY.md).

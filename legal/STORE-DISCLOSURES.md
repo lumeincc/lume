@@ -21,7 +21,7 @@ those changes, this page changes in the same commit.
 | Location, contacts, financial info, health, app activity, web history, device or other IDs, diagnostics | Not collected |
 | Data shared with third parties | None |
 | Data encrypted in transit | Yes |
-| Users can request deletion | Yes — *Delete account* in the app removes all server-side data at once |
+| Users can request deletion | Yes — *Delete account* in the app removes all server-side data at once; the web page every store asks for is [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md) |
 | Independent security review | No, not yet — will be updated if one is completed |
 
 Other Play declarations:
@@ -46,6 +46,10 @@ Other Play declarations:
   network).
 - Capabilities: `internetClient` only.
 - Age rating through the IARC questionnaire: users interact; no purchases.
+
+> [!IMPORTANT]
+> **To be filled in before release:** the website addresses of the privacy
+> policy and of the account deletion page, which every store asks for.
 
 ## Not applicable
 

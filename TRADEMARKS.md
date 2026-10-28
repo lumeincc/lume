@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 The LUME source code is free software under the GNU Affero General Public
 License v3.0. **The LUME name and logo are not.** They belong to LUME Inc. and
 are covered by [`LICENSES/LicenseRef-LUME-Brand.txt`](LICENSES/LicenseRef-LUME-Brand.txt).
+Русская версия: [TRADEMARKS.ru.md](TRADEMARKS.ru.md).
 
 The split exists to protect people who use LUME. A messenger is trusted for its
 security, and someone who installs an app called LUME, with the LUME logo, has

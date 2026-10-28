@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 LUME is an encrypted messenger, so a security report is the most useful thing
 you can send.
+Русская версия: [SECURITY.ru.md](SECURITY.ru.md).
 
 ## Reporting a vulnerability
 

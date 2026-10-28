@@ -53,5 +53,6 @@ relay can see without reading messages (for example mass account creation).
 
 ## Child-safety contact
 
-The designated contact for child-safety matters and for authorities will be
-published here before the first release.
+> [!IMPORTANT]
+> **To be filled in before release:** the designated contact for child-safety
+> matters and for authorities (see the [contact page](CONTACT.md)).

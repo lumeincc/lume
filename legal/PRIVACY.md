@@ -16,8 +16,11 @@ partnership registered in the Republic of Kazakhstan, BIN 260740032421,
 Temirtau, Karaganda Region. LUME Inc. is the owner and operator of the
 databases described below and the controller of the personal data in them.
 
-Contact for privacy requests: **the address will be published here before the
-first release.** Until then, use private vulnerability reporting on
+> [!IMPORTANT]
+> **To be filled in before release:** the address for privacy requests (see
+> the [contact page](CONTACT.md)).
+
+Until then, use private vulnerability reporting on
 [github.com/lumeincc/lume](https://github.com/lumeincc/lume).
 
 ## 2. The short version
@@ -46,6 +49,8 @@ LUME is built so that we hold as little about you as delivery requires.
 | **Invite codes**, stored only as hashes | to let someone reach you when you are not discoverable | 24 hours |
 | **Messages waiting for delivery** — encrypted, unreadable to us, marked only with the recipient | to hand them to you when you next connect | deleted as soon as your app confirms receipt, and in any case after 30 days |
 | **Attachments** — encrypted, unreadable to us | to let the recipient download them | 30 days |
+| **Reports** another user makes about messages from you — the reported messages and your identity keys, sealed so that only LUME Inc. can open them | to act on abuse ([Terms of Use](TERMS.md), section 4) | 90 days, or longer where the law requires a report to be preserved |
+| **A released username**, stored only as a hash | so that a deleted or expired name cannot be registered again at once | 31 days |
 
 ## 4. What passes through but is not kept
 
@@ -82,15 +87,22 @@ cannot recover it for you.
 
 ## 7. Who else is involved
 
-- **Hosting provider.** Our server runs on infrastructure we rent. The
-  provider, the country where the server is located and any resulting
-  cross-border transfer **will be named here before the first release.**
+- **Hosting provider.** Our server runs on infrastructure we rent; the
+  provider is not chosen yet — see the note below.
 - **App stores.** Google Play, RuStore and Microsoft Store process your
   download under their own privacy policies. LUME does not receive data from
   them about you.
 - **No one else.** We do not use advertising networks, analytics services,
   crash-reporting services or push-notification services that receive your
   data.
+
+> [!IMPORTANT]
+> **To be filled in before release:** the hosting provider, the country where
+> the server is located and any resulting cross-border transfer. The Law of the
+> Republic of Kazakhstan "On Personal Data and Their Protection" requires
+> personal data to be stored in a database located in Kazakhstan; where the
+> server runs, and what that means for users outside Kazakhstan, needs a
+> lawyer's review.
 
 We disclose data to authorities only as described in our
 [Law Enforcement Policy](LAW-ENFORCEMENT.md), and only what section 3 lists —
@@ -104,8 +116,10 @@ You can, at any time and from inside the app:
 - **turn discoverability off**, so no one can look your username up;
 - **revoke** any contact's delivery token, which stops their messages reaching
   you;
-- **delete your account**, which removes everything in section 3 at once and
-  frees the username.
+- **delete your account**, which removes everything in section 3 that belongs
+  to it at once, except reports other users made and a hash of the username,
+  which is held for 31 days and then freed — see
+  [Deleting your account](ACCOUNT-DELETION.md).
 
 Because we know nothing about you except your account's keys, requests are
 made from the app, signed by your device — that is how we know a request is

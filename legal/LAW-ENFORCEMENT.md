@@ -19,7 +19,8 @@ given username:
 - the **day** the account was created and the **day** it last connected;
 - the number of delivery tokens it has issued — not who holds them;
 - encrypted messages waiting for delivery to it, for at most 30 days, which we
-  cannot decrypt.
+  cannot decrypt;
+- reports other users made about messages from it, for 90 days.
 
 ## What does not exist
 
@@ -55,5 +56,6 @@ which countries, and how many we answered and with what.
 
 ## Contact
 
-The contact address for authorities will be published here before the first
-release.
+> [!IMPORTANT]
+> **To be filled in before release:** the contact address for authorities (see
+> the [contact page](CONTACT.md)).
