@@ -24,5 +24,9 @@ if [ ! -f "$results" ]; then
     echo "No test results: the configure or build step failed. See the output above." >&2
     exit $((status == 0 ? 1 : status))
 fi
-python3 tools/test_report.py "$results" "build/$build/test-report.html" || true
+report_status=0
+python3 tools/test_report.py "$results" "build/$build/test-report.html" || report_status=$?
+if [ "$status" -eq 0 ]; then
+    status=$report_status
+fi
 exit "$status"

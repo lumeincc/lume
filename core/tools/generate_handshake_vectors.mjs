@@ -38,6 +38,20 @@ const dh = (secret, peer) =>
     publicKey: createPublicKey({ key: Buffer.concat([bytes("302a300506032b656e032100"), peer]), format: "der", type: "spki" }),
   });
 
+const fieldPrime = (1n << 255n) - 19n;
+const fromLittleEndian = (value) => BigInt(`0x${Buffer.from(value).reverse().toString("hex")}`);
+const toLittleEndian = (value) => Buffer.from(value.toString(16).padStart(64, "0"), "hex").reverse();
+const power = (base, exponent) => {
+  let result = 1n;
+  let square = base % fieldPrime;
+  for (let rest = exponent; rest > 0n; rest >>= 1n) {
+    if (rest & 1n) result = (result * square) % fieldPrime;
+    square = (square * square) % fieldPrime;
+  }
+  return result;
+};
+const twinOf = (publicKey) => toLittleEndian(power(fromLittleEndian(publicKey), fieldPrime - 2n));
+
 const signPrekey = (signingSeed, kind, id, createdAt, generation, publicKey) =>
   sign(null, Buffer.concat([label("prekey"), u8(kind), u32(id), u64(createdAt), u32(generation), lengthPrefixed(publicKey)]), ed25519Key(signingSeed));
 
@@ -77,16 +91,35 @@ const cases = scenarios.map((scenario, index) => {
     dh(ephemeralSecret, spkPublic),
     ...(scenario.oneTime ? [dh(ephemeralSecret, opkPublic)] : []),
   ];
+  const transcriptHash = sha256(
+    label("transcript"),
+    bytes(alice.signing_key),
+    bytes(alice.exchange_key),
+    ephemeralPublic,
+    bytes(bob.signing_key),
+    bytes(bob.exchange_key),
+    spkPublic,
+    ...(scenario.oneTime ? [opkPublic] : []),
+    kemPublic,
+    ciphertext,
+  );
   const inputKey = Buffer.concat([Buffer.alloc(32, 0xff), ...dhs, sharedSecret]);
-  const output = Buffer.from(hkdfSync("sha256", inputKey, Buffer.alloc(32), label("pqxdh"), 96));
+  const output = Buffer.from(hkdfSync("sha256", inputKey, Buffer.alloc(32), Buffer.concat([label("pqxdh"), transcriptHash]), 96));
   const associatedData = Buffer.concat([
     label("ad"),
     bytes(alice.signing_key),
     bytes(alice.exchange_key),
     bytes(bob.signing_key),
     bytes(bob.exchange_key),
-    sha256(kemPublic, ciphertext),
+    transcriptHash,
   ]);
+
+  const twin = twinOf(ephemeralPublic);
+  const responderSecrets = [bytes(bob.exchange_secret), spkSecret, ...(scenario.oneTime ? [opkSecret] : [])];
+  const twinAgrees = responderSecrets.every((responderSecret) => dh(responderSecret, twin).equals(dh(responderSecret, ephemeralPublic)));
+  if (twin.equals(ephemeralPublic) || fromLittleEndian(twin) >= fieldPrime || !twinAgrees) {
+    throw new Error("the ephemeral key's twin is not a second key with the same X25519 results");
+  }
   const initialHeader = Buffer.concat([
     bytes(alice.signing_key),
     bytes(alice.exchange_key),
@@ -126,6 +159,8 @@ const cases = scenarios.map((scenario, index) => {
     },
     one_time_prekey: scenario.oneTime ? { id: ids.opk, secret: hex(opkSecret), public: hex(opkPublic) } : null,
     ephemeral_secret: hex(ephemeralSecret),
+    ephemeral_key_twin: hex(twin),
+    transcript_hash: hex(transcriptHash),
     root_key: hex(output.subarray(0, 32)),
     header_key_alice: hex(output.subarray(32, 64)),
     next_header_key_bob: hex(output.subarray(64, 96)),
@@ -136,7 +171,7 @@ const cases = scenarios.map((scenario, index) => {
 });
 
 const document = {
-  description: "LUME PQXDH handshake, CRYPTO.md sections 4 and 5, computed with Node.js crypto (OpenSSL); the ML-KEM-768 key, ciphertext and shared secret are the Wycheproof mlkem_768_test.json case named by wycheproof_tcId",
+  description: "LUME PQXDH handshake, CRYPTO.md sections 4 and 5, computed with Node.js crypto (OpenSSL); the ML-KEM-768 key, ciphertext and shared secret are the Wycheproof mlkem_768_test.json case named by wycheproof_tcId; ephemeral_key_twin is EK_A^(p-2) mod p, checked with OpenSSL to give every X25519 result EK_A gives",
   generator: "core/tools/generate_handshake_vectors.mjs",
   cases,
 };

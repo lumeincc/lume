@@ -6,6 +6,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(rapidcheck CONFIG REQUIRED)
 
 add_executable(lume_core_tests
+    support/curve.cpp
     support/hex.cpp
     support/hex_test.cpp
     support/vectors.cpp

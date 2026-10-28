@@ -202,6 +202,34 @@ TEST(Phrase, ExactlyEightLastWordsCompleteTwentyThreeWords)
     EXPECT_EQ(original, 1);
 }
 
+TEST(Phrase, TheLongestPossiblePhraseEncodes)
+{
+    constexpr std::size_t longest = (phrase_word_count * (detail::longest_word + 1)) - 1;
+    for (const std::string_view repeated : detail::words) {
+        if (repeated.size() != detail::longest_word) {
+            continue;
+        }
+        std::vector<std::string> words(phrase_word_count, std::string(repeated));
+        for (const std::string_view last : detail::words) {
+            if (last.size() != detail::longest_word) {
+                continue;
+            }
+            words.back() = std::string(last);
+            const auto phrase = joined(words, " ");
+            const auto entropy = entropy_from_phrase(text(phrase));
+            if (!entropy) {
+                continue;
+            }
+            ASSERT_EQ(phrase.size(), longest);
+            const auto encoded = phrase_from_entropy(*entropy);
+            ASSERT_TRUE(encoded.has_value());
+            EXPECT_EQ(as_text(encoded->view()), phrase);
+            return;
+        }
+    }
+    FAIL() << "no phrase of twenty-four eight-letter words has a valid checksum";
+}
+
 TEST(Phrase, ReportsErrorsInAFixedOrder)
 {
     const std::string phrase(zero_entropy_phrase);
