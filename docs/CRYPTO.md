@@ -503,8 +503,9 @@ First, skipped keys past their lifetime are deleted (§6.6) — the one change a
 failed decryption keeps. Everything after is computed on scratch values, and
 nothing in the state is written until the body authenticates; memory the
 commit needs is reserved before that, so the commit cannot fail halfway. Any
-other failure leaves the session exactly as it was. Trying header keys writes nothing, so a forged
-envelope costs at most ten AEAD attempts and no copy of the state.
+other failure leaves the session exactly as it was. Trying header keys writes
+nothing, so a forged envelope costs at most ten AEAD attempts and no copy of
+the state.
 
 1. Try each distinct header key in the skipped store once; if one opens
    `enc_header` and holds a key for `(dh, n)`, decrypt with it and delete it.
