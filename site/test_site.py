@@ -207,6 +207,25 @@ class Site(unittest.TestCase):
         self.assertIn(build.SCRIPT_NAME, chooser)
         self.assertNotIn('class="consent"', chooser)
 
+    def test_the_documentation_page_lists_every_guide_policy_and_specification(self) -> None:
+        for language in self.config["languages"]:
+            text = (self.output / language / "docs" / "index.html").read_text(encoding="utf-8")
+            docs = self.site.by_route[(language, "docs")]
+            for page in self.site.pages:
+                if page.group not in build.DOCS_GROUPS:
+                    continue
+                if page.language == language or (page.group == "spec" and page.language == self.config["languages"][0]):
+                    self.assertIn(f'href="{self.site.link_to_page(docs, page, "")}"', text, (language, page.route))
+
+    def test_every_page_footer_links_documentation_source_and_privacy(self) -> None:
+        for language in self.config["languages"]:
+            text = (self.output / language / "how-it-works" / "index.html").read_text(encoding="utf-8")
+            footer = text[text.index('<footer class="site-footer">'):]
+            self.assertIn('href="../docs/"', footer)
+            self.assertIn(f'href="{self.config["repository"]}"', footer)
+            self.assertIn('href="../legal/privacy/"', footer)
+            self.assertNotIn("<header", text[:text.index("<main")])
+
     def test_the_not_found_page_links_under_the_base_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "site"

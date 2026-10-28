@@ -26,7 +26,7 @@ title = { en = "LUME — an end-to-end encrypted messenger", ru = "LUME — ме
 route = "how-it-works"
 group = "guide"
 source = { en = "site/pages/en/how-it-works.md", ru = "site/pages/ru/how-it-works.md", kk = "site/pages/kk/how-it-works.md" }
-summary = { en = "How LUME protects your messages, in plain words, and what it does not protect.", ru = "Как LUME защищает переписку — простыми словами, — и от чего не защищает.", kk = "LUME хат алмасуды қалай қорғайды — қарапайым тілмен — және неден қорғамайды." }
+summary = { en = "How LUME protects your messages and what it does not protect.", ru = "Как LUME защищает переписку и от чего не защищает.", kk = "LUME хат алмасуды қалай қорғайды және неден қорғамайды." }
 
 [[pages]]
 route = "safety-number"
@@ -66,6 +66,13 @@ generate = "legal"
 languages = ["en", "ru", "kk"]
 title = { en = "Legal", ru = "Документы", kk = "Құжаттар" }
 summary = { en = "The privacy policy, terms of use and every other policy of LUME.", ru = "Политика конфиденциальности, пользовательское соглашение и остальные документы LUME.", kk = "Құпиялылық саясаты, пайдаланушы келісімі және LUME-нің басқа құжаттары." }
+
+[[pages]]
+route = "docs"
+generate = "docs"
+languages = ["en", "ru", "kk"]
+title = { en = "Documentation", ru = "Документация", kk = "Құжаттама" }
+summary = { en = "Every guide, policy and specification of LUME in one place.", ru = "Все руководства, документы и спецификация LUME в одном месте.", kk = "LUME-нің барлық нұсқаулықтары, құжаттары мен спецификациясы бір жерде." }
 
 [[pages]]
 route = "legal/privacy"
@@ -160,13 +167,11 @@ language-label = "Language"
 site-title = "LUME"
 description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. No phone number, no e-mail, no trackers."
 skip = "Skip to content"
-navigation-label = "Main"
-navigation = [["how-it-works", "How it works"], ["safety-number", "Safety number"], ["security", "Security"], ["open-source", "Open source"], ["legal", "Legal"]]
-footer-label = "Policies"
-footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Name and logo"], ["https://github.com/lumeincc/lume", "Source code"]]
-footer = [
-    "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
-]
+footer-docs = "Documentation"
+footer-source = "Source code"
+footer-privacy = "Privacy"
+english = "In English."
+imprint = "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421."
 contents = "On this page"
 source = "Source:"
 history = "history of changes"
@@ -210,13 +215,11 @@ language-label = "Язык"
 site-title = "LUME"
 description = "LUME — мессенджер со сквозным шифрованием и постквантовым обменом ключами, в разработке. Без номера телефона, почты и трекеров."
 skip = "Перейти к содержанию"
-navigation-label = "Основное меню"
-navigation = [["how-it-works", "Как это работает"], ["safety-number", "Номер безопасности"], ["security", "Уязвимости"], ["open-source", "Открытый код"], ["legal", "Документы"]]
-footer-label = "Документы"
-footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Название и логотип"], ["https://github.com/lumeincc/lume", "Исходный код"]]
-footer = [
-    "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
-]
+footer-docs = "Документация"
+footer-source = "Исходный код"
+footer-privacy = "Конфиденциальность"
+english = "На английском."
+imprint = "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421."
 contents = "Содержание"
 source = "Исходный текст:"
 history = "история изменений"
@@ -259,13 +262,11 @@ language-label = "Тіл"
 site-title = "LUME"
 description = "LUME — постквантты кілт алмасуы бар, ұштан-ұшқа шифрланған мессенджер, әзірлену үстінде. Телефон нөмірі, электрондық пошта және трекерлер жоқ."
 skip = "Мазмұнға өту"
-navigation-label = "Негізгі мәзір"
-navigation = [["how-it-works", "Қалай жұмыс істейді"], ["safety-number", "Қауіпсіздік нөмірі"], ["security", "Осалдықтар"], ["open-source", "Ашық код"], ["legal", "Құжаттар"]]
-footer-label = "Құжаттар"
-footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Келісім"], ["legal/website", "Осы сайт"], ["legal/contact", "Байланыс"], ["trademarks", "Атау және логотип"], ["https://github.com/lumeincc/lume", "Бастапқы код"]]
-footer = [
-    "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421.",
-]
+footer-docs = "Құжаттама"
+footer-source = "Бастапқы код"
+footer-privacy = "Құпиялылық"
+english = "Ағылшын тілінде."
+imprint = "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421."
 contents = "Мазмұны"
 source = "Бастапқы мәтін:"
 history = "өзгерістер тарихы"
