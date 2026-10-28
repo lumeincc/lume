@@ -203,13 +203,13 @@ class Site:
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))
         for page in self.pages:
-            rendered = self.render(page)
+            rendered = self.render_page(page)
             html = layout.substitute(self.layout_values(page, rendered))
             target = self.output / page.output
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(html, encoding="utf-8", newline="\n")
 
-    def render(self, page: Page) -> Rendered:
+    def render_page(self, page: Page) -> Rendered:
         if page.generate == "legal":
             return self.legal_index(page)
         assert page.source is not None

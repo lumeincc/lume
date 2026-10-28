@@ -137,7 +137,7 @@ class Renderer:
             elif self.table_starts(lines, index):
                 index = self.table(lines, index, out)
             elif ITEM.match(line):
-                index = self.list(lines, index, out)
+                index = self.listing(lines, index, out)
             else:
                 index = self.paragraph(lines, index, tight, out)
         return "\n".join(out)
@@ -220,7 +220,7 @@ class Renderer:
         opening = f'<{tag} class="{align}">' if align else f"<{tag}>"
         return f"{opening}{self.inline(text)}</{tag}>"
 
-    def list(self, lines: list[str], index: int, out: list[str]) -> int:
+    def listing(self, lines: list[str], index: int, out: list[str]) -> int:
         first = ITEM.match(lines[index])
         assert first is not None
         marker = first[2]
