@@ -609,7 +609,7 @@ struct ModelKey {
     std::uint8_t key = 0;
     std::uint64_t stored_at = 0;
 
-    bool operator==(const ModelKey&) const = default;
+    friend bool operator==(const ModelKey&, const ModelKey&) = default;
 };
 
 std::size_t runs_of(const std::vector<ModelKey>& model)
