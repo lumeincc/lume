@@ -207,7 +207,6 @@ class Site:
         stylesheet = LEADING_STYLE_COMMENT.sub("", (SITE / "style.css").read_text(encoding="utf-8"), count=1)
         (self.output / "style.css").write_text(stylesheet, encoding="utf-8", newline="\n")
         shutil.copytree(SITE / "fonts", self.output / "fonts")
-        shutil.copytree(SITE / "art", self.output / "art")
         shutil.copyfile(SITE / SCRIPT_NAME, self.output / SCRIPT_NAME)
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))

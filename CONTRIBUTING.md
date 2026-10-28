@@ -184,7 +184,7 @@ CI.
 - The build fails on any script other than `site/site.js`, inline script,
   an inline style, an event handler, a resource from another server, a broken
   link, a missing anchor or a repeated id. `site.js` only shows the cookie
-  window, stores the choice and lets the home page's text appear out of a
+  window, stores the choice and lets the home page's headline appear out of a
   cipher; it never sends anything anywhere, and the page reads fully without
   it.
 - A cookie other than a necessary one is set only after the visitor allows it,
