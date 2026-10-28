@@ -166,13 +166,6 @@ class Site(unittest.TestCase):
             problems = build.check(output)
         self.assertEqual(len(problems), 4, problems)
 
-    def test_dot_numbers_draw_every_cell_of_each_digit(self) -> None:
-        svg = build.dot_matrix("709")
-        self.assertIn('viewBox="0 0 17 7"', svg)
-        self.assertEqual(svg.count("<circle"), 3 * 5 * 7)
-        lit = sum(row.count("#") for digit in "709" for row in build.DIGITS[digit])
-        self.assertEqual(svg.count("<circle") - svg.count('class="off"'), lit)
-
     def test_the_policy_allows_fonts_only_from_this_site(self) -> None:
         self.assertIn("font-src 'self'", build.POLICY)
         self.assertIn("default-src 'none'", build.POLICY)
