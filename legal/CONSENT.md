@@ -35,8 +35,8 @@ and confirmed by a registration request signed with my account key.
 6. **Transfer to third parties:** only to the hosting provider whose equipment
    runs the server, on the instructions of and under contract with LUME Inc.,
    and to public authorities in the cases and manner the law sets.
-7. **Cross-border transfer:** none while the server is located in the Republic
-   of Kazakhstan.
+7. **Cross-border transfer:** none — the server and the data are in a data
+   centre in the Republic of Kazakhstan.
 8. **Publication in publicly available sources:** none. The username is
    visible to other LUME users searching for me by name, and only while
    discoverability is on; I can turn it off in the app.
@@ -55,5 +55,4 @@ my legal representative agrees to my using LUME.
 > **To be filled in before release:** have a lawyer confirm that a consent in
 > which the subject is identified by username and key, rather than by surname,
 > first name and patronymic, meets article 8(4) of the Kazakh law "On Personal
-> Data and Their Protection". Item 7 of this text changes if the server is
-> located outside Kazakhstan.
+> Data and Their Protection".

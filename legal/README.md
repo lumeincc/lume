@@ -42,8 +42,8 @@ equal force; if they differ, the Russian text applies. English is a translation
 for convenience.
 
 **All documents are drafts** until the first public release. Before that
-release they need: the contact addresses, the hosting provider and server
-location, the EU representative, the trademark filing, and a review by a lawyer
+release they need: the contact addresses, the name of the hosting provider (a
+data centre in Kazakhstan), the EU representative, the trademark filing, and a review by a lawyer
 admitted in Kazakhstan. Each fact that is not settled yet is an *Important* note
 starting with **To be filled in before release** (**Заполнить до выпуска** in
 Russian, **Шығарылымға дейін толтыру керек** in Kazakh); `python site/build.py`

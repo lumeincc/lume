@@ -142,7 +142,7 @@ requests from a network and do not assess you as a person.
 ## 7. Who else is involved
 
 - **The hosting provider.** The server runs on rented infrastructure in a data
-  centre. The provider processes data only on our instructions and under
+  centre in the Republic of Kazakhstan. The provider processes data only on our instructions and under
   contract and cannot see its content: messages and attachments are encrypted,
   and everything else is listed in section 3.
 - **App stores.** The store you installed LUME from handles downloads and
@@ -155,13 +155,15 @@ requests from a network and do not assess you as a person.
   services that would receive your data, and we do not share data for
   marketing.
 
+**Where the data is.** The server and all the data listed in section 3 are in a
+data centre in the Republic of Kazakhstan, as article 12(2) of the Kazakh law
+"On Personal Data and Their Protection" requires. There is no cross-border
+transfer: the data of users in any country is collected directly by their apps
+and stored in Kazakhstan.
+
 > [!IMPORTANT]
-> **To be filled in before release:** the hosting provider and the server's
-> country. Article 12(2) of the Kazakh law "On Personal Data and Their
-> Protection" requires personal data to be stored in a database or digital
-> asset located in the Republic of Kazakhstan. While the server is in
-> Kazakhstan there is no cross-border transfer: the data of users in any
-> country is collected directly by their apps and stored in Kazakhstan.
+> **To be filled in before release:** the name of the hosting provider — the
+> data centre.
 
 ## 8. How we protect data
 

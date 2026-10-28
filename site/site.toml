@@ -174,7 +174,7 @@ source = "Source:"
 history = "history of changes"
 legal-intro = [
     "Every document here exists in Russian, Kazakh and English. The Kazakh and Russian texts have equal force; if they differ, the Russian text applies, and the English text is a translation. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
-    "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and where the server will run.",
+    "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the name of the data centre in Kazakhstan that hosts the server.",
 ]
 
 [strings.en.groups]
@@ -207,7 +207,7 @@ source = "Исходный текст:"
 history = "история изменений"
 legal-intro = [
     "Каждый документ здесь есть на русском, казахском и английском. Тексты на казахском и русском языках имеют одинаковую силу; при расхождении применяется русский текст, английский — перевод. Документы описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
-    "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, место, где будет работать сервер, и другие.",
+    "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, название центра обработки данных в Казахстане, где работает сервер, и другие.",
 ]
 
 [strings.ru.groups]
@@ -239,7 +239,7 @@ source = "Бастапқы мәтін:"
 history = "өзгерістер тарихы"
 legal-intro = [
     "Мұндағы әр құжат орыс, қазақ және ағылшын тілдерінде бар. Қазақ және орыс тілдеріндегі мәтіндердің күші бірдей; алшақтық болса, орыс тіліндегі мәтін қолданылады, ағылшын тіліндегісі — аударма. Құжаттар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
-    "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервердің қай жерде жұмыс істейтіні және басқалары.",
+    "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервер жұмыс істейтін Қазақстандағы деректерді өңдеу орталығының атауы және басқалары.",
 ]
 
 [strings.kk.groups]
