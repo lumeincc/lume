@@ -43,7 +43,7 @@ TAG = re.compile(r"<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>")
 ATTRIBUTE = re.compile(r'\b(href|src|srcset)="([^"]*)"')
 SCRIPT = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.S | re.I)
 SOURCE = re.compile(r'\bsrc="([^"]*)"')
-SCRIPT_NAME = "consent.js"
+SCRIPT_NAME = "site.js"
 IDENTIFIER = re.compile(r'\bid="([^"]*)"')
 FORBIDDEN_TAGS = {"iframe", "object", "embed", "form", "base", "frame", "frameset"}
 HANDLER_ATTRIBUTE = re.compile(r"\bon[a-z]+\s*=", re.I)

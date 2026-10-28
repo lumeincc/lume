@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<img class="art" src="/art/hero.svg" alt="" width="1600" height="1000" decoding="async">
+<div class="light" aria-hidden="true"><i class="rays"></i><i class="bloom"></i><i class="core"></i></div>
 <img class="art sparkles" src="/art/sparkles.svg" alt="" width="1600" height="1000" decoding="async">
 <div class="hero-inner">
 <h1>Всё, что вы пишете, <em>остаётся между вами.</em></h1>
@@ -13,9 +13,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 </section>
 
-<section class="section">
+<section class="section talk">
+<div class="talk-head">
 <h2>Сервер передаёт сообщения, <em>но не может их прочитать</em></h2>
-<p class="lead">LUME — мессенджер для Android и Windows. Сообщение шифруется на устройстве отправителя и расшифровывается только на устройстве получателя, а серверу, который его доставляет, не сообщается, кто отправитель.</p>
+<p class="lead">Сообщение шифруется на телефоне отправителя и расшифровывается только у получателя. Сервер видит, кому адресован конверт, но не что в нём и не кто его отправил.</p>
+</div>
+<div class="scene">
+<div class="view server">
+<p class="kicker">Так видит сервер</p>
+<div class="chat" data-cipher aria-hidden="true">
+<p class="msg in">9fA2#c7E0b&lt;d=41aE?3b%f8C</p>
+<p class="msg out">e1D|5a&amp;0Fc9|b7</p>
+<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8</p>
+<p class="msg out">b0E%7c3A|f9d</p>
+</div>
+<p class="view-note">Отправитель: неизвестен</p>
+</div>
+<div class="view">
+<p class="kicker">Так видит собеседник</p>
+<div class="chat">
+<p class="msg in">Привет! Ты сегодня дома?</p>
+<p class="msg out">Да, после шести</p>
+<p class="msg in">Тогда встречаемся в семь</p>
+<p class="msg out">Договорились</p>
+</div>
+<p class="view-note">Расшифровано на устройстве</p>
+</div>
+</div>
+</section>
+
+<section class="section">
+<h2>Путь сообщения</h2>
+<ol class="track">
+<li class="step"><h3>Шифруется</h3><p>На телефоне отправителя, ключом, который есть только у двух устройств.</p></li>
+<li class="step"><h3>Запечатывается</h3><p>Имя отправителя уходит внутрь конверта. Снаружи только адресат.</p></li>
+<li class="step"><h3>Ждёт на сервере</h3><p>Пока получатель не подключится, но не дольше 30 дней.</p></li>
+<li class="step"><h3>Расшифровывается</h3><p>Только на устройстве получателя.</p></li>
+<li class="step"><h3>Ключ удаляется</h3><p>Использованный ключ стирается сразу.</p></li>
+<li class="run" aria-hidden="true"></li>
+</ol>
+</section>
+
+<section class="section">
+<h2>Как устроен LUME</h2>
 <div class="grid pairs">
 <div class="card">
 <p class="kicker">Аккаунт</p>

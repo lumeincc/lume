@@ -20,11 +20,12 @@ the [Privacy Policy](PRIVACY.md).
   allow it.
 - **No analytics, trackers or ads**, no visitor counters and no browser
   fingerprinting.
-- **One script**, `consent.js`, from this same site. It shows the cookie window
-  and saves your choice; it does nothing else and sends nothing anywhere. The
-  site works fully without it, except that the cookie window does not appear
-  and no cookie is set. Animation is done in the stylesheet and switches off
-  when your system asks for reduced motion.
+- **One script**, `site.js`, from this same site. It shows the cookie window,
+  saves your choice and, on the home page, lets the text appear out of a
+  "cipher"; it does nothing else and sends nothing anywhere. The site works
+  fully without it: the text is there at once, except that the cookie window
+  does not appear and no cookie is set. Other animation is done in the
+  stylesheet. All of it switches off when your system asks for reduced motion.
 - **Nothing from other servers.** Fonts and images are served by this site;
   there are no CDNs, embedded videos, maps or social buttons. A strict Content
   Security Policy makes the browser enforce this.

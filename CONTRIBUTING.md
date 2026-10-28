@@ -181,10 +181,12 @@ CI.
   publishes `main` there.
 - Policies and the specification are rendered from `legal/` and `docs/`, never
   copied; every policy in `legal/` is published in every language.
-- The build fails on any script other than `site/consent.js`, inline script,
+- The build fails on any script other than `site/site.js`, inline script,
   an inline style, an event handler, a resource from another server, a broken
-  link, a missing anchor or a repeated id. `consent.js` only shows the cookie
-  window and stores the choice; it never sends anything anywhere.
+  link, a missing anchor or a repeated id. `site.js` only shows the cookie
+  window, stores the choice and lets the home page's text appear out of a
+  cipher; it never sends anything anywhere, and the page reads fully without
+  it.
 - A cookie other than a necessary one is set only after the visitor allows it,
   and every cookie is listed in `legal/WEBSITE.*`; a new one bumps the consent
   version so that everyone is asked again. No analytics, external fonts or
