@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140">
+  <style>
+    .light { stop-color: #fff; }
+    .disc { fill: #000; }
+    .ring { stroke: #fff; }
+    @media (prefers-color-scheme: light) {
+      .light { stop-color: #000; }
+      .disc { fill: #fff; }
+      .ring { stroke: #000; }
+    }
+  </style>
+  <defs>
+    <radialGradient id="corona" cx="100" cy="100" r="84" gradientUnits="userSpaceOnUse">
+      <stop class="light" offset=".49"/>
+      <stop class="light" offset=".56" stop-opacity=".82"/>
+      <stop class="light" offset=".68" stop-opacity=".38"/>
+      <stop class="light" offset=".84" stop-opacity=".09"/>
+      <stop class="light" offset="1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="84" fill="url(#corona)"/>
+  <circle class="disc" cx="100" cy="100" r="41.5"/>
+  <circle class="ring" cx="100" cy="100" r="42.4" fill="none" stroke-width="1.8"/>
+</svg>
