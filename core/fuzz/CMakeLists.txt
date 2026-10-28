@@ -13,5 +13,6 @@ function(lume_add_fuzzer name source)
     lume_configure_target(${name})
 endfunction()
 
+lume_add_fuzzer(lume_padding_fuzzer padding_fuzzer.cpp)
 lume_add_fuzzer(lume_phrase_fuzzer phrase_fuzzer.cpp)
 lume_add_fuzzer(lume_wire_fuzzer wire_fuzzer.cpp)
