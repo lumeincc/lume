@@ -10,11 +10,11 @@ released; this line will then be replaced by that date.
 Русская версия: [PRIVACY.ru.md](PRIVACY.ru.md).
 Қазақша нұсқа: [PRIVACY.kk.md](PRIVACY.kk.md).
 
-This policy is the document setting out LUME Inc.'s policy on the collection,
-processing and protection of personal data within the meaning of article 25(2)
-sub-paragraph 1-1) of the Law of the Republic of Kazakhstan "On Personal Data
-and Their Protection". It also contains the information owed to data subjects
-under articles 13 and 14 of the EU General Data Protection Regulation (GDPR).
+This document sets out LUME Inc.'s policy on the collection, processing and
+protection of personal data within the meaning of article 25(2) sub-paragraph
+1-1) of the Law of the Republic of Kazakhstan "On Personal Data and Their
+Protection". It also gives data subjects the information they are owed under
+articles 13 and 14 of the EU General Data Protection Regulation (GDPR).
 The consent you give when you create an account is set out in
 [Consent to the Collection and Processing of Personal Data](CONSENT.md).
 
@@ -40,15 +40,15 @@ Until then, use private reports at
 
 ## 2. In short
 
-LUME is built so that we hold exactly as much about you as delivering messages
-needs.
+LUME is built to know no more about you than it needs to deliver your
+messages.
 
-- We **cannot read** your messages, attachments or contact list. They are
-  end-to-end encrypted on your device; we hold no keys that decrypt them.
+- We **cannot read** your messages, attachments or contact list: they are
+  encrypted on your device, and we hold no keys to decrypt them.
 - We **do not ask** for your phone number, e-mail, name, address book or
   location.
-- We **do not store who sent a message.** For a message awaiting delivery, the
-  server knows whom it is addressed to and not whom it is from.
+- We **do not store who sent a message.** For a message waiting to be
+  delivered, the server knows whom it is for, but not whom it is from.
 - The apps contain **no ads, analytics, trackers** or third-party SDKs.
 - We **do not sell or share** data for advertising or profiling.
 
@@ -70,7 +70,7 @@ and Their Protection".
 | **Delivery tokens** — random values your app issues to each contact; only their hashes are stored, with the day each was created and last used | to accept messages from your contacts and refuse blocked ones without knowing who your contacts are | until you revoke them or delete the account; a token left over from a previous device and not used — 45 days |
 | **Invite codes**, hashes only | so people can reach you while search by name is off | 24 hours |
 | **Messages awaiting delivery** — encrypted, unreadable to us, labelled only with the recipient; for a message from a stranger without an invite, also a hash of the network it was sent from (see section 4) | to hand them to you when you next connect and to keep you from being flooded with spam | deleted as soon as you acknowledge them, and after 30 days in any case |
-| **Attachments** — encrypted, unreadable to us | so the recipient can download them | up to 30 days or until the download count runs out |
+| **Attachments** — encrypted, unreadable to us | so the recipient can download them | up to 30 days, or until the download limit is used up |
 | **Reports** by other users about your messages — the messages and the sender's identity keys, sealed so that only LUME Inc. can open them | to act on abuse ([Terms of Use](TERMS.md), section 6) | 90 days, or longer where the law requires the report to be kept |
 | **Held and barred usernames**, hashes only | so a freed name cannot be taken again at once, and a name barred for abuse cannot be taken again | a freed name — 31 days; a barred name — while the bar lasts |
 
