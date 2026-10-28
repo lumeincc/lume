@@ -48,6 +48,7 @@ DIGITS = {
     "8": (".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."),
     "9": (".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."),
 }
+DOCS_GROUPS = ("guide", "open-source", "legal", "spec")
 LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.S)
 LEADING_STYLE_COMMENT = re.compile(r"\A\s*/\*.*?\*/\s*", re.S)
 URL_ATTRIBUTE = re.compile(r'\b(href|src)="([^"]*)"')
@@ -247,6 +248,8 @@ class Site:
     def render_page(self, page: Page) -> Rendered:
         if page.generate == "legal":
             return self.legal_index(page)
+        if page.generate == "docs":
+            return self.docs_index(page)
         assert page.source is not None
         if page.source.suffix == ".html":
             text = strip_leading_comment((ROOT / page.source).read_text(encoding="utf-8"))
@@ -299,6 +302,25 @@ class Site:
             f"{contents}\n{body}\n{source}\n</article>"
         )
 
+    def docs_index(self, page: Page) -> Rendered:
+        words = self.strings_for(page)
+        groups = []
+        for group in DOCS_GROUPS:
+            targets = [target for target in self.pages if target.group == group and target.language == page.language]
+            note = ""
+            if not targets:
+                targets = [target for target in self.pages if target.group == group and target.language == self.languages[0]]
+                note = f' {words["english"]}'
+            items = []
+            for target in targets:
+                title = target.title or self.document(target).title
+                items.append(
+                    f'<li><a href="{self.link_to_page(page, target, "")}"><span class="title">{render.escape(title)}</span>'
+                    f'<span class="summary">{render.escape(target.summary)}{note}</span></a></li>'
+                )
+            groups.append(f'<section class="docs-group"><h2>{words["groups"][group]}</h2><ul class="index">{"".join(items)}</ul></section>')
+        return Rendered(page.title, self.article_frame(page, page.title, "", "\n".join(groups)), "page")
+
     def legal_index(self, page: Page) -> Rendered:
         words = self.strings_for(page)
         items = []
@@ -334,29 +356,22 @@ class Site:
         if page.generate == "not-found" or page.language == "":
             return ""
         words = self.strings_for(page)
-        sections = []
-        for route, label in words["navigation"]:
-            current = page.route == route or page.route.startswith(route + "/")
-            target = self.by_route[(page.language, route)]
-            marker = ' aria-current="page"' if current else ""
-            sections.append(f'<a href="{self.link_to_page(page, target, "")}"{marker}>{label}</a>')
         home = self.link_to_page(page, self.by_route[(page.language, "")], "")
-        links = []
-        for route, label in words["footer-links"]:
-            if route.startswith(EXTERNAL):
-                links.append(f'<a href="{route}">{label}</a>')
-            else:
-                links.append(f'<a href="{self.resolve_route(page, "/" + route, "")}">{label}</a>')
+        docs = self.link_to_page(page, self.by_route[(page.language, "docs")], "")
+        privacy = self.link_to_page(page, self.by_route[(page.language, "legal/privacy")], "")
         consent = words["consent"]
         path, _, fragment = consent["policy"].partition("#")
-        links.append(f'<a href="{self.resolve_route(page, "/" + path, fragment)}" data-consent="open">{consent["footer"]}</a>')
-        lines = "".join(f"<p>{line}</p>" for line in words["footer"])
+        settings = self.resolve_route(page, "/" + path, fragment)
         return (
             '<footer class="site-footer"><div class="bar">'
             f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a>{self.language_switch(page)}</div>'
-            f'<nav class="sections" aria-label="{words["navigation-label"]}">{"".join(sections)}</nav>'
-            f'<nav class="policies" aria-label="{words["footer-label"]}">{"".join(links)}</nav>'
-            f"{lines}</div></footer>"
+            '<div class="footer-actions">'
+            f'<a class="btn small" href="{docs}">{words["footer-docs"]}</a>'
+            f'<a class="btn small ghost" href="{self.repository}">{words["footer-source"]}</a>'
+            "</div>"
+            f'<p class="imprint"><span>{words["imprint"]}</span><a href="{privacy}">{words["footer-privacy"]}</a>'
+            f'<a href="{settings}" data-consent="open">{consent["footer"]}</a></p>'
+            "</div></footer>"
         )
 
     def consent(self, page: Page) -> str:
