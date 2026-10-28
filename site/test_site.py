@@ -217,12 +217,11 @@ class Site(unittest.TestCase):
                 if page.language == language or (page.group == "spec" and page.language == self.config["languages"][0]):
                     self.assertIn(f'href="{self.site.link_to_page(docs, page, "")}"', text, (language, page.route))
 
-    def test_every_page_footer_links_documentation_source_and_privacy(self) -> None:
+    def test_every_page_footer_links_documentation_and_privacy(self) -> None:
         for language in self.config["languages"]:
             text = (self.output / language / "how-it-works" / "index.html").read_text(encoding="utf-8")
             footer = text[text.index('<footer class="site-footer">'):]
             self.assertIn('href="../docs/"', footer)
-            self.assertIn(f'href="{self.config["repository"]}"', footer)
             self.assertIn('href="../legal/privacy/"', footer)
             self.assertNotIn("<header", text[:text.index("<main")])
 

@@ -365,11 +365,8 @@ class Site:
         return (
             '<footer class="site-footer"><div class="bar">'
             f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a>{self.language_switch(page)}</div>'
-            '<div class="footer-actions">'
-            f'<a class="btn small" href="{docs}">{words["footer-docs"]}</a>'
-            f'<a class="btn small ghost" href="{self.repository}">{words["footer-source"]}</a>'
-            "</div>"
-            f'<p class="imprint"><span>{words["imprint"]}</span><a href="{privacy}">{words["footer-privacy"]}</a>'
+            f'<p class="imprint"><span>{words["imprint"]}</span><a href="{docs}">{words["footer-docs"]}</a>'
+            f'<a href="{privacy}">{words["footer-privacy"]}</a>'
             f'<a href="{settings}" data-consent="open">{consent["footer"]}</a></p>'
             "</div></footer>"
         )
