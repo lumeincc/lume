@@ -29,6 +29,6 @@ using PaddingResult = std::expected<T, PaddingError>;
 
 [[nodiscard]] PaddingResult<crypto::Bytes> pad(crypto::ByteView message);
 
-[[nodiscard]] PaddingResult<crypto::Bytes> unpad(crypto::ByteView padded);
+[[nodiscard]] PaddingResult<crypto::ByteView> unpad(crypto::ByteView padded) noexcept;
 
 }

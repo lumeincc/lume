@@ -12,6 +12,16 @@
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size)
 {
     const auto input = std::span<const std::uint8_t>(data, size);
+    if (input.size() <= lume::seal::largest_paddable_size) {
+        const auto padded = lume::seal::pad(input);
+        if (!padded) {
+            std::abort();
+        }
+        const auto unpadded = lume::seal::unpad(*padded);
+        if (!unpadded || !std::ranges::equal(*unpadded, input)) {
+            std::abort();
+        }
+    }
     const auto message = lume::seal::unpad(input);
     if (!message) {
         return 0;

@@ -3,6 +3,9 @@
 
 #include "lume/seal/padding.hpp"
 
+#include "lume/crypto/aead.hpp"
+#include "lume/wire/structures.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -12,6 +15,8 @@
 #include <ranges>
 
 namespace lume::seal {
+
+static_assert(padding_buckets.back() + crypto::aead_tag_size == wire::seal_box_bound);
 
 std::optional<std::size_t> padded_size(std::size_t message_size) noexcept
 {
@@ -29,15 +34,17 @@ PaddingResult<crypto::Bytes> pad(crypto::ByteView message)
     if (!size) {
         return std::unexpected(PaddingError::too_long);
     }
-    crypto::Bytes padded(*size, 0);
-    std::ranges::copy(message, padded.begin());
-    padded.at(message.size()) = padding_marker;
+    crypto::Bytes padded;
+    padded.reserve(*size);
+    padded.assign(message.begin(), message.end());
+    padded.push_back(padding_marker);
+    padded.resize(*size, 0);
     return padded;
 }
 
-PaddingResult<crypto::Bytes> unpad(crypto::ByteView padded)
+PaddingResult<crypto::ByteView> unpad(crypto::ByteView padded) noexcept
 {
-    if (std::ranges::find(padding_buckets, padded.size()) == padding_buckets.end()) {
+    if (!std::ranges::contains(padding_buckets, padded.size())) {
         return std::unexpected(PaddingError::malformed);
     }
     const auto reversed = padded | std::views::reverse;
@@ -49,8 +56,7 @@ PaddingResult<crypto::Bytes> unpad(crypto::ByteView padded)
     if (padded_size(message_size) != padded.size()) {
         return std::unexpected(PaddingError::malformed);
     }
-    const auto message = padded.first(message_size);
-    return crypto::Bytes(message.begin(), message.end());
+    return padded.first(message_size);
 }
 
 }

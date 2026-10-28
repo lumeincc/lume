@@ -10,16 +10,70 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 namespace lume::seal {
 namespace {
 
 using crypto::Bytes;
+using crypto::ByteView;
 
-Bytes filled(std::size_t size, std::uint8_t value)
+Bytes patterned(std::size_t size, std::uint32_t seed)
 {
-    Bytes bytes(size, value);
+    Bytes bytes(size);
+    auto state = seed | 1U;
+    for (auto& byte : bytes) {
+        state ^= state << 13U;
+        state ^= state >> 17U;
+        state ^= state << 5U;
+        byte = static_cast<std::uint8_t>(state);
+    }
     return bytes;
+}
+
+Bytes padded_by_hand(ByteView message, std::size_t bucket)
+{
+    Bytes bytes(message.begin(), message.end());
+    bytes.push_back(padding_marker);
+    bytes.resize(bucket, 0);
+    return bytes;
+}
+
+Bytes copied(ByteView view)
+{
+    return {view.begin(), view.end()};
+}
+
+bool refused(const PaddingResult<ByteView>& result)
+{
+    return !result.has_value() && result.error() == PaddingError::malformed;
+}
+
+bool reference_accepts(ByteView input)
+{
+    if (!std::ranges::contains(padding_buckets, input.size())) {
+        return false;
+    }
+    for (std::size_t index = input.size(); index > 0; --index) {
+        const auto byte = input.subspan(index - 1).front();
+        if (byte != 0) {
+            return byte == padding_marker && padded_size(index - 1) == input.size();
+        }
+    }
+    return false;
+}
+
+std::vector<std::size_t> edge_sizes()
+{
+    std::vector<std::size_t> sizes{0, largest_paddable_size};
+    for (const auto bucket : padding_buckets) {
+        for (const auto size : {bucket - 1, bucket, bucket + 1}) {
+            if (size <= largest_paddable_size) {
+                sizes.push_back(size);
+            }
+        }
+    }
+    return sizes;
 }
 
 TEST(Padding, ChoosesTheSmallestBucketThatLeavesRoomForTheMarker)
@@ -35,80 +89,124 @@ TEST(Padding, ChoosesTheSmallestBucketThatLeavesRoomForTheMarker)
 
 TEST(Padding, AppendsTheMarkerThenZeros)
 {
-    const auto padded = pad(filled(5, 0x41)).value();
-    ASSERT_EQ(padded.size(), 2048U);
-    EXPECT_EQ(Bytes(padded.begin(), padded.begin() + 5), filled(5, 0x41));
-    EXPECT_EQ(padded.at(5), padding_marker);
-    EXPECT_EQ(Bytes(padded.begin() + 6, padded.end()), filled(2042, 0));
+    const auto message = patterned(5, 7);
+    const auto padded = pad(message);
+    ASSERT_TRUE(padded.has_value());
+    EXPECT_EQ(*padded, padded_by_hand(message, 2048));
+}
+
+TEST(Padding, AcceptsWhatPadProducesAtEveryBucketEdge)
+{
+    for (const auto size : edge_sizes()) {
+        const auto message = patterned(size, static_cast<std::uint32_t>(size));
+        const auto padded = pad(message);
+        ASSERT_TRUE(padded.has_value()) << size;
+        EXPECT_EQ(padded->size(), padded_size(size)) << size;
+        EXPECT_EQ(padded->at(size), padding_marker) << size;
+        const auto unpadded = unpad(*padded);
+        ASSERT_TRUE(unpadded.has_value()) << size;
+        EXPECT_EQ(copied(*unpadded), message) << size;
+    }
+}
+
+TEST(Padding, RefusesAMarkerThatWouldFitTheBucketBelow)
+{
+    for (std::size_t index = 1; index < padding_buckets.size(); ++index) {
+        const auto bucket = padding_buckets.at(index);
+        const auto below = padding_buckets.at(index - 1);
+        const auto fits_below = padded_by_hand(patterned(below - 1, 3), bucket);
+        EXPECT_TRUE(refused(unpad(fits_below))) << bucket;
+        const auto needs_this = padded_by_hand(patterned(below, 3), bucket);
+        const auto unpadded = unpad(needs_this);
+        ASSERT_TRUE(unpadded.has_value()) << bucket;
+        EXPECT_EQ(unpadded->size(), below) << bucket;
+    }
 }
 
 TEST(Padding, KeepsTrailingZerosAndMarkersOfTheMessage)
 {
     const Bytes message{0x00, 0x80, 0x00, 0x80, 0x00};
-    EXPECT_EQ(unpad(pad(message).value()).value(), message);
+    const auto padded = pad(message);
+    ASSERT_TRUE(padded.has_value());
+    const auto unpadded = unpad(*padded);
+    ASSERT_TRUE(unpadded.has_value());
+    EXPECT_EQ(copied(*unpadded), message);
 }
 
 TEST(Padding, RefusesAMessageTooLongForEveryBucket)
 {
-    EXPECT_EQ(pad(filled(largest_paddable_size + 1, 1)).error(), PaddingError::too_long);
-    EXPECT_EQ(pad(filled(largest_paddable_size, 1)).value().size(), 69632U);
+    const auto too_long = pad(patterned(largest_paddable_size + 1, 1));
+    ASSERT_FALSE(too_long.has_value());
+    EXPECT_EQ(too_long.error(), PaddingError::too_long);
+    const auto longest = pad(patterned(largest_paddable_size, 1));
+    ASSERT_TRUE(longest.has_value());
+    EXPECT_EQ(longest->size(), 69632U);
 }
 
 TEST(Padding, RefusesALengthThatIsNotABucket)
 {
-    auto padded = pad(filled(10, 1)).value();
+    auto padded = padded_by_hand(patterned(10, 1), 2048);
     padded.push_back(0);
-    EXPECT_EQ(unpad(padded).error(), PaddingError::malformed);
+    EXPECT_TRUE(refused(unpad(padded)));
     padded.resize(2047);
-    EXPECT_EQ(unpad(padded).error(), PaddingError::malformed);
-    EXPECT_EQ(unpad(Bytes{}).error(), PaddingError::malformed);
+    EXPECT_TRUE(refused(unpad(padded)));
+    EXPECT_TRUE(refused(unpad(Bytes{})));
 }
 
 TEST(Padding, RefusesAMissingOrWrongMarker)
 {
-    EXPECT_EQ(unpad(filled(2048, 0)).error(), PaddingError::malformed);
-    auto padded = filled(2048, 0);
+    EXPECT_TRUE(refused(unpad(Bytes(2048, 0))));
+    auto padded = Bytes(2048, 0);
     padded.at(10) = 0x81;
-    EXPECT_EQ(unpad(padded).error(), PaddingError::malformed);
-    padded.at(10) = 0x80;
+    EXPECT_TRUE(refused(unpad(padded)));
+    padded.at(10) = padding_marker;
     padded.at(2047) = 0x01;
-    EXPECT_EQ(unpad(padded).error(), PaddingError::malformed);
+    EXPECT_TRUE(refused(unpad(padded)));
 }
 
 TEST(Padding, RefusesABucketLargerThanTheMessageNeeds)
 {
-    auto padded = filled(4096, 0);
-    padded.at(10) = padding_marker;
-    EXPECT_EQ(unpad(padded).error(), PaddingError::malformed);
+    EXPECT_TRUE(refused(unpad(padded_by_hand(patterned(10, 5), 4096))));
+    EXPECT_TRUE(refused(unpad(padded_by_hand(patterned(65535, 5), 69632))));
 }
 
 TEST(Padding, AcceptsAMarkerAtTheLastByte)
 {
-    auto padded = filled(2048, 0x55);
-    padded.at(2047) = padding_marker;
-    EXPECT_EQ(unpad(padded).value(), filled(2047, 0x55));
+    for (const auto bucket : padding_buckets) {
+        const auto message = patterned(bucket - 1, 9);
+        const auto padded = padded_by_hand(message, bucket);
+        const auto unpadded = unpad(padded);
+        ASSERT_TRUE(unpadded.has_value()) << bucket;
+        EXPECT_EQ(copied(*unpadded), message) << bucket;
+    }
 }
 
 RC_GTEST_PROP(PaddingProperties, RoundTripsAnyMessageThatFits, ())
 {
-    const auto size = *rc::gen::inRange<std::size_t>(0, largest_paddable_size + 1);
-    const auto value = *rc::gen::arbitrary<std::uint8_t>();
-    const auto message = filled(size, value);
+    const auto size = *rc::gen::oneOf(rc::gen::inRange<std::size_t>(0, largest_paddable_size + 1), rc::gen::elementOf(edge_sizes()));
+    const auto message = patterned(size, *rc::gen::arbitrary<std::uint32_t>());
     const auto padded = pad(message);
     RC_ASSERT(padded.has_value());
     RC_ASSERT(padded->size() == padded_size(size));
-    RC_ASSERT(unpad(*padded).value() == message);
+    const auto unpadded = unpad(*padded);
+    RC_ASSERT(unpadded.has_value());
+    RC_ASSERT(copied(*unpadded) == message);
 }
 
-RC_GTEST_PROP(PaddingProperties, AcceptsOnlyTheCanonicalPaddingOfSomeMessage, (const Bytes& tail))
+RC_GTEST_PROP(PaddingProperties, AcceptsExactlyTheOutputsOfPad, ())
 {
     const auto bucket = *rc::gen::elementOf(padding_buckets);
-    auto input = filled(bucket, 0);
-    const auto start = bucket - std::min(bucket, tail.size());
-    std::ranges::copy(tail.begin(), tail.begin() + static_cast<std::ptrdiff_t>(bucket - start), input.begin() + static_cast<std::ptrdiff_t>(start));
-    const auto message = unpad(input);
-    if (message) {
-        RC_ASSERT(pad(*message).value() == input);
+    const auto marker = *rc::gen::inRange<std::size_t>(0, bucket);
+    auto input = padded_by_hand(patterned(marker, *rc::gen::arbitrary<std::uint32_t>()), bucket);
+    if (*rc::gen::arbitrary<bool>()) {
+        input.at(*rc::gen::inRange<std::size_t>(marker, bucket)) = *rc::gen::arbitrary<std::uint8_t>();
+    }
+    const auto unpadded = unpad(input);
+    RC_ASSERT(unpadded.has_value() == reference_accepts(input));
+    if (unpadded) {
+        const auto again = pad(*unpadded);
+        RC_ASSERT(again.has_value());
+        RC_ASSERT(*again == input);
     }
 }
 
