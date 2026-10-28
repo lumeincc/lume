@@ -22,6 +22,7 @@ android/   Kotlin + Jetpack Compose; the core through JNI over the C API
 desktop/   WinUI 3 (C++/WinRT); the core linked directly
 docs/      specification
 legal/     privacy policy, terms and the other user-facing policies
+site/      the website, generated from legal/, docs/ and its own pages
 brand/     name and logo — trademarks, not covered by the code licence
 ```
 
@@ -170,6 +171,19 @@ CI.
   decide first whether the code or the test is wrong, and say which.
 - Report only what was observed. A check that could not run is reported as
   not run, with the reason — never as passed.
+
+## Website
+
+- `python site/build.py` builds the static site into `build/site/`;
+  `--serve` also serves it on `127.0.0.1` with the headers production must
+  send. It needs Python 3.11 and nothing else.
+- Policies and the specification are rendered from `legal/` and `docs/`, never
+  copied; every policy in `legal/` is published in every language.
+- The build fails on a script, an inline style, an event handler, a resource
+  from another server, a broken link or a missing anchor. No cookies, analytics,
+  external fonts or CDNs, ever.
+- Logos are re-encoded from `brand/` at build time, which drops the metadata
+  of the originals.
 
 ## Git
 

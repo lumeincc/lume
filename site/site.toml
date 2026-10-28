@@ -1,0 +1,216 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+repository = "https://github.com/lumeincc/lume"
+reference = "main"
+languages = ["en", "ru"]
+
+[[pages]]
+route = ""
+neutral = "site/pages/index.html"
+title = "LUME"
+
+[[pages]]
+route = "404"
+neutral = "site/pages/404.html"
+generate = "not-found"
+title = "Not found · Не найдено — LUME"
+
+[[pages]]
+route = ""
+source = { en = "site/pages/en/index.html", ru = "site/pages/ru/index.html" }
+title = { en = "LUME — an end-to-end encrypted messenger", ru = "LUME — мессенджер со сквозным шифрованием" }
+
+[[pages]]
+route = "how-it-works"
+group = "guide"
+source = { en = "site/pages/en/how-it-works.md", ru = "site/pages/ru/how-it-works.md" }
+summary = { en = "How LUME protects your messages, in plain words, and what it does not protect.", ru = "Как LUME защищает переписку — простыми словами, — и от чего не защищает." }
+
+[[pages]]
+route = "safety-number"
+group = "guide"
+source = { en = "site/pages/en/safety-number.md", ru = "site/pages/ru/safety-number.md" }
+summary = { en = "How to check that you are talking to the right person, using the safety number.", ru = "Как убедиться, что вы переписываетесь с тем, с кем думаете, — по номеру безопасности." }
+
+[[pages]]
+route = "security"
+group = "guide"
+source = { en = "SECURITY.md", ru = "SECURITY.ru.md" }
+summary = { en = "How to report a vulnerability in LUME privately.", ru = "Как конфиденциально сообщить об уязвимости в LUME." }
+
+[[pages]]
+route = "open-source"
+group = "open-source"
+source = { en = "site/pages/en/open-source.md", ru = "site/pages/ru/open-source.md" }
+summary = { en = "Where the LUME source code is, its licence, and how to build and check it yourself.", ru = "Где исходный код LUME, под какой он лицензией и как собрать и проверить его самому." }
+
+[[pages]]
+route = "trademarks"
+group = "open-source"
+source = { en = "TRADEMARKS.md", ru = "TRADEMARKS.ru.md" }
+summary = { en = "What you may and may not do with the LUME name and logo.", ru = "Что можно и чего нельзя делать с названием и логотипом LUME." }
+
+[[pages]]
+route = "licence"
+group = "open-source"
+languages = ["en"]
+source = { en = "LICENSE" }
+title = { en = "GNU Affero General Public License v3.0" }
+summary = { en = "The full text of the licence of the LUME source code." }
+
+[[pages]]
+route = "legal"
+generate = "legal"
+languages = ["en", "ru"]
+title = { en = "Legal", ru = "Документы" }
+summary = { en = "The privacy policy, terms of use and every other policy of LUME.", ru = "Политика конфиденциальности, пользовательское соглашение и остальные документы LUME." }
+
+[[pages]]
+route = "legal/privacy"
+group = "legal"
+source = { en = "legal/PRIVACY.md", ru = "legal/PRIVACY.ru.md" }
+summary = { en = "What our server holds about you, for how long, and what it never has.", ru = "Что сервер хранит о вас, сколько времени и чего у него нет никогда." }
+
+[[pages]]
+route = "legal/terms"
+group = "legal"
+source = { en = "legal/TERMS.md", ru = "legal/TERMS.ru.md" }
+summary = { en = "The agreement for using LUME, including the end-user licence, price and refunds.", ru = "Условия использования LUME, включая лицензию для конечного пользователя, цену и возвраты." }
+
+[[pages]]
+route = "legal/website"
+group = "legal"
+source = { en = "legal/WEBSITE.md", ru = "legal/WEBSITE.ru.md" }
+summary = { en = "What this website does with your visit: no cookies, no analytics, no third parties.", ru = "Что этот сайт делает с вашим посещением: без cookies, аналитики и третьих лиц." }
+
+[[pages]]
+route = "legal/account-deletion"
+group = "legal"
+source = { en = "legal/ACCOUNT-DELETION.md", ru = "legal/ACCOUNT-DELETION.ru.md" }
+summary = { en = "How to delete your account and what is deleted with it.", ru = "Как удалить аккаунт и что удаляется вместе с ним." }
+
+[[pages]]
+route = "legal/child-safety"
+group = "legal"
+source = { en = "legal/CHILD-SAFETY.md", ru = "legal/CHILD-SAFETY.ru.md" }
+summary = { en = "Zero tolerance for child sexual abuse and exploitation, and how to report it.", ru = "Нулевая терпимость к сексуальному насилию над детьми и их эксплуатации и как об этом сообщить." }
+
+[[pages]]
+route = "legal/law-enforcement"
+group = "legal"
+source = { en = "legal/LAW-ENFORCEMENT.md", ru = "legal/LAW-ENFORCEMENT.ru.md" }
+summary = { en = "What LUME Inc. can and cannot give to authorities, and how it responds.", ru = "Что ТОО «LUME Inc.» может и не может передать властям и как отвечает на запросы." }
+
+[[pages]]
+route = "legal/permissions"
+group = "legal"
+source = { en = "legal/PERMISSIONS.md", ru = "legal/PERMISSIONS.ru.md" }
+summary = { en = "Every permission the apps ask for, and why.", ru = "Все разрешения, которые запрашивают приложения, и зачем." }
+
+[[pages]]
+route = "legal/store-disclosures"
+group = "legal"
+source = { en = "legal/STORE-DISCLOSURES.md", ru = "legal/STORE-DISCLOSURES.ru.md" }
+summary = { en = "The answers LUME gives in the app stores' data and content forms.", ru = "Ответы LUME в формах магазинов приложений о данных и содержании." }
+
+[[pages]]
+route = "legal/contact"
+group = "legal"
+source = { en = "legal/CONTACT.md", ru = "legal/CONTACT.ru.md" }
+summary = { en = "The company behind LUME and how to reach it.", ru = "Компания, которая стоит за LUME, и как с ней связаться." }
+
+[[pages]]
+route = "spec/crypto"
+group = "spec"
+languages = ["en"]
+source = { en = "docs/CRYPTO.md" }
+summary = { en = "The LUME cryptography specification: every key, derivation and construction." }
+
+[[pages]]
+route = "spec/protocol"
+group = "spec"
+languages = ["en"]
+source = { en = "docs/PROTOCOL.md" }
+summary = { en = "The LUME relay protocol specification." }
+
+[[images]]
+source = "brand/logo 2.png"
+margin = 0
+outputs = [["assets/logo-night.png", 500]]
+
+[[images]]
+source = "brand/logo 1.png"
+margin = 0
+outputs = [["assets/logo-day.png", 500]]
+
+[[images]]
+source = "brand/logo 2.png"
+margin = 300
+outputs = [["apple-touch-icon.png", 180], ["assets/mark-night.png", 64], ["favicon.png", 32]]
+
+[[images]]
+source = "brand/logo 1.png"
+margin = 300
+outputs = [["assets/mark-day.png", 64]]
+
+[strings.en]
+language-name = "English"
+site-title = "LUME"
+description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. No phone number, no e-mail, no trackers."
+skip = "Skip to content"
+navigation-label = "Main"
+navigation = [["how-it-works", "How it works"], ["safety-number", "Safety number"], ["security", "Security"], ["open-source", "Open source"], ["legal", "Legal"]]
+footer-label = "Policies"
+footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Trademarks"], ["https://github.com/lumeincc/lume", "Source code"]]
+footer = [
+    "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
+    "The code is free software under the GNU AGPL v3.0. The LUME name and logo are trademarks of LUME Inc.",
+    "This website sets no cookies, runs no scripts and loads nothing from other servers.",
+]
+contents = "On this page"
+source = "Source:"
+history = "history of changes"
+legal-intro = [
+    "Every document here exists in English and Russian, and both say the same thing. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
+    "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and where the server will run.",
+]
+
+[strings.en.groups]
+guide = "Guide"
+open-source = "Open source"
+legal = "Legal"
+spec = "Specification"
+
+[strings.en.notes]
+spec = "The technical specification, draft revision {{spec-revision}}, written for cryptographers and implementers. It changes as LUME is built."
+
+[strings.ru]
+language-name = "Русский"
+site-title = "LUME"
+description = "LUME — мессенджер со сквозным шифрованием и постквантовым обменом ключами, в разработке. Без номера телефона, почты и трекеров."
+skip = "Перейти к содержанию"
+navigation-label = "Основное меню"
+navigation = [["how-it-works", "Как это работает"], ["safety-number", "Номер безопасности"], ["security", "Уязвимости"], ["open-source", "Открытый код"], ["legal", "Документы"]]
+footer-label = "Документы"
+footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Товарные знаки"], ["https://github.com/lumeincc/lume", "Исходный код"]]
+footer = [
+    "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
+    "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME — товарные знаки ТОО «LUME Inc.».",
+    "Этот сайт не ставит cookies, не запускает скриптов и ничего не загружает с других серверов.",
+]
+contents = "Содержание"
+source = "Исходный текст:"
+history = "история изменений"
+legal-intro = [
+    "Каждый документ здесь есть на русском и английском, и обе версии говорят одно и то же. Они описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
+    "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, место, где будет работать сервер, и другие.",
+]
+
+[strings.ru.groups]
+guide = "Руководство"
+open-source = "Открытый код"
+legal = "Документы"
+spec = "Спецификация"
+
+[strings.ru.notes]

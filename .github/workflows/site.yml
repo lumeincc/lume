@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: site
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    name: Website · build and check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Tests
+        run: python3 -m unittest discover -s site -v
+      - name: Build and check every page
+        run: python3 site/build.py

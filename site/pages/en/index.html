@@ -1,0 +1,116 @@
+<!--
+SPDX-FileCopyrightText: 2026 LUME Inc.
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+<section class="hero">
+<picture>
+<source srcset="/assets/logo-day.png" media="(prefers-color-scheme: light)">
+<img src="/assets/logo-night.png" width="500" height="500" alt="">
+</picture>
+<h1>LUME</h1>
+<p class="tagline">An end-to-end encrypted messenger that knows as little about you as delivering your messages requires.</p>
+<p class="pill">In development · no app to download yet</p>
+<div class="actions">
+<a class="button primary-action" href="/how-it-works/">How it works</a>
+<a class="button" href="https://github.com/lumeincc/lume">Source code</a>
+</div>
+</section>
+
+<section class="section">
+<h2>What LUME is</h2>
+<p class="lead">A messenger for Android and Windows, built so that the people who run it cannot read what you write or see who writes to whom.</p>
+<div class="grid pairs">
+<div class="card">
+<h3>Your account is a key</h3>
+<p>No phone number, no e-mail, no name. Your account is created on your device from a 24-word recovery phrase that is never sent to us.</p>
+</div>
+<div class="card">
+<h3>Locked on your device</h3>
+<p>Messages are encrypted on the sender's device and decrypted on the recipient's. The server that carries them never has the keys.</p>
+</div>
+<div class="card">
+<h3>Ready for quantum computers</h3>
+<p>Every conversation starts with two key exchanges at once, classical X25519 and post-quantum ML-KEM-768. The result stays secret as long as either of them holds.</p>
+</div>
+<div class="card">
+<h3>Open to inspection</h3>
+<p>All the code is public under the GNU AGPL. It is built from libsodium and liboqs, invents no cryptography of its own, and is tested against published vectors.</p>
+</div>
+</div>
+</section>
+
+<section class="section">
+<h2>What it protects, and what it does not</h2>
+<p class="lead">A messenger that overstates its security puts people at risk. These lists come from the specification, in plain words.</p>
+<div class="grid">
+<div class="card yes">
+<h3>Designed to protect</h3>
+<ul>
+<li><strong>What you write</strong>, against our server, the network and anyone who later gets the server's storage, including someone who records traffic today and has a quantum computer later.</li>
+<li><strong>Old messages</strong>, if your device is taken later: a message key is deleted once it has been used.</li>
+<li><strong>Your conversations after a break-in</strong>: someone who stole a conversation's keys once and then lost access is locked out again within one round of messages.</li>
+<li><strong>Who sent a message</strong>: the server stores whom a waiting message is for, never whom it is from.</li>
+<li><strong>Your groups</strong>: the server holds no groups, group names or member lists.</li>
+<li><strong>What is stored on your device</strong>, against someone who has the device but not your passphrase.</li>
+</ul>
+</div>
+<div class="card no">
+<h3>Does not protect</h3>
+<ul>
+<li><strong>Your IP address and timing.</strong> The server sees where every connection comes from, and someone watching it live can match senders and recipients. Use Tor or a VPN if that matters to you.</li>
+<li><strong>How much you receive and when.</strong></li>
+<li><strong>Whether a username exists.</strong></li>
+<li><strong>A stolen recovery phrase.</strong> Whoever has it can act as you.</li>
+<li><strong>Some recordings, for a limited time</strong>, if your device is taken: the first messages of some conversations for up to 40 days, and keys of messages that arrived out of order for up to 14 days.</li>
+<li><strong>A compromised device.</strong> Malware running as you reads what you read.</li>
+</ul>
+<p class="more"><a href="/how-it-works/#what-lume-does-not-protect">The full list, in plain words</a></p>
+</div>
+</div>
+</section>
+
+<section class="section">
+<h2>Where LUME is today</h2>
+<p class="lead">LUME is being built in the open. Nothing has been released, and the specification, draft revision {{spec-revision}}, can still change.</p>
+<div class="grid">
+<div class="card done">
+<h3>Built and tested</h3>
+<ul>
+<li>The cryptographic core in C++, on libsodium and liboqs, with a self-test that runs before anything else</li>
+<li>Accounts from a 24-word recovery phrase</li>
+<li>Safety numbers</li>
+<li>The hybrid post-quantum handshake</li>
+<li>The Double Ratchet with encrypted headers</li>
+<li>The binary wire format, with a fuzz target for every parser</li>
+</ul>
+</div>
+<div class="card todo">
+<h3>Not built yet</h3>
+<ul>
+<li>Message content and sealed sender</li>
+<li>Encrypted storage on the device</li>
+<li>The relay server</li>
+<li>The Android app</li>
+<li>The Windows app</li>
+<li>An independent security audit</li>
+</ul>
+</div>
+<div class="card notice">
+<h3>No app to download yet</h3>
+<p>There is no LUME app in any store and no download anywhere. Anything offered as LUME today is not from us.</p>
+<p>The first apps will be for Android and Windows. There will be no web version.</p>
+</div>
+</div>
+</section>
+
+<section class="section links">
+<h2>Read more</h2>
+<div class="grid">
+<a class="card" href="/how-it-works/"><h3>How it works</h3><p>Accounts, encryption and the server, without the mathematics.</p></a>
+<a class="card" href="/safety-number/"><h3>Verify a contact</h3><p>Compare the safety number to make sure nobody is in the middle.</p></a>
+<a class="card" href="/security/"><h3>Report a vulnerability</h3><p>Found a flaw? Tell us privately.</p></a>
+<a class="card" href="/open-source/"><h3>Open source</h3><p>The code, its licence, and how to check it yourself.</p></a>
+<a class="card" href="/legal/privacy/"><h3>Privacy Policy</h3><p>What the server holds about you, and what it never has.</p></a>
+<a class="card" href="/spec/crypto/"><h3>Specification</h3><p>Every key and construction, for cryptographers and implementers.</p></a>
+</div>
+</section>
