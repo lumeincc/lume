@@ -177,6 +177,46 @@ class Site(unittest.TestCase):
         self.assertIn("font-src 'self'", build.POLICY)
         self.assertIn("default-src 'none'", build.POLICY)
 
+    def test_the_policy_allows_scripts_only_from_this_site(self) -> None:
+        self.assertIn("script-src 'self'", build.POLICY)
+        self.assertNotIn("unsafe-inline", build.POLICY)
+
+    def test_only_the_consent_script_may_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "style.css").write_text("", encoding="utf-8")
+            (output / build.SCRIPT_NAME).write_text('fetch("/x")', encoding="utf-8")
+            (output / "other.js").write_text("", encoding="utf-8")
+            (output / "index.html").write_text(
+                f'<script src="{build.SCRIPT_NAME}" defer></script><script>alert(1)</script>'
+                '<script src="other.js"></script><p id="a"></p><p id="a"></p>',
+                encoding="utf-8",
+            )
+            problems = build.check(output)
+        self.assertEqual(len(problems), 4, problems)
+
+    def test_every_language_page_offers_the_cookie_choice(self) -> None:
+        for language in self.config["languages"]:
+            text = (self.output / language / "index.html").read_text(encoding="utf-8")
+            self.assertIn('<section class="consent"', text)
+            self.assertIn('id="consent-preferences"', text)
+            self.assertIn('data-consent="reject"', text)
+            footer = text[text.index('<footer class="site-footer">'):]
+            self.assertIn('data-consent="open"', footer)
+        chooser = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(build.SCRIPT_NAME, chooser)
+        self.assertNotIn('class="consent"', chooser)
+
+    def test_the_not_found_page_links_under_the_base_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "site"
+            build.Site(self.config, output, "/lume/").build()
+            text = (output / "404.html").read_text(encoding="utf-8")
+            self.assertIn('href="/lume/ru/"', text)
+            self.assertIn('href="/lume/style.css"', text)
+            self.assertEqual(build.check(output, "/lume/"), [])
+            self.assertNotEqual(build.check(output, "/"), [])
+
     def test_links_between_languages_resolve(self) -> None:
         privacy = self.site.by_route[("ru", "legal/privacy")]
         self.assertEqual(self.site.resolve(privacy, "PRIVACY.md"), "../../../en/legal/privacy/")

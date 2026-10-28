@@ -23,7 +23,7 @@ SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 OUTPUT = ROOT / "build" / "site"
 CACHE = ROOT / "build" / "site-cache"
-POLICY = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'"
+POLICY = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'"
 HEADERS = {
     "Content-Security-Policy": POLICY + "; frame-ancestors 'none'",
     "Referrer-Policy": "no-referrer",
@@ -53,8 +53,11 @@ LEADING_STYLE_COMMENT = re.compile(r"\A\s*/\*.*?\*/\s*", re.S)
 URL_ATTRIBUTE = re.compile(r'\b(href|src)="([^"]*)"')
 TAG = re.compile(r"<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>")
 ATTRIBUTE = re.compile(r'\b(href|src|srcset)="([^"]*)"')
+SCRIPT = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.S | re.I)
+SOURCE = re.compile(r'\bsrc="([^"]*)"')
+SCRIPT_NAME = "consent.js"
 IDENTIFIER = re.compile(r'\bid="([^"]*)"')
-FORBIDDEN_TAGS = {"script", "iframe", "object", "embed", "form", "base", "frame", "frameset"}
+FORBIDDEN_TAGS = {"iframe", "object", "embed", "form", "base", "frame", "frameset"}
 HANDLER_ATTRIBUTE = re.compile(r"\bon[a-z]+\s*=", re.I)
 STYLE_ATTRIBUTE = re.compile(r"\bstyle\s*=", re.I)
 EXTERNAL = ("https://", "http://", "mailto:")
@@ -123,9 +126,10 @@ def spec_revision() -> str:
 
 
 class Site:
-    def __init__(self, config: dict, output: Path) -> None:
+    def __init__(self, config: dict, output: Path, base: str = "/") -> None:
         self.config = config
         self.output = output
+        self.base = base
         self.repository = config["repository"]
         self.reference = config["reference"]
         self.strings: dict[str, dict] = config["strings"]
@@ -155,12 +159,12 @@ class Site:
 
     def page_root(self, page: Page) -> str:
         if page.generate == "not-found":
-            return "/"
+            return self.base
         return relative(page.directory, PurePosixPath(), True)
 
     def link_to_page(self, page: Page, target: Page, fragment: str) -> str:
         if page.generate == "not-found":
-            href = "/" + "".join(part + "/" for part in target.directory.parts)
+            href = self.base + "".join(part + "/" for part in target.directory.parts)
         else:
             href = relative(page.directory, target.directory, True)
         return href + (f"#{fragment}" if fragment else "")
@@ -189,7 +193,7 @@ class Site:
         route = path.strip("/")
         if PurePosixPath(route).suffix:
             if page.generate == "not-found":
-                return "/" + route
+                return self.base + route
             return relative(page.directory, PurePosixPath(route), False)
         language = page.language or self.languages[0]
         first, _, rest = route.partition("/")
@@ -230,6 +234,7 @@ class Site:
         stylesheet = LEADING_STYLE_COMMENT.sub("", (SITE / "style.css").read_text(encoding="utf-8"), count=1)
         (self.output / "style.css").write_text(stylesheet, encoding="utf-8", newline="\n")
         shutil.copytree(SITE / "fonts", self.output / "fonts")
+        shutil.copyfile(SITE / SCRIPT_NAME, self.output / SCRIPT_NAME)
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))
         for page in self.pages:
@@ -351,8 +356,41 @@ class Site:
                 links.append(f'<a href="{route}">{label}</a>')
             else:
                 links.append(f'<a href="{self.resolve_route(page, "/" + route, "")}">{label}</a>')
+        consent = words["consent"]
+        path, _, fragment = consent["policy"].partition("#")
+        links.append(f'<a href="{self.resolve_route(page, "/" + path, fragment)}" data-consent="open">{consent["footer"]}</a>')
         lines = "".join(f"<p>{line}</p>" for line in words["footer"])
         return f'<footer class="site-footer"><div class="bar"><nav aria-label="{words["footer-label"]}">{"".join(links)}</nav>{lines}</div></footer>'
+
+    def consent(self, page: Page) -> str:
+        if page.generate == "not-found" or page.language == "":
+            return ""
+        words = self.strings_for(page)["consent"]
+        path, _, fragment = words["policy"].partition("#")
+        policy = self.resolve_route(page, "/" + path, fragment)
+        categories = []
+        for name, state in (("necessary", " checked disabled"), ("preferences", ' id="consent-preferences"'), ("analytics", " disabled")):
+            categories.append(
+                f'<div class="category"><h3 id="consent-{name}-title">{words[name]}</h3><p>{words[name + "-text"]}</p>'
+                f'<label class="switch"><input type="checkbox" aria-labelledby="consent-{name}-title"{state}><span></span></label></div>'
+            )
+        return (
+            f'<section class="consent" aria-label="{words["title"]}" hidden>'
+            f'<p>{words["text"]} <a href="{policy}">{words["more"]}</a></p>'
+            '<div class="choices">'
+            f'<button class="btn small" type="button" data-consent="accept">{words["accept"]}</button>'
+            f'<button class="btn small" type="button" data-consent="reject">{words["reject"]}</button>'
+            f'<button class="btn small ghost" type="button" data-consent="open">{words["settings"]}</button>'
+            "</div></section>\n"
+            '<dialog class="consent-settings" aria-labelledby="consent-title"><div class="inner">'
+            f'<button class="close" type="button" data-consent="close" aria-label="{words["close"]}"></button>'
+            f'<h2 id="consent-title">{words["title"]}</h2><p>{words["intro"]} <a href="{policy}">{words["more"]}</a></p>'
+            f'{"".join(categories)}'
+            '<div class="choices">'
+            f'<button class="btn small" type="button" data-consent="save">{words["save"]}</button>'
+            f'<button class="btn small ghost" type="button" data-consent="accept">{words["accept"]}</button>'
+            "</div></div></dialog>"
+        )
 
     def layout_values(self, page: Page, rendered: Rendered) -> dict[str, str]:
         words = self.strings_for(page)
@@ -373,6 +411,7 @@ class Site:
             "header": self.header(page),
             "main": rendered.main,
             "footer": self.footer(page),
+            "consent": self.consent(page),
         }
 
     def images(self) -> None:
@@ -411,13 +450,23 @@ class Site:
         return sorted(lines)
 
 
-def check(output: Path) -> list[str]:
+def check(output: Path, base: str = "/") -> list[str]:
     problems: list[str] = []
     pages = sorted(output.rglob("*.html"))
     identifiers = {path: set(IDENTIFIER.findall(path.read_text(encoding="utf-8"))) for path in pages}
     for path in pages:
         text = path.read_text(encoding="utf-8")
         name = path.relative_to(output).as_posix()
+        found = IDENTIFIER.findall(text)
+        for identifier in sorted({identifier for identifier in found if found.count(identifier) > 1}):
+            problems.append(f"{name}: id {identifier} is used more than once")
+        scripts = SCRIPT.findall(text)
+        if len(scripts) != sum(1 for tag, _ in TAG.findall(text) if tag.lower() == "script"):
+            problems.append(f"{name}: carries a <script> that is not closed")
+        for attributes, body in scripts:
+            source = SOURCE.search(attributes)
+            if body.strip() or source is None or PurePosixPath(source[1]).name != SCRIPT_NAME:
+                problems.append(f"{name}: carries a script other than {SCRIPT_NAME}")
         for tag, attributes in TAG.findall(text):
             if tag.lower() in FORBIDDEN_TAGS:
                 problems.append(f"{name}: contains <{tag}>")
@@ -425,7 +474,7 @@ def check(output: Path) -> list[str]:
                 problems.append(f"{name}: <{tag}> carries a style or event handler attribute")
             for attribute, value in ATTRIBUTE.findall(attributes):
                 for url in [part.strip().split(" ")[0] for part in value.split(",")] if attribute == "srcset" else [value]:
-                    problems += check_url(output, path, name, tag.lower(), url, identifiers)
+                    problems += check_url(output, base, path, name, tag.lower(), url, identifiers)
     stylesheet = (output / "style.css").read_text(encoding="utf-8")
     if "@import" in stylesheet or "/*" in stylesheet:
         problems.append("style.css: imports a stylesheet or carries a comment")
@@ -433,10 +482,16 @@ def check(output: Path) -> list[str]:
         location = target.strip("\"'")
         if not location.startswith("fonts/") or ".." in location or not (output / location).is_file():
             problems.append(f"style.css: loads {location}, which is not a font served by this site")
+    script = output / SCRIPT_NAME
+    if script.is_file():
+        code = script.read_text(encoding="utf-8")
+        for forbidden in ("://", "eval(", "Function(", "innerHTML", "fetch(", "XMLHttpRequest", "import("):
+            if forbidden in code:
+                problems.append(f"{SCRIPT_NAME}: uses {forbidden}")
     return problems
 
 
-def check_url(output: Path, path: Path, name: str, tag: str, url: str, identifiers: dict[Path, set[str]]) -> list[str]:
+def check_url(output: Path, base: str, path: Path, name: str, tag: str, url: str, identifiers: dict[Path, set[str]]) -> list[str]:
     if url.startswith(EXTERNAL):
         return [] if tag == "a" else [f"{name}: <{tag}> loads {url} from another server"]
     if url.startswith("//") or ":" in url.split("/")[0]:
@@ -445,7 +500,9 @@ def check_url(output: Path, path: Path, name: str, tag: str, url: str, identifie
     if not location:
         target = path
     elif location.startswith("/"):
-        target = output / location.lstrip("/")
+        if not location.startswith(base):
+            return [f"{name}: link outside the site {url}"]
+        target = output / location[len(base):]
     else:
         target = path.parent / location
     if target.is_dir():
@@ -471,17 +528,21 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=OUTPUT)
     parser.add_argument("--serve", action="store_true", help="serve the result on 127.0.0.1 after building")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--base", default="/", help="the path the site is served under, such as /lume/")
     arguments = parser.parse_args()
+    if not (arguments.base.startswith("/") and arguments.base.endswith("/")):
+        print("--base must start and end with /", file=sys.stderr)
+        return 1
     with (SITE / "site.toml").open("rb") as handle:
         config = tomllib.load(handle)
     output = arguments.output.resolve()
     try:
-        site = Site(config, output)
+        site = Site(config, output, arguments.base)
         site.build()
     except BuildError as error:
         print(f"build failed: {error}", file=sys.stderr)
         return 1
-    problems = check(output)
+    problems = check(output, arguments.base)
     for problem in problems:
         print(f"check failed: {problem}", file=sys.stderr)
     if problems:

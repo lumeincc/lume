@@ -176,12 +176,19 @@ CI.
 
 - `python site/build.py` builds the static site into `build/site/`;
   `--serve` also serves it on `127.0.0.1` with the headers production must
-  send. It needs Python 3.11 and nothing else.
+  send. It needs Python 3.11 and nothing else. `--base /lume/` builds it for
+  GitHub Pages, where it is served under that path; the `pages` workflow
+  publishes `main` there.
 - Policies and the specification are rendered from `legal/` and `docs/`, never
   copied; every policy in `legal/` is published in every language.
-- The build fails on a script, an inline style, an event handler, a resource
-  from another server, a broken link or a missing anchor. No cookies, analytics,
-  external fonts or CDNs, ever.
+- The build fails on any script other than `site/consent.js`, inline script,
+  an inline style, an event handler, a resource from another server, a broken
+  link, a missing anchor or a repeated id. `consent.js` only shows the cookie
+  window and stores the choice; it never sends anything anywhere.
+- A cookie other than a necessary one is set only after the visitor allows it,
+  and every cookie is listed in `legal/WEBSITE.*`; a new one bumps the consent
+  version so that everyone is asked again. No analytics, external fonts or
+  CDNs.
 - Logos are re-encoded from `brand/` at build time, which drops the metadata
   of the originals.
 

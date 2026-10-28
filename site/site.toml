@@ -89,7 +89,7 @@ summary = { en = "The agreement for using LUME, including the end-user licence, 
 route = "legal/website"
 group = "legal"
 source = { en = "legal/WEBSITE.md", ru = "legal/WEBSITE.ru.md", kk = "legal/WEBSITE.kk.md" }
-summary = { en = "What this website does with your visit: no cookies, no analytics, no third parties.", ru = "Что этот сайт делает с вашим посещением: без cookies, аналитики и третьих лиц.", kk = "Бұл сайт сіздің кіруіңізбен не істейді: cookies, аналитика және үшінші тараптар жоқ." }
+summary = { en = "Which cookies this website sets, how to change your choice, and what its host receives.", ru = "Какие cookie ставит сайт, как изменить выбор и что получает хостинг.", kk = "Сайт қандай cookie қояды, таңдауды қалай өзгертуге болады және хостинг не алады." }
 
 [[pages]]
 route = "legal/account-deletion"
@@ -167,7 +167,7 @@ footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/
 footer = [
     "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
     "The code is free software under the GNU AGPL v3.0. The LUME name and logo belong to LUME Inc. and are not covered by it.",
-    "This website sets no cookies, runs no scripts and loads nothing from other servers.",
+    "This website sets cookies only with your consent, apart from one necessary cookie, and loads nothing from other servers.",
 ]
 contents = "On this page"
 source = "Source:"
@@ -176,6 +176,25 @@ legal-intro = [
     "Every document here exists in Russian, Kazakh and English. The Kazakh and Russian texts have equal force; if they differ, the Russian text applies, and the English text is a translation. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
     "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the name of the data centre in Kazakhstan that hosts the server.",
 ]
+
+[strings.en.consent]
+title = "Cookie settings"
+text = "This site uses cookies: one that is needed to remember your choice and, if you allow it, one more to remember your language. No analytics, no ads."
+intro = "The necessary cookie lets the site remember your choice. The others are set only if you turn them on. You can change your choice at any time with the Cookie settings link at the bottom of every page."
+more = "Details"
+accept = "Accept all"
+reject = "Necessary only"
+settings = "Settings"
+save = "Save choice"
+close = "Close"
+footer = "Cookie settings"
+policy = "legal/website#2-cookies"
+necessary = "Necessary"
+necessary-text = "Remember your choice in this window, so that the site does not ask every time. Always on."
+preferences = "Preferences"
+preferences-text = "Remember the language you read the site in and open it straight away next time."
+analytics = "Analytics"
+analytics-text = "Not used. If that changes, the site will ask you again."
 
 [strings.en.groups]
 guide = "Guide"
@@ -200,7 +219,7 @@ footer-links = [["legal/privacy", "Конфиденциальность"], ["leg
 footer = [
     "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
     "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME принадлежат ТОО «LUME Inc.» и под неё не подпадают.",
-    "Этот сайт не ставит cookies, не запускает скриптов и ничего не загружает с других серверов.",
+    "Сайт ставит cookie только с вашего согласия, кроме одной обязательной, и ничего не загружает с других серверов.",
 ]
 contents = "Содержание"
 source = "Исходный текст:"
@@ -209,6 +228,25 @@ legal-intro = [
     "Каждый документ здесь есть на русском, казахском и английском. Тексты на казахском и русском языках имеют одинаковую силу; при расхождении применяется русский текст, английский — перевод. Документы описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
     "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, название центра обработки данных в Казахстане, где работает сервер, и другие.",
 ]
+
+[strings.ru.consent]
+title = "Настройки cookie"
+text = "Сайт использует cookie: одну обязательную, чтобы запомнить ваш выбор, и, если вы разрешите, ещё одну, чтобы запомнить язык. Аналитики и рекламы нет."
+intro = "Обязательная cookie нужна, чтобы сайт помнил ваш выбор. Остальные ставятся, только если вы их включите. Выбор можно изменить в любое время по ссылке «Настройки cookie» внизу каждой страницы."
+more = "Подробнее"
+accept = "Принять все"
+reject = "Только обязательные"
+settings = "Настроить"
+save = "Сохранить выбор"
+close = "Закрыть"
+footer = "Настройки cookie"
+policy = "legal/website#2-cookie"
+necessary = "Обязательные"
+necessary-text = "Запоминают ваш выбор в этом окне, чтобы сайт не спрашивал каждый раз. Всегда включены."
+preferences = "Настройки"
+preferences-text = "Запоминают язык, на котором вы читаете сайт, и в следующий раз открывают его сразу."
+analytics = "Аналитика"
+analytics-text = "Сейчас не используется. Если она появится, сайт спросит вас заново."
 
 [strings.ru.groups]
 guide = "Руководство"
@@ -232,7 +270,7 @@ footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Ке
 footer = [
     "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421.",
     "Код — GNU AGPL v3.0 лицензиясы бойынша еркін бағдарламалық қамтамасыз ету. LUME атауы мен логотипі «LUME Inc.» ЖШС-ге тиесілі және оған жатпайды.",
-    "Бұл сайт cookies қоймайды, скрипттер іске қоспайды және басқа серверлерден ештеңе жүктемейді.",
+    "Сайт бір міндетті cookie-ден басқасын тек сіздің келісіміңізбен қояды және басқа серверлерден ештеңе жүктемейді.",
 ]
 contents = "Мазмұны"
 source = "Бастапқы мәтін:"
@@ -241,6 +279,25 @@ legal-intro = [
     "Мұндағы әр құжат орыс, қазақ және ағылшын тілдерінде бар. Қазақ және орыс тілдеріндегі мәтіндердің күші бірдей; алшақтық болса, орыс тіліндегі мәтін қолданылады, ағылшын тіліндегісі — аударма. Құжаттар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
     "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервер жұмыс істейтін Қазақстандағы деректерді өңдеу орталығының атауы және басқалары.",
 ]
+
+[strings.kk.consent]
+title = "Cookie баптаулары"
+text = "Сайт cookie пайдаланады: таңдауыңызды есте сақтау үшін бір міндетті cookie және, егер рұқсат етсеңіз, тілді есте сақтау үшін тағы біреуі. Аналитика мен жарнама жоқ."
+intro = "Міндетті cookie сайтқа таңдауыңызды есте сақтауға мүмкіндік береді. Қалғандары тек сіз қосқанда ғана қойылады. Таңдауды кез келген уақытта әр беттің төменгі жағындағы «Cookie баптаулары» сілтемесі арқылы өзгертуге болады."
+more = "Толығырақ"
+accept = "Барлығын қабылдау"
+reject = "Тек міндеттілері"
+settings = "Баптау"
+save = "Таңдауды сақтау"
+close = "Жабу"
+footer = "Cookie баптаулары"
+policy = "legal/website#2-cookie"
+necessary = "Міндетті"
+necessary-text = "Осы терезедегі таңдауыңызды есте сақтайды, сонда сайт әр жолы сұрамайды. Әрқашан қосулы."
+preferences = "Баптаулар"
+preferences-text = "Сайтты қай тілде оқитыныңызды есте сақтап, келесі жолы бірден сол тілде ашады."
+analytics = "Аналитика"
+analytics-text = "Қазір пайдаланылмайды. Егер пайда болса, сайт сізден қайта сұрайды."
 
 [strings.kk.groups]
 guide = "Нұсқаулық"

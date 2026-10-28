@@ -227,8 +227,9 @@ deleted.
 
 ## 11. The website
 
-The LUME website uses no cookies, analytics or scripts — see
-[Privacy on the website](WEBSITE.md).
+The LUME website sets two cookies of its own, the second only with your
+consent, and uses no analytics — see
+[The LUME website: privacy and cookies](WEBSITE.md).
 
 ## 12. Changes
 

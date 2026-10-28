@@ -5,10 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # How LUME protects you
 
-LUME is an end-to-end encrypted messenger. This page explains, without the
-mathematics, what that means, what it protects and — just as important — what
-it does not. Each part links to the section of the
-[specification](/spec/crypto/) that says it precisely.
+LUME is an end-to-end encrypted messenger. This page describes how it works,
+what it protects and what it does not. Each part links to the section of the
+[specification](/spec/crypto/) that describes it precisely.
 
 > [!NOTE]
 > LUME is in development and no app has been released. This page describes how
@@ -88,9 +87,8 @@ opt out of cloud backups, so nothing is copied to Google or Microsoft either.
 
 ## What LUME does not protect
 
-Security that overstates itself is dangerous, so the specification lists what
-LUME does **not** protect against, to keep it from ever being mistaken for a
-promise ([§1](/spec/crypto/#1-goals-and-non-goals)). In plain words:
+The specification lists separately what LUME does **not** protect against
+([§1](/spec/crypto/#1-goals-and-non-goals)). Here is that list:
 
 - **Your IP address and when you are online.** The relay sees the address of
   every connection. Someone who runs it, or watches it live, can match senders
@@ -133,10 +131,9 @@ promise ([§1](/spec/crypto/#1-goals-and-non-goals)). In plain words:
   received; LUME cannot prove that the reported message was really sent.
 - **A hostile program on Windows** can lock the vault for a while by using up
   the TPM's allowance of failed attempts.
-- **A compromised device.** Malware running as you reads what you read. No
-  messenger can protect against that.
+- **A compromised device.** Malware running as you reads what you read.
 
-## Built from parts others have checked
+## Libraries and checks
 
 - The cryptography comes from **libsodium** and **liboqs**. LUME combines
   vetted primitives and does not invent its own

@@ -5,9 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # Open source
 
-A messenger asks you to trust it with your conversations. LUME's answer is to
-let anyone read the code, the specification and the policies, and check them
-against each other.
+LUME's code, its specification and its policies are public, so anyone can read
+them and check them against each other.
 
 ## Where the code is
 
@@ -72,5 +71,6 @@ reported privately — see [Security](/security/).
 The website is built from the same repository: [`site/`](../../../site) holds a
 small generator that uses only Python's standard library, and the policies are
 rendered straight from [`legal/`](../../../legal), so the website and the
-repository cannot disagree. It runs no scripts, sets no cookies and loads
-nothing from other servers — see [Privacy on this website](/legal/website/).
+repository cannot disagree. It runs one small script for the cookie window,
+sets cookies only with your consent and loads nothing from other servers — see
+[The website and cookies](/legal/website/).
