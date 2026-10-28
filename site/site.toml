@@ -1,0 +1,308 @@
+# SPDX-FileCopyrightText: 2026 LUME Inc.
+# SPDX-License-Identifier: AGPL-3.0-only
+
+repository = "https://github.com/lumeincc/lume"
+reference = "main"
+languages = ["en", "ru", "kk"]
+switcher = ["kk", "ru", "en"]
+
+[[pages]]
+route = ""
+neutral = "site/pages/index.html"
+title = "LUME"
+
+[[pages]]
+route = "404"
+neutral = "site/pages/404.html"
+generate = "not-found"
+title = "404 — LUME"
+
+[[pages]]
+route = ""
+source = { en = "site/pages/en/index.html", ru = "site/pages/ru/index.html", kk = "site/pages/kk/index.html" }
+title = { en = "LUME — an end-to-end encrypted messenger", ru = "LUME — мессенджер со сквозным шифрованием", kk = "LUME — ұштан-ұшқа шифрланған мессенджер" }
+
+[[pages]]
+route = "how-it-works"
+group = "guide"
+source = { en = "site/pages/en/how-it-works.md", ru = "site/pages/ru/how-it-works.md", kk = "site/pages/kk/how-it-works.md" }
+summary = { en = "How LUME protects your messages, in plain words, and what it does not protect.", ru = "Как LUME защищает переписку — простыми словами, — и от чего не защищает.", kk = "LUME хат алмасуды қалай қорғайды — қарапайым тілмен — және неден қорғамайды." }
+
+[[pages]]
+route = "safety-number"
+group = "guide"
+source = { en = "site/pages/en/safety-number.md", ru = "site/pages/ru/safety-number.md", kk = "site/pages/kk/safety-number.md" }
+summary = { en = "How to check that you are talking to the right person, using the safety number.", ru = "Как убедиться, что вы переписываетесь с тем, с кем думаете, — по номеру безопасности.", kk = "Қауіпсіздік нөмірі арқылы дұрыс адаммен сөйлесіп отырғаныңызды қалай тексеруге болады." }
+
+[[pages]]
+route = "security"
+group = "guide"
+source = { en = "SECURITY.md", ru = "SECURITY.ru.md", kk = "SECURITY.kk.md" }
+summary = { en = "How to report a vulnerability in LUME privately.", ru = "Как конфиденциально сообщить об уязвимости в LUME.", kk = "LUME-дегі осалдық туралы жабық түрде қалай хабарлауға болады." }
+
+[[pages]]
+route = "open-source"
+group = "open-source"
+source = { en = "site/pages/en/open-source.md", ru = "site/pages/ru/open-source.md", kk = "site/pages/kk/open-source.md" }
+summary = { en = "Where the LUME source code is, its licence, and how to build and check it yourself.", ru = "Где исходный код LUME, под какой он лицензией и как собрать и проверить его самому.", kk = "LUME бастапқы коды қайда, оның лицензиясы қандай және оны өзіңіз қалай құрастырып, тексере аласыз." }
+
+[[pages]]
+route = "trademarks"
+group = "open-source"
+source = { en = "TRADEMARKS.md", ru = "TRADEMARKS.ru.md", kk = "TRADEMARKS.kk.md" }
+summary = { en = "What you may and may not do with the LUME name and logo.", ru = "Что можно и чего нельзя делать с названием и логотипом LUME.", kk = "LUME атауы мен логотипімен не істеуге болады және не істеуге болмайды." }
+
+[[pages]]
+route = "licence"
+group = "open-source"
+languages = ["en"]
+source = { en = "LICENSE" }
+title = { en = "GNU Affero General Public License v3.0" }
+summary = { en = "The full text of the licence of the LUME source code." }
+
+[[pages]]
+route = "legal"
+generate = "legal"
+languages = ["en", "ru", "kk"]
+title = { en = "Legal", ru = "Документы", kk = "Құжаттар" }
+summary = { en = "The privacy policy, terms of use and every other policy of LUME.", ru = "Политика конфиденциальности, пользовательское соглашение и остальные документы LUME.", kk = "Құпиялылық саясаты, пайдаланушы келісімі және LUME-нің басқа құжаттары." }
+
+[[pages]]
+route = "legal/privacy"
+group = "legal"
+source = { en = "legal/PRIVACY.md", ru = "legal/PRIVACY.ru.md", kk = "legal/PRIVACY.kk.md" }
+summary = { en = "What our server holds about you, for how long, and what it never has.", ru = "Что сервер хранит о вас, сколько времени и чего у него нет никогда.", kk = "Сервер сіз туралы не сақтайды, қанша уақыт және онда ешқашан не болмайды." }
+
+[[pages]]
+route = "legal/consent"
+group = "legal"
+source = { en = "legal/CONSENT.md", ru = "legal/CONSENT.ru.md", kk = "legal/CONSENT.kk.md" }
+summary = { en = "The consent to the processing of personal data you give in the app when you create an account.", ru = "Согласие на обработку персональных данных, которое вы даёте в приложении при создании аккаунта.", kk = "Аккаунт жасаған кезде қосымшада беретін дербес деректерді өңдеуге келісім." }
+
+[[pages]]
+route = "legal/terms"
+group = "legal"
+source = { en = "legal/TERMS.md", ru = "legal/TERMS.ru.md", kk = "legal/TERMS.kk.md" }
+summary = { en = "The agreement for using LUME, including the end-user licence, price and refunds.", ru = "Условия использования LUME, включая лицензию для конечного пользователя, цену и возвраты.", kk = "LUME-ді пайдалану шарттары, соның ішінде соңғы пайдаланушы лицензиясы, баға және қайтарымдар." }
+
+[[pages]]
+route = "legal/website"
+group = "legal"
+source = { en = "legal/WEBSITE.md", ru = "legal/WEBSITE.ru.md", kk = "legal/WEBSITE.kk.md" }
+summary = { en = "Which cookies this website sets, how to change your choice, and what its host receives.", ru = "Какие cookie ставит сайт, как изменить выбор и что получает хостинг.", kk = "Сайт қандай cookie қояды, таңдауды қалай өзгертуге болады және хостинг не алады." }
+
+[[pages]]
+route = "legal/account-deletion"
+group = "legal"
+source = { en = "legal/ACCOUNT-DELETION.md", ru = "legal/ACCOUNT-DELETION.ru.md", kk = "legal/ACCOUNT-DELETION.kk.md" }
+summary = { en = "How to delete your account and what is deleted with it.", ru = "Как удалить аккаунт и что удаляется вместе с ним.", kk = "Аккаунтты қалай жоюға болады және онымен бірге не жойылады." }
+
+[[pages]]
+route = "legal/child-safety"
+group = "legal"
+source = { en = "legal/CHILD-SAFETY.md", ru = "legal/CHILD-SAFETY.ru.md", kk = "legal/CHILD-SAFETY.kk.md" }
+summary = { en = "Zero tolerance for child sexual abuse and exploitation, and how to report it.", ru = "Нулевая терпимость к сексуальному насилию над детьми и их эксплуатации и как об этом сообщить.", kk = "Балаларға қатысты жыныстық зорлық-зомбылық пен қанауға мүлдем төзбеушілік және бұл туралы қалай хабарлау керек." }
+
+[[pages]]
+route = "legal/law-enforcement"
+group = "legal"
+source = { en = "legal/LAW-ENFORCEMENT.md", ru = "legal/LAW-ENFORCEMENT.ru.md", kk = "legal/LAW-ENFORCEMENT.kk.md" }
+summary = { en = "What LUME Inc. can and cannot give to authorities, and how it responds.", ru = "Что ТОО «LUME Inc.» может и не может передать властям и как отвечает на запросы.", kk = "«LUME Inc.» ЖШС мемлекеттік органдарға не бере алады, не бере алмайды және сұрау салуларға қалай жауап береді." }
+
+[[pages]]
+route = "legal/permissions"
+group = "legal"
+source = { en = "legal/PERMISSIONS.md", ru = "legal/PERMISSIONS.ru.md", kk = "legal/PERMISSIONS.kk.md" }
+summary = { en = "Every permission the apps ask for, and why.", ru = "Все разрешения, которые запрашивают приложения, и зачем.", kk = "Қосымшалар сұрайтын барлық рұқсаттар және не үшін." }
+
+[[pages]]
+route = "legal/store-disclosures"
+group = "legal"
+source = { en = "legal/STORE-DISCLOSURES.md", ru = "legal/STORE-DISCLOSURES.ru.md", kk = "legal/STORE-DISCLOSURES.kk.md" }
+summary = { en = "The answers LUME gives in the app stores' data and content forms.", ru = "Ответы LUME в формах магазинов приложений о данных и содержании.", kk = "Қосымшалар дүкендерінің деректер мен мазмұн туралы формаларына LUME берген жауаптар." }
+
+[[pages]]
+route = "legal/contact"
+group = "legal"
+source = { en = "legal/CONTACT.md", ru = "legal/CONTACT.ru.md", kk = "legal/CONTACT.kk.md" }
+summary = { en = "The company behind LUME and how to reach it.", ru = "Компания, которая стоит за LUME, и как с ней связаться.", kk = "LUME-ді жасайтын компания және онымен қалай байланысуға болады." }
+
+[[pages]]
+route = "spec/crypto"
+group = "spec"
+languages = ["en"]
+source = { en = "docs/CRYPTO.md" }
+summary = { en = "The LUME cryptography specification: every key, derivation and construction." }
+
+[[pages]]
+route = "spec/protocol"
+group = "spec"
+languages = ["en"]
+source = { en = "docs/PROTOCOL.md" }
+summary = { en = "The LUME relay protocol specification." }
+
+[[images]]
+source = "brand/logo 2.png"
+margin = 0
+outputs = [["assets/logo-night.png", 500]]
+
+
+[[images]]
+source = "brand/logo 2.png"
+margin = 300
+outputs = [["apple-touch-icon.png", 180], ["assets/mark-night.png", 64], ["favicon.png", 32]]
+
+
+[strings.en]
+language-name = "English"
+language-short = "Eng"
+language-label = "Language"
+site-title = "LUME"
+description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. No phone number, no e-mail, no trackers."
+skip = "Skip to content"
+navigation-label = "Main"
+navigation = [["how-it-works", "How it works"], ["safety-number", "Safety number"], ["security", "Security"], ["open-source", "Open source"], ["legal", "Legal"]]
+footer-label = "Policies"
+footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Name and logo"], ["https://github.com/lumeincc/lume", "Source code"]]
+footer = [
+    "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
+    "The code is free software under the GNU AGPL v3.0. The LUME name and logo belong to LUME Inc. and are not covered by it.",
+    "This website sets cookies only with your consent, apart from one necessary cookie, and loads nothing from other servers.",
+]
+contents = "On this page"
+source = "Source:"
+history = "history of changes"
+legal-intro = [
+    "Every document here exists in Russian, Kazakh and English. The Kazakh and Russian texts have equal force; if they differ, the Russian text applies, and the English text is a translation. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
+    "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the name of the data centre in Kazakhstan that hosts the server.",
+]
+
+[strings.en.consent]
+title = "Cookie settings"
+text = "This site uses cookies: one that is needed to remember your choice and, if you allow it, one more to remember your language. No analytics, no ads."
+intro = "The necessary cookie lets the site remember your choice. The others are set only if you turn them on. You can change your choice at any time with the Cookie settings link at the bottom of every page."
+more = "Details"
+accept = "Accept all"
+reject = "Necessary only"
+settings = "Settings"
+save = "Save choice"
+close = "Close"
+footer = "Cookie settings"
+policy = "legal/website#2-cookies"
+necessary = "Necessary"
+necessary-text = "Remember your choice in this window, so that the site does not ask every time. Always on."
+preferences = "Preferences"
+preferences-text = "Remember the language you read the site in and open it straight away next time."
+analytics = "Analytics"
+analytics-text = "Not used. If that changes, the site will ask you again."
+
+[strings.en.groups]
+guide = "Guide"
+open-source = "Open source"
+legal = "Legal"
+spec = "Specification"
+
+[strings.en.notes]
+spec = "The technical specification, draft revision {{spec-revision}}, written for cryptographers and implementers. It changes as LUME is built."
+
+[strings.ru]
+language-name = "Русский"
+language-short = "Рус"
+language-label = "Язык"
+site-title = "LUME"
+description = "LUME — мессенджер со сквозным шифрованием и постквантовым обменом ключами, в разработке. Без номера телефона, почты и трекеров."
+skip = "Перейти к содержанию"
+navigation-label = "Основное меню"
+navigation = [["how-it-works", "Как это работает"], ["safety-number", "Номер безопасности"], ["security", "Уязвимости"], ["open-source", "Открытый код"], ["legal", "Документы"]]
+footer-label = "Документы"
+footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Название и логотип"], ["https://github.com/lumeincc/lume", "Исходный код"]]
+footer = [
+    "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
+    "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME принадлежат ТОО «LUME Inc.» и под неё не подпадают.",
+    "Сайт ставит cookie только с вашего согласия, кроме одной обязательной, и ничего не загружает с других серверов.",
+]
+contents = "Содержание"
+source = "Исходный текст:"
+history = "история изменений"
+legal-intro = [
+    "Каждый документ здесь есть на русском, казахском и английском. Тексты на казахском и русском языках имеют одинаковую силу; при расхождении применяется русский текст, английский — перевод. Документы описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
+    "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, название центра обработки данных в Казахстане, где работает сервер, и другие.",
+]
+
+[strings.ru.consent]
+title = "Настройки cookie"
+text = "Сайт использует cookie: одну обязательную, чтобы запомнить ваш выбор, и, если вы разрешите, ещё одну, чтобы запомнить язык. Аналитики и рекламы нет."
+intro = "Обязательная cookie нужна, чтобы сайт помнил ваш выбор. Остальные ставятся, только если вы их включите. Выбор можно изменить в любое время по ссылке «Настройки cookie» внизу каждой страницы."
+more = "Подробнее"
+accept = "Принять все"
+reject = "Только обязательные"
+settings = "Настроить"
+save = "Сохранить выбор"
+close = "Закрыть"
+footer = "Настройки cookie"
+policy = "legal/website#2-cookie"
+necessary = "Обязательные"
+necessary-text = "Запоминают ваш выбор в этом окне, чтобы сайт не спрашивал каждый раз. Всегда включены."
+preferences = "Настройки"
+preferences-text = "Запоминают язык, на котором вы читаете сайт, и в следующий раз открывают его сразу."
+analytics = "Аналитика"
+analytics-text = "Сейчас не используется. Если она появится, сайт спросит вас заново."
+
+[strings.ru.groups]
+guide = "Руководство"
+open-source = "Открытый код"
+legal = "Документы"
+spec = "Спецификация"
+
+[strings.ru.notes]
+
+[strings.kk]
+language-name = "Қазақша"
+language-short = "Қаз"
+language-label = "Тіл"
+site-title = "LUME"
+description = "LUME — постквантты кілт алмасуы бар, ұштан-ұшқа шифрланған мессенджер, әзірлену үстінде. Телефон нөмірі, электрондық пошта және трекерлер жоқ."
+skip = "Мазмұнға өту"
+navigation-label = "Негізгі мәзір"
+navigation = [["how-it-works", "Қалай жұмыс істейді"], ["safety-number", "Қауіпсіздік нөмірі"], ["security", "Осалдықтар"], ["open-source", "Ашық код"], ["legal", "Құжаттар"]]
+footer-label = "Құжаттар"
+footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Келісім"], ["legal/website", "Осы сайт"], ["legal/contact", "Байланыс"], ["trademarks", "Атау және логотип"], ["https://github.com/lumeincc/lume", "Бастапқы код"]]
+footer = [
+    "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421.",
+    "Код — GNU AGPL v3.0 лицензиясы бойынша еркін бағдарламалық қамтамасыз ету. LUME атауы мен логотипі «LUME Inc.» ЖШС-ге тиесілі және оған жатпайды.",
+    "Сайт бір міндетті cookie-ден басқасын тек сіздің келісіміңізбен қояды және басқа серверлерден ештеңе жүктемейді.",
+]
+contents = "Мазмұны"
+source = "Бастапқы мәтін:"
+history = "өзгерістер тарихы"
+legal-intro = [
+    "Мұндағы әр құжат орыс, қазақ және ағылшын тілдерінде бар. Қазақ және орыс тілдеріндегі мәтіндердің күші бірдей; алшақтық болса, орыс тіліндегі мәтін қолданылады, ағылшын тіліндегісі — аударма. Құжаттар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
+    "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервер жұмыс істейтін Қазақстандағы деректерді өңдеу орталығының атауы және басқалары.",
+]
+
+[strings.kk.consent]
+title = "Cookie баптаулары"
+text = "Сайт cookie пайдаланады: таңдауыңызды есте сақтау үшін бір міндетті cookie және, егер рұқсат етсеңіз, тілді есте сақтау үшін тағы біреуі. Аналитика мен жарнама жоқ."
+intro = "Міндетті cookie сайтқа таңдауыңызды есте сақтауға мүмкіндік береді. Қалғандары тек сіз қосқанда ғана қойылады. Таңдауды кез келген уақытта әр беттің төменгі жағындағы «Cookie баптаулары» сілтемесі арқылы өзгертуге болады."
+more = "Толығырақ"
+accept = "Барлығын қабылдау"
+reject = "Тек міндеттілері"
+settings = "Баптау"
+save = "Таңдауды сақтау"
+close = "Жабу"
+footer = "Cookie баптаулары"
+policy = "legal/website#2-cookie"
+necessary = "Міндетті"
+necessary-text = "Осы терезедегі таңдауыңызды есте сақтайды, сонда сайт әр жолы сұрамайды. Әрқашан қосулы."
+preferences = "Баптаулар"
+preferences-text = "Сайтты қай тілде оқитыныңызды есте сақтап, келесі жолы бірден сол тілде ашады."
+analytics = "Аналитика"
+analytics-text = "Қазір пайдаланылмайды. Егер пайда болса, сайт сізден қайта сұрайды."
+
+[strings.kk.groups]
+guide = "Нұсқаулық"
+open-source = "Ашық код"
+legal = "Құжаттар"
+spec = "Спецификация"
+
+[strings.kk.notes]
