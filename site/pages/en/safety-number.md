@@ -11,9 +11,8 @@ belong to the person you think — so that nobody, including whoever runs the
 relay, can quietly put themselves in the middle.
 
 > [!NOTE]
-> The LUME apps have not been released yet. This page explains how
-> verification works; the exact buttons will be described here once the apps
-> exist.
+> There are no LUME apps yet. This page explains how verification works; the
+> exact buttons will be described here once the apps exist.
 
 ## What a safety number is
 
@@ -46,7 +45,7 @@ not depend on the relay ([§1](/spec/crypto/#1-goals-and-non-goals),
 
 ## If the numbers match
 
-You are talking to the account you meant to. LUME already **pins** a contact's
+You are talking to the account you meant to. LUME also **pins** a contact's
 keys the first time it accepts them: if different keys ever appear for that
 contact later, LUME refuses them instead of showing a warning you could click
 away ([§12](/spec/crypto/#12-pinning-safety-numbers-and-invites)). Comparing

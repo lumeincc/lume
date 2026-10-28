@@ -31,10 +31,10 @@ This summary is not the licence; [the full text](/licence/) is what applies.
 
 ## The name and logo are not under the code licence
 
-The LUME name and logo belong to LUME Inc. Someone who installs an app called
-LUME, with the LUME logo, has to be able to rely on it being the build LUME Inc.
-publishes, not a modified copy that might log messages. Forks are welcome; they
-need their own name and icon. See [Name and logo](/trademarks/).
+The LUME name and logo belong to LUME Inc. Anyone who installs an app called
+LUME, with the LUME logo, must be able to trust that it is the build LUME Inc.
+publishes and not a modified copy that might keep their messages. Forks are
+welcome; they need their own name and icon. See [Name and logo](/trademarks/).
 
 ## What LUME is built on
 
@@ -71,6 +71,6 @@ reported privately — see [Security](/security/).
 The website is built from the same repository: [`site/`](../../../site) holds a
 small generator that uses only Python's standard library, and the policies are
 rendered straight from [`legal/`](../../../legal), so the website and the
-repository cannot disagree. It runs one small script for the cookie window,
-sets cookies only with your consent and loads nothing from other servers — see
-[The website and cookies](/legal/website/).
+repository cannot disagree. It runs one small script, for the cookie window
+and the home page's headline, sets cookies only with your consent and loads
+nothing from other servers; see [The website and cookies](/legal/website/).
