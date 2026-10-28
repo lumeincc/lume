@@ -583,6 +583,19 @@ TEST(SkippedKeys, RefusesToReachForAKeyItDoesNotHold)
     EXPECT_EQ(store.size(), 1U);
 }
 
+TEST(SkippedKeys, RefusesKeysThatAreNotWholeKeysBeforeChangingAnything)
+{
+    SkippedKeys store;
+    const auto header = SecretBytes::copy_of(Bytes(crypto::aead_key_size, 0x01));
+    store.add(header, ratchet_key_of(1), 0, keys_from(1, 0x10), now, max_skipped_keys);
+    EXPECT_THROW(store.add(header, ratchet_key_of(2), 1, Bytes(crypto::aead_key_size + 1, 0x11), now, 1), std::invalid_argument);
+    const auto short_header = SecretBytes::copy_of(Bytes(crypto::aead_key_size - 1, 0x02));
+    EXPECT_THROW(store.add(short_header, ratchet_key_of(2), 1, keys_from(1, 0x12), now, 1), std::invalid_argument);
+    EXPECT_EQ(store.size(), 1U);
+    EXPECT_EQ(store.chain_count(), 1U);
+    EXPECT_EQ(Bytes(store.message_key(0, 0).begin(), store.message_key(0, 0).end()), Bytes(crypto::aead_key_size, 0x10));
+}
+
 TEST(SkippedKeys, ExpiresByAgeAndClonesIndependently)
 {
     SkippedKeys store;

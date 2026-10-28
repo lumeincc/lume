@@ -158,6 +158,9 @@ void SkippedKeys::add(
     const crypto::SecretBytes& header_key, const RatchetKey& ratchet_key, std::uint32_t first_number,
     crypto::ByteView message_keys, std::uint64_t stored_at, std::size_t limit)
 {
+    if (header_key.view().size() != key_size || message_keys.size() % key_size != 0) {
+        throw std::invalid_argument("skipped keys must be whole keys");
+    }
     const auto bound = std::min(limit, max_skipped_keys);
     const auto count = message_keys.size() / key_size;
     if (bound == 0 || count == 0) {
@@ -177,7 +180,7 @@ void SkippedKeys::add(
         std::ranges::copy(header_key.view(), slots(header_keys_, chains_.size(), 1).begin());
         chains_.push_back(Chain{.ratchet_key = ratchet_key, .count = 0});
     }
-    std::ranges::copy(message_keys.subspan(first * key_size), slots(message_keys_, entries_.size(), kept).begin());
+    std::ranges::copy(message_keys.subspan(first * key_size, kept * key_size), slots(message_keys_, entries_.size(), kept).begin());
     for (std::size_t position = first; position < count; ++position) {
         entries_.push_back(
             SkippedEntry{.number = first_number + static_cast<std::uint32_t>(position), .stored_at = stored_at});
