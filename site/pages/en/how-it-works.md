@@ -5,47 +5,46 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # How LUME protects you
 
-LUME is an end-to-end encrypted messenger. This page describes how it works,
+LUME is an end-to-end encrypted messenger. This page explains how it works,
 what it protects and what it does not. Each part links to the section of the
-[specification](/spec/crypto/) that describes it precisely.
+[specification](/spec/crypto/) that gives the details.
 
 > [!NOTE]
-> LUME is in development and no app has been released. This page describes how
-> LUME is designed to work; [what exists today](#what-exists-today) is listed at
-> the end.
+> LUME is still in development and there is no app yet. This page describes
+> how LUME will work; [what is built so far](#what-exists-today) is at the end.
 
-## Your account is a key, not a phone number
+## An account without a phone number
 
 When you create an account, your device draws 256 random bits and shows them to
-you as 24 English words: your **recovery phrase**. Your identity keys — what
-makes you *you* on LUME — are calculated from those words, on your device
-([§3](/spec/crypto/#3-identity)).
+you as 24 English words: your **recovery phrase**. Your identity keys, which
+LUME uses to know that you are you, are derived from those words on your
+device ([§3](/spec/crypto/#3-identity)).
 
 - We never receive the phrase, so we cannot restore it. **If you lose both the
   phrase and your device, the account is gone for good.**
-- Anyone who has the phrase can act as you. Write it down, keep it offline and
-  show it to no one.
-- You choose a username so that people can find you. Your contacts recognise you
-  by your keys, not by the name: a name can be released and registered again
-  by someone else, a key cannot.
+- Anyone who has the phrase can act as you. Write it down on paper and show it
+  to no one.
+- You choose a username so that people can find you, but your contacts know
+  you by your keys. A name can be given up and taken by someone else; a key
+  cannot.
 - LUME never asks for a phone number, an e-mail address, your name or your
   address book.
 
-## Messages are locked on your device
+## Messages are encrypted on your phone
 
-A message is encrypted on the sender's device and decrypted on the recipient's.
-The server in between — the **relay** — stores and forwards sealed envelopes it
-cannot open. It never holds anyone's private key and never decrypts an envelope
+A message is encrypted on the sender's phone and decrypted on the recipient's.
+The server in between, the **relay**, only stores and forwards sealed envelopes.
+It holds no one's private key and cannot open an envelope
 ([relay protocol](/spec/protocol/)).
 
-## Ready for quantum computers
+## Protection against quantum computers
 
 Someone could record encrypted traffic today and keep it until a quantum
 computer can break the key exchange that protected it. So LUME starts every
 conversation with two key exchanges at once: **X25519**, the classical one used
 across the internet today, and **ML-KEM-768**, the post-quantum one
-standardised as FIPS 203. The key that comes out stays secret as long as
-**either** of them holds ([§5.6](/spec/crypto/#56-why-hybrid)).
+standardised as FIPS 203. The shared key stays secret unless **both** are
+broken ([§5.6](/spec/crypto/#56-why-hybrid)).
 
 ## Keys that keep changing
 
@@ -58,8 +57,8 @@ gets its own key, and a key is deleted once it has been used.
   messages they recorded earlier, because those keys no longer exist. There are
   time-limited exceptions, listed [below](#what-lume-does-not-protect).
 - **Healing.** If someone steals a conversation's keys once and then loses
-  access, they are locked out again after one round trip of messages. This
-  healing relies on classical cryptography only.
+  access, one round trip of messages locks them out again. This healing relies
+  on classical cryptography only.
 
 ## The server does not know who is writing
 
@@ -81,14 +80,14 @@ gets its own key, and a key is deleted once it has been used.
 ## What stays on your device
 
 Messages, contacts and keys are kept only on your device, in an encrypted
-**vault** locked with your passphrase and, where the device supports it, a
-hardware-protected key ([§10](/spec/crypto/#10-vault--data-at-rest)). The apps
-opt out of cloud backups, so nothing is copied to Google or Microsoft either.
+**vault**. It opens with your passphrase and, where the phone supports it, a key
+held in secure hardware ([§10](/spec/crypto/#10-vault--data-at-rest)). The apps
+turn off cloud backup, so nothing is copied to Google or Microsoft either.
 
 ## What LUME does not protect
 
-The specification lists separately what LUME does **not** protect against
-([§1](/spec/crypto/#1-goals-and-non-goals)). Here is that list:
+The specification lists what LUME does **not** protect against
+([§1](/spec/crypto/#1-goals-and-non-goals)):
 
 - **Your IP address and when you are online.** The relay sees the address of
   every connection. Someone who runs it, or watches it live, can match senders
@@ -141,24 +140,24 @@ The specification lists separately what LUME does **not** protect against
 - Every primitive is tested against published vectors, including Google's
   Project Wycheproof, and LUME publishes its own vectors for every construction
   ([§14](/spec/crypto/#14-test-vectors)).
-- When it starts, the core runs a self-test. If the test fails, nothing is
-  encrypted or decrypted at all, rather than something working insecurely.
+- When it starts, the core tests itself. If the test fails, LUME encrypts and
+  decrypts nothing at all.
 - A cryptographic error never leads to sending or showing anything unencrypted.
 - The code is public. If you find a flaw, [report it](/security/).
-- There has been **no independent security audit yet**.
+- **There has been no independent security audit yet.**
 
 ## What exists today
 
 The cryptographic core is built and tested: the primitives and their self-test,
 accounts from a recovery phrase, safety numbers, the hybrid post-quantum
 handshake, the Double Ratchet and the wire format. Message content, sealed
-sender, the vault, the relay and the apps are not built yet, and no app has been
-released. The specification is a draft, revision {{spec-revision}}, and can
+sender, the vault, the relay and the apps are still being built, and there is
+no app yet. The specification is a draft, revision {{spec-revision}}, and can
 still change.
 
 ## Read the specification
 
-For precision, read the specification itself. It is in English.
+For the exact details, read the specification itself.
 
 - [Cryptography](/spec/crypto/) — every key, derivation and construction.
 - [Relay protocol](/spec/protocol/) — what the server does, stores and limits.
