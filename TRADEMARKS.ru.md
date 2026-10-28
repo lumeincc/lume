@@ -10,6 +10,7 @@ License v3.0. **Название и логотип LUME — нет.** Они п�
 Inc.» и подпадают под
 [`LICENSES/LicenseRef-LUME-Brand.txt`](LICENSES/LicenseRef-LUME-Brand.txt).
 English version: [TRADEMARKS.md](TRADEMARKS.md).
+Қазақша нұсқа: [TRADEMARKS.kk.md](TRADEMARKS.kk.md).
 
 Это разделение защищает тех, кто пользуется LUME. Мессенджеру доверяют за его
 защиту, и тот, кто устанавливает приложение с названием LUME и логотипом LUME,

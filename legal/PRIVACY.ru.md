@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 **Статус: проект.** Вступает в силу в день выхода первой публичной сборки
 LUME; эта строка будет заменена датой.
 English version: [PRIVACY.md](PRIVACY.md).
+Қазақша нұсқа: [PRIVACY.kk.md](PRIVACY.kk.md).
 
 ## 1. Кто мы
 

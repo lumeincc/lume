@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Status: draft.** Takes effect with the first public release.
 Русская версия: [CHILD-SAFETY.ru.md](CHILD-SAFETY.ru.md).
+Қазақша нұсқа: [CHILD-SAFETY.kk.md](CHILD-SAFETY.kk.md).
 
 LUME Inc. has **zero tolerance for child sexual abuse and exploitation
 (CSAE)**, including child sexual abuse material (CSAM), grooming, sextortion

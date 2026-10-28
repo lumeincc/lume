@@ -290,13 +290,15 @@ class Site:
             marker = ' aria-current="page"' if current else ""
             links.append(f'<a href="{self.link_to_page(page, target, "")}"{marker}>{label}</a>')
         switches = []
-        for language in self.languages:
+        for language in self.config["switcher"]:
+            name = self.strings[language]["language-name"]
+            short = self.strings[language]["language-short"]
             if language == page.language:
+                switches.append(f'<span aria-current="true" lang="{language}" title="{name}">{short}</span>')
                 continue
             target = self.by_route.get((language, page.route)) or self.by_route[(language, "")]
-            name = self.strings[language]["language-name"]
             switches.append(
-                f'<a class="language" href="{self.link_to_page(page, target, "")}" hreflang="{language}" lang="{language}">{name}</a>'
+                f'<a href="{self.link_to_page(page, target, "")}" hreflang="{language}" lang="{language}" title="{name}">{short}</a>'
             )
         home = self.link_to_page(page, self.by_route[(page.language, "")], "")
         return (
@@ -307,7 +309,7 @@ class Site:
             f'<img src="{root}assets/mark-night.png" width="32" height="32" alt="">'
             "</picture><span>LUME</span></a>"
             f'<nav class="primary" aria-label="{words["navigation-label"]}">{"".join(links)}</nav>'
-            f'{"".join(switches)}'
+            f'<nav class="languages" aria-label="{words["language-label"]}">{"".join(switches)}</nav>'
             "</div></header>"
         )
 

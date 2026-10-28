@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Status: draft**, for the first public release.
 Русская версия: [PERMISSIONS.ru.md](PERMISSIONS.ru.md).
+Қазақша нұсқа: [PERMISSIONS.kk.md](PERMISSIONS.kk.md).
 
 This is the complete list of what the official LUME apps ask the operating
 system for. A build that asks for anything else is not following this page and

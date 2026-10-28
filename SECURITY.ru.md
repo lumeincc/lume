@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 LUME — мессенджер с шифрованием, поэтому сообщение об уязвимости — самое
 полезное, что вы можете нам прислать.
 English version: [SECURITY.md](SECURITY.md).
+Қазақша нұсқа: [SECURITY.kk.md](SECURITY.kk.md).
 
 ## Как сообщить об уязвимости
 

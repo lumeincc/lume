@@ -131,6 +131,11 @@ class Site(unittest.TestCase):
             if policy.name == "README.md":
                 continue
             self.assertIn(f"legal/{policy.name}", sources)
+        published = {(page.language, page.route) for page in self.site.pages if page.group in ("legal", "guide", "open-source")}
+        everywhere = {route for _, route in published}
+        for language in self.config["languages"]:
+            routes = {route for page_language, route in published if page_language == language}
+            self.assertEqual(routes, everywhere - {"licence"} if language != "en" else everywhere, language)
 
     def test_every_page_states_the_content_security_policy(self) -> None:
         for page in self.output.rglob("*.html"):

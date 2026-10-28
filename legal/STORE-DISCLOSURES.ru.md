@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 [разрешений](PERMISSIONS.ru.md); если меняется что-то из них, эта страница
 меняется в том же коммите.
 English version: [STORE-DISCLOSURES.md](STORE-DISCLOSURES.md).
+Қазақша нұсқа: [STORE-DISCLOSURES.kk.md](STORE-DISCLOSURES.kk.md).
 
 ## Google Play — Безопасность данных
 

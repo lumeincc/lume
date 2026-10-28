@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Статус: проект.** Вступает в силу с первым публичным выпуском.
 English version: [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md).
+Қазақша нұсқа: [ACCOUNT-DELETION.kk.md](ACCOUNT-DELETION.kk.md).
 
 ## 1. Из приложения
 

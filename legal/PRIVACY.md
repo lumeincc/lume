@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 **Status: draft.** Takes effect on the day the first public build of LUME is
 released; that date will replace this line.
 Русская версия: [PRIVACY.ru.md](PRIVACY.ru.md).
+Қазақша нұсқа: [PRIVACY.kk.md](PRIVACY.kk.md).
 
 ## 1. Who we are
 

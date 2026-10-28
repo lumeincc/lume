@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Статус: проект.** Вступает в силу с первым публичным выпуском.
 English version: [LAW-ENFORCEMENT.md](LAW-ENFORCEMENT.md).
+Қазақша нұсқа: [LAW-ENFORCEMENT.kk.md](LAW-ENFORCEMENT.kk.md).
 
 Эта страница объясняет государственным органам и пользователям, что ТОО «LUME
 Inc.» может и чего не может предоставить.

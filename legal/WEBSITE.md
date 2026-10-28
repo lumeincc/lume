@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 **Status: draft.** Takes effect on the day the website is first published;
 that date will replace this line.
 Русская версия: [WEBSITE.ru.md](WEBSITE.ru.md).
+Қазақша нұсқа: [WEBSITE.kk.md](WEBSITE.kk.md).
 
 This page covers the LUME website only. The apps and the relay are covered by
 the [Privacy Policy](PRIVACY.md).

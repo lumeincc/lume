@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 **Status: draft.** Takes effect on the day the first public build of LUME is
 released; that date will replace this line.
 Русская версия: [TERMS.ru.md](TERMS.ru.md).
+Қазақша нұсқа: [TERMS.kk.md](TERMS.kk.md).
 
 These terms are an agreement between you and **LUME Inc.** (ТОО «LUME Inc.»,
 Republic of Kazakhstan, BIN 260740032421) for using the LUME apps and the LUME

@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Статус: проект.** Вступает в силу с первым публичным выпуском.
 English version: [CHILD-SAFETY.md](CHILD-SAFETY.md).
+Қазақша нұсқа: [CHILD-SAFETY.kk.md](CHILD-SAFETY.kk.md).
 
 ТОО «LUME Inc.» **не допускает никакой сексуальной эксплуатации детей и насилия
 над ними (CSAE)** — включая материалы сексуального насилия над детьми (CSAM),

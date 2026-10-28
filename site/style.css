@@ -140,8 +140,7 @@ pre {
   flex: 1;
 }
 
-.primary a,
-.language {
+.primary a {
   color: var(--muted);
   text-decoration: none;
   font-size: 0.95rem;
@@ -149,7 +148,6 @@ pre {
 }
 
 .primary a:hover,
-.language:hover,
 .primary a[aria-current="page"] {
   color: var(--text);
 }
@@ -158,10 +156,29 @@ pre {
   box-shadow: inset 0 -2px 0 var(--text);
 }
 
-.language {
+.languages {
+  display: inline-flex;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.2rem 0.8rem;
+  padding: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.languages a,
+.languages span {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.languages a:hover {
+  color: var(--text);
+}
+
+.languages span {
+  background: var(--raised);
+  color: var(--text);
 }
 
 .site-footer {
@@ -689,7 +706,7 @@ td.right {
     order: 1;
   }
 
-  .language {
+  .languages {
     order: 2;
     margin-left: auto;
   }

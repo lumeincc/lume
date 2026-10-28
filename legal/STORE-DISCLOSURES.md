@@ -9,6 +9,7 @@ The answers LUME gives in each store's data and content forms, derived from the
 [Privacy Policy](PRIVACY.md) and [Permissions](PERMISSIONS.md). When either of
 those changes, this page changes in the same commit.
 Русская версия: [STORE-DISCLOSURES.ru.md](STORE-DISCLOSURES.ru.md).
+Қазақша нұсқа: [STORE-DISCLOSURES.kk.md](STORE-DISCLOSURES.kk.md).
 
 ## Google Play — Data safety
 
