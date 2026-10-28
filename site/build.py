@@ -48,13 +48,6 @@ DIGITS = {
     "8": (".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."),
     "9": (".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."),
 }
-ICONS = {
-    "how-it-works": '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><path d="M12 14.5v2"/>',
-    "safety-number": '<path d="M12 3.5l7 2.8v5.2c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.3z"/><path d="M9 12.2l2.1 2.1 4-4.1"/>',
-    "security": '<rect x="8" y="7.5" width="8" height="12" rx="4"/><path d="M10 7.5a2 2 0 0 1 4 0M12 11v8.5M8 12H4.5M19.5 12H16M8 16H5M19 16h-3M9 5l-1.5-1.5M15 5l1.5-1.5"/>',
-    "open-source": '<path d="M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5l-3 14"/>',
-    "legal": '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4M10 12h5M10 15.5h5"/>',
-}
 LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.S)
 LEADING_STYLE_COMMENT = re.compile(r"\A\s*/\*.*?\*/\s*", re.S)
 URL_ATTRIBUTE = re.compile(r'\b(href|src)="([^"]*)"')
@@ -287,7 +280,9 @@ class Site:
     def article_frame(self, page: Page, title: str, contents: str, body: str) -> str:
         words = self.strings_for(page)
         eyebrow = words["groups"].get(page.group, "")
-        eyebrow_html = f'<p class="eyebrow">{eyebrow}</p>' if eyebrow else ""
+        home = self.link_to_page(page, self.by_route[(page.language, "")], "")
+        group = f"<span>{eyebrow}</span>" if eyebrow else ""
+        eyebrow_html = f'<p class="eyebrow"><a href="{home}">LUME</a>{group}</p>'
         note = words["notes"].get(page.group, "")
         note_html = f'<p class="note">{self.substitute(page, note)}</p>' if note else ""
         source = ""
@@ -320,21 +315,8 @@ class Site:
         body = f'<div class="prose">{intro}</div>\n<ul class="index">{"".join(items)}</ul>'
         return Rendered(page.title, self.article_frame(page, page.title, "", body), "page")
 
-    def header(self, page: Page) -> str:
-        if page.generate == "not-found" or page.language == "":
-            return ""
+    def language_switch(self, page: Page) -> str:
         words = self.strings_for(page)
-        root = self.page_root(page)
-        dock = ""
-        if page.route:
-            links = []
-            for route, label in words["navigation"]:
-                current = page.route == route or page.route.startswith(route + "/")
-                target = self.by_route[(page.language, route)]
-                marker = ' aria-current="page"' if current else ""
-                icon = f'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">{ICONS[route]}</svg>'
-                links.append(f'<a href="{self.link_to_page(page, target, "")}"{marker}>{icon}<span class="label">{label}</span></a>')
-            dock = f'<nav class="dock" aria-label="{words["navigation-label"]}">{"".join(links)}</nav>'
         switches = []
         for language in self.config["switcher"]:
             name = self.strings[language]["language-name"]
@@ -346,21 +328,19 @@ class Site:
             switches.append(
                 f'<a href="{self.link_to_page(page, target, "")}" hreflang="{language}" lang="{language}" title="{name}">{short}</a>'
             )
-        home = self.link_to_page(page, self.by_route[(page.language, "")], "")
-        return (
-            '<header class="site-header"><div class="bar">'
-            f'<a class="brand" href="{home}">'
-            f'<img src="{root}assets/mark-night.png" width="32" height="32" alt="">'
-            "<span>LUME</span></a>"
-            f"{dock}"
-            f'<nav class="languages" aria-label="{words["language-label"]}">{"".join(switches)}</nav>'
-            "</div></header>"
-        )
+        return f'<nav class="languages" aria-label="{words["language-label"]}">{"".join(switches)}</nav>'
 
     def footer(self, page: Page) -> str:
         if page.generate == "not-found" or page.language == "":
             return ""
         words = self.strings_for(page)
+        sections = []
+        for route, label in words["navigation"]:
+            current = page.route == route or page.route.startswith(route + "/")
+            target = self.by_route[(page.language, route)]
+            marker = ' aria-current="page"' if current else ""
+            sections.append(f'<a href="{self.link_to_page(page, target, "")}"{marker}>{label}</a>')
+        home = self.link_to_page(page, self.by_route[(page.language, "")], "")
         links = []
         for route, label in words["footer-links"]:
             if route.startswith(EXTERNAL):
@@ -371,7 +351,13 @@ class Site:
         path, _, fragment = consent["policy"].partition("#")
         links.append(f'<a href="{self.resolve_route(page, "/" + path, fragment)}" data-consent="open">{consent["footer"]}</a>')
         lines = "".join(f"<p>{line}</p>" for line in words["footer"])
-        return f'<footer class="site-footer"><div class="bar"><nav aria-label="{words["footer-label"]}">{"".join(links)}</nav>{lines}</div></footer>'
+        return (
+            '<footer class="site-footer"><div class="bar">'
+            f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a>{self.language_switch(page)}</div>'
+            f'<nav class="sections" aria-label="{words["navigation-label"]}">{"".join(sections)}</nav>'
+            f'<nav class="policies" aria-label="{words["footer-label"]}">{"".join(links)}</nav>'
+            f"{lines}</div></footer>"
+        )
 
     def consent(self, page: Page) -> str:
         if page.generate == "not-found" or page.language == "":
@@ -419,7 +405,6 @@ class Site:
             "root": self.page_root(page),
             "kind": rendered.kind,
             "skip": words["skip"],
-            "header": self.header(page),
             "main": rendered.main,
             "footer": self.footer(page),
             "consent": self.consent(page),

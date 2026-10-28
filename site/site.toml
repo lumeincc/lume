@@ -150,7 +150,7 @@ outputs = [["assets/logo-night.png", 500]]
 [[images]]
 source = "brand/logo 2.png"
 margin = 300
-outputs = [["apple-touch-icon.png", 180], ["assets/mark-night.png", 64], ["favicon.png", 32]]
+outputs = [["apple-touch-icon.png", 180], ["favicon.png", 32]]
 
 
 [strings.en]
@@ -166,8 +166,6 @@ footer-label = "Policies"
 footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Name and logo"], ["https://github.com/lumeincc/lume", "Source code"]]
 footer = [
     "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
-    "The code is free software under the GNU AGPL v3.0. The LUME name and logo belong to LUME Inc. and are not covered by it.",
-    "This website sets cookies only with your consent, apart from one necessary cookie, and loads nothing from other servers.",
 ]
 contents = "On this page"
 source = "Source:"
@@ -218,8 +216,6 @@ footer-label = "Документы"
 footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Название и логотип"], ["https://github.com/lumeincc/lume", "Исходный код"]]
 footer = [
     "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
-    "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME принадлежат ТОО «LUME Inc.» и под неё не подпадают.",
-    "Сайт ставит cookie только с вашего согласия, кроме одной обязательной, и ничего не загружает с других серверов.",
 ]
 contents = "Содержание"
 source = "Исходный текст:"
@@ -269,8 +265,6 @@ footer-label = "Құжаттар"
 footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Келісім"], ["legal/website", "Осы сайт"], ["legal/contact", "Байланыс"], ["trademarks", "Атау және логотип"], ["https://github.com/lumeincc/lume", "Бастапқы код"]]
 footer = [
     "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421.",
-    "Код — GNU AGPL v3.0 лицензиясы бойынша еркін бағдарламалық қамтамасыз ету. LUME атауы мен логотипі «LUME Inc.» ЖШС-ге тиесілі және оған жатпайды.",
-    "Сайт бір міндетті cookie-ден басқасын тек сіздің келісіміңізбен қояды және басқа серверлерден ештеңе жүктемейді.",
 ]
 contents = "Мазмұны"
 source = "Бастапқы мәтін:"
