@@ -3,22 +3,31 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<picture>
-<source srcset="/assets/logo-day.png" media="(prefers-color-scheme: light)">
-<img src="/assets/logo-night.png" width="500" height="500" alt="">
-</picture>
-<h1>LUME</h1>
-<p class="tagline">An end-to-end encrypted messenger that knows as little about you as delivering your messages requires.</p>
-<p class="pill">In development · no app to download yet</p>
+<div class="field" aria-hidden="true"><i></i><i class="p2"></i><i class="p3"></i><i class="p4"></i><i class="p5"></i><i class="p6"></i></div>
+<div class="stage" aria-hidden="true"><span class="burst"></span><span class="corona"></span><span class="disc"></span></div>
+<div class="hero-inner">
+<span class="eclipse" aria-hidden="true"><i></i></span>
+<p class="status"><span class="live"></span>In development · no app to download yet</p>
+<h1>End-to-end encrypted. <em>No phone number.</em></h1>
+<p class="lead">A messenger that knows as little about you as delivering your messages requires.</p>
 <div class="actions">
-<a class="button primary-action" href="/how-it-works/">How it works</a>
-<a class="button" href="https://github.com/lumeincc/lume">Source code</a>
+<a class="btn cta" href="/how-it-works/">How it works</a>
+<a class="btn ghost" href="https://github.com/lumeincc/lume">Source code</a>
+</div>
 </div>
 </section>
 
+<div class="stats">
+<div class="stat">{{dots-24}}<p>words of your recovery phrase — that is your whole account</p></div>
+<div class="stat">{{dots-768}}<p>ML-KEM-768 — protection for when quantum computers arrive</p></div>
+<div class="stat">{{dots-0}}<p>trackers, ads or analytics</p></div>
+<div class="stat">{{dots-30}}<p>days — the longest the server keeps an undelivered message</p></div>
+</div>
+
 <section class="section">
-<h2>What LUME is</h2>
-<p class="lead">A messenger for Android and Windows, built so that the people who run it cannot read what you write or see who writes to whom.</p>
+<p class="meta"><span>01</span>What LUME is</p>
+<h2>A messenger that cannot <em>read your conversations</em></h2>
+<p class="lead">For Android and Windows. Built so that the people who run it cannot read what you write or see who writes to whom.</p>
 <div class="grid pairs">
 <div class="card">
 <h3>Your account is a key</h3>
@@ -40,9 +49,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>What it protects, and what it does not</h2>
+<p class="meta"><span>02</span>Honest about protection</p>
+<h2>What it protects, <em>and what it does not</em></h2>
 <p class="lead">A messenger that overstates its security puts people at risk. These lists come from the specification, in plain words.</p>
-<div class="grid">
+<div class="grid pairs">
 <div class="card yes">
 <h3>Designed to protect</h3>
 <ul>
@@ -70,8 +80,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>Where LUME is today</h2>
-<p class="lead">LUME is being built in the open. Nothing has been released, and the specification, draft revision {{spec-revision}}, can still change.</p>
+<p class="meta"><span>03</span>Where LUME is today</p>
+<h2>Built in the open. <em>Not released yet.</em></h2>
+<p class="lead">The specification is a draft, revision {{spec-revision}}, and can still change.</p>
 <div class="grid">
 <div class="card done">
 <h3>Built and tested</h3>
@@ -104,13 +115,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section links">
-<h2>Read more</h2>
+<p class="meta"><span>04</span>Read more</p>
+<h2>Everything worth <em>knowing about LUME</em></h2>
 <div class="grid">
 <a class="card" href="/how-it-works/"><h3>How it works</h3><p>Accounts, encryption and the server, without the mathematics.</p></a>
 <a class="card" href="/safety-number/"><h3>Verify a contact</h3><p>Compare the safety number to make sure nobody is in the middle.</p></a>
 <a class="card" href="/security/"><h3>Report a vulnerability</h3><p>Found a flaw? Tell us privately.</p></a>
 <a class="card" href="/open-source/"><h3>Open source</h3><p>The code, its licence, and how to check it yourself.</p></a>
-<a class="card" href="/legal/privacy/"><h3>Privacy Policy</h3><p>What the server holds about you, and what it never has.</p></a>
+<a class="card" href="/legal/"><h3>Legal</h3><p>The privacy policy, the terms and every other document.</p></a>
 <a class="card" href="/spec/crypto/"><h3>Specification</h3><p>Every key and construction, for cryptographers and implementers.</p></a>
 </div>
 </section>

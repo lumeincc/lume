@@ -3,22 +3,31 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<picture>
-<source srcset="/assets/logo-day.png" media="(prefers-color-scheme: light)">
-<img src="/assets/logo-night.png" width="500" height="500" alt="">
-</picture>
-<h1>LUME</h1>
-<p class="tagline">Мессенджер со сквозным шифрованием, который знает о вас ровно столько, сколько нужно, чтобы доставить сообщение.</p>
-<p class="pill">В разработке · скачать пока нечего</p>
+<div class="field" aria-hidden="true"><i></i><i class="p2"></i><i class="p3"></i><i class="p4"></i><i class="p5"></i><i class="p6"></i></div>
+<div class="stage" aria-hidden="true"><span class="burst"></span><span class="corona"></span><span class="disc"></span></div>
+<div class="hero-inner">
+<span class="eclipse" aria-hidden="true"><i></i></span>
+<p class="status"><span class="live"></span>В разработке · скачать пока нечего</p>
+<h1>Сквозное шифрование. <em>Без номера телефона.</em></h1>
+<p class="lead">Мессенджер, который знает о вас ровно столько, сколько нужно, чтобы доставить сообщение.</p>
 <div class="actions">
-<a class="button primary-action" href="/how-it-works/">Как это работает</a>
-<a class="button" href="https://github.com/lumeincc/lume">Исходный код</a>
+<a class="btn cta" href="/how-it-works/">Как это работает</a>
+<a class="btn ghost" href="https://github.com/lumeincc/lume">Исходный код</a>
+</div>
 </div>
 </section>
 
+<div class="stats">
+<div class="stat">{{dots-24}}<p>слова фразы восстановления — это весь ваш аккаунт</p></div>
+<div class="stat">{{dots-768}}<p>ML-KEM-768 — защита на случай квантовых компьютеров</p></div>
+<div class="stat">{{dots-0}}<p>трекеров, рекламы и аналитики</p></div>
+<div class="stat">{{dots-30}}<p>дней — дольше сервер не держит недоставленное сообщение</p></div>
+</div>
+
 <section class="section">
-<h2>Что такое LUME</h2>
-<p class="lead">Мессенджер для Android и Windows, устроенный так, чтобы те, кто его обслуживает, не могли прочитать вашу переписку и увидеть, кто кому пишет.</p>
+<p class="meta"><span>01</span>Что такое LUME</p>
+<h2>Мессенджер, который не может <em>прочитать вашу переписку</em></h2>
+<p class="lead">Для Android и Windows. Устроен так, чтобы те, кто его обслуживает, не могли прочитать, что вы пишете, и увидеть, кто кому пишет.</p>
 <div class="grid pairs">
 <div class="card">
 <h3>Аккаунт — это ключ</h3>
@@ -40,9 +49,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>От чего защищает, а от чего нет</h2>
+<p class="meta"><span>02</span>Честно о защите</p>
+<h2>От чего защищает, <em>а от чего нет</em></h2>
 <p class="lead">Мессенджер, который преувеличивает свою защиту, подвергает людей риску. Эти списки взяты из спецификации и пересказаны простыми словами.</p>
-<div class="grid">
+<div class="grid pairs">
 <div class="card yes">
 <h3>Задуман, чтобы защищать</h3>
 <ul>
@@ -70,8 +80,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>Где LUME сейчас</h2>
-<p class="lead">LUME разрабатывается открыто. Ничего ещё не выпущено, а спецификация — проект, ревизия {{spec-revision}} — может измениться.</p>
+<p class="meta"><span>03</span>Где LUME сейчас</p>
+<h2>Строится открыто. <em>Выпуска ещё не было.</em></h2>
+<p class="lead">Спецификация — проект, ревизия {{spec-revision}}, — и она ещё может измениться.</p>
 <div class="grid">
 <div class="card done">
 <h3>Сделано и проверено тестами</h3>
@@ -104,13 +115,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section links">
-<h2>Подробнее</h2>
+<p class="meta"><span>04</span>Подробнее</p>
+<h2>Всё, что стоит <em>знать о LUME</em></h2>
 <div class="grid">
 <a class="card" href="/how-it-works/"><h3>Как это работает</h3><p>Аккаунты, шифрование и сервер — без математики.</p></a>
 <a class="card" href="/safety-number/"><h3>Проверить собеседника</h3><p>Сравните номер безопасности, чтобы убедиться, что посередине никого нет.</p></a>
 <a class="card" href="/security/"><h3>Сообщить об уязвимости</h3><p>Нашли ошибку в защите? Напишите нам конфиденциально.</p></a>
 <a class="card" href="/open-source/"><h3>Открытый код</h3><p>Код, его лицензия и как проверить всё самому.</p></a>
-<a class="card" href="/legal/privacy/"><h3>Политика конфиденциальности</h3><p>Что сервер хранит о вас и чего у него нет никогда.</p></a>
+<a class="card" href="/legal/"><h3>Документы</h3><p>Политика конфиденциальности, соглашение и все остальные документы.</p></a>
 <a class="card" href="/en/spec/crypto/"><h3>Спецификация</h3><p>Все ключи и конструкции — для криптографов и разработчиков. На английском.</p></a>
 </div>
 </section>

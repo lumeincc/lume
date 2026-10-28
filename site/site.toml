@@ -74,6 +74,12 @@ source = { en = "legal/PRIVACY.md", ru = "legal/PRIVACY.ru.md", kk = "legal/PRIV
 summary = { en = "What our server holds about you, for how long, and what it never has.", ru = "Что сервер хранит о вас, сколько времени и чего у него нет никогда.", kk = "Сервер сіз туралы не сақтайды, қанша уақыт және онда ешқашан не болмайды." }
 
 [[pages]]
+route = "legal/consent"
+group = "legal"
+source = { en = "legal/CONSENT.md", ru = "legal/CONSENT.ru.md", kk = "legal/CONSENT.kk.md" }
+summary = { en = "The consent to the processing of personal data you give in the app when you create an account.", ru = "Согласие на обработку персональных данных, которое вы даёте в приложении при создании аккаунта.", kk = "Аккаунт жасаған кезде қосымшада беретін дербес деректерді өңдеуге келісім." }
+
+[[pages]]
 route = "legal/terms"
 group = "legal"
 source = { en = "legal/TERMS.md", ru = "legal/TERMS.ru.md", kk = "legal/TERMS.kk.md" }
@@ -140,20 +146,12 @@ source = "brand/logo 2.png"
 margin = 0
 outputs = [["assets/logo-night.png", 500]]
 
-[[images]]
-source = "brand/logo 1.png"
-margin = 0
-outputs = [["assets/logo-day.png", 500]]
 
 [[images]]
 source = "brand/logo 2.png"
 margin = 300
 outputs = [["apple-touch-icon.png", 180], ["assets/mark-night.png", 64], ["favicon.png", 32]]
 
-[[images]]
-source = "brand/logo 1.png"
-margin = 300
-outputs = [["assets/mark-day.png", 64]]
 
 [strings.en]
 language-name = "English"
@@ -165,17 +163,17 @@ skip = "Skip to content"
 navigation-label = "Main"
 navigation = [["how-it-works", "How it works"], ["safety-number", "Safety number"], ["security", "Security"], ["open-source", "Open source"], ["legal", "Legal"]]
 footer-label = "Policies"
-footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Trademarks"], ["https://github.com/lumeincc/lume", "Source code"]]
+footer-links = [["legal/privacy", "Privacy"], ["legal/terms", "Terms"], ["legal/website", "This website"], ["legal/contact", "Contact"], ["trademarks", "Name and logo"], ["https://github.com/lumeincc/lume", "Source code"]]
 footer = [
     "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421.",
-    "The code is free software under the GNU AGPL v3.0. The LUME name and logo are trademarks of LUME Inc.",
+    "The code is free software under the GNU AGPL v3.0. The LUME name and logo belong to LUME Inc. and are not covered by it.",
     "This website sets no cookies, runs no scripts and loads nothing from other servers.",
 ]
 contents = "On this page"
 source = "Source:"
 history = "history of changes"
 legal-intro = [
-    "Every document here exists in English, Russian and Kazakh, and all three say the same thing. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
+    "Every document here exists in Russian, Kazakh and English. The Kazakh and Russian texts have equal force; if they differ, the Russian text applies, and the English text is a translation. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
     "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and where the server will run.",
 ]
 
@@ -198,17 +196,17 @@ skip = "Перейти к содержанию"
 navigation-label = "Основное меню"
 navigation = [["how-it-works", "Как это работает"], ["safety-number", "Номер безопасности"], ["security", "Уязвимости"], ["open-source", "Открытый код"], ["legal", "Документы"]]
 footer-label = "Документы"
-footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Товарные знаки"], ["https://github.com/lumeincc/lume", "Исходный код"]]
+footer-links = [["legal/privacy", "Конфиденциальность"], ["legal/terms", "Соглашение"], ["legal/website", "Этот сайт"], ["legal/contact", "Контакты"], ["trademarks", "Название и логотип"], ["https://github.com/lumeincc/lume", "Исходный код"]]
 footer = [
     "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421.",
-    "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME — товарные знаки ТОО «LUME Inc.».",
+    "Код — свободное ПО под лицензией GNU AGPL v3.0. Название и логотип LUME принадлежат ТОО «LUME Inc.» и под неё не подпадают.",
     "Этот сайт не ставит cookies, не запускает скриптов и ничего не загружает с других серверов.",
 ]
 contents = "Содержание"
 source = "Исходный текст:"
 history = "история изменений"
 legal-intro = [
-    "Каждый документ здесь есть на русском, казахском и английском, и все три версии говорят одно и то же. Они описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
+    "Каждый документ здесь есть на русском, казахском и английском. Тексты на казахском и русском языках имеют одинаковую силу; при расхождении применяется русский текст, английский — перевод. Документы описывают то, что делает программа; если код и документ расходятся, это ошибка, которую исправляют, а не текст, который оставляют как есть.",
     "<strong>Все документы — проекты.</strong> Они вступают в силу с первым публичным выпуском LUME. До тех пор места с пометкой <em>Заполнить до выпуска</em> — это ещё не решённые факты: адреса для связи, место, где будет работать сервер, и другие.",
 ]
 
@@ -230,17 +228,17 @@ skip = "Мазмұнға өту"
 navigation-label = "Негізгі мәзір"
 navigation = [["how-it-works", "Қалай жұмыс істейді"], ["safety-number", "Қауіпсіздік нөмірі"], ["security", "Осалдықтар"], ["open-source", "Ашық код"], ["legal", "Құжаттар"]]
 footer-label = "Құжаттар"
-footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Келісім"], ["legal/website", "Осы сайт"], ["legal/contact", "Байланыс"], ["trademarks", "Тауар белгілері"], ["https://github.com/lumeincc/lume", "Бастапқы код"]]
+footer-links = [["legal/privacy", "Құпиялылық"], ["legal/terms", "Келісім"], ["legal/website", "Осы сайт"], ["legal/contact", "Байланыс"], ["trademarks", "Атау және логотип"], ["https://github.com/lumeincc/lume", "Бастапқы код"]]
 footer = [
     "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421.",
-    "Код — GNU AGPL v3.0 лицензиясы бойынша еркін бағдарламалық қамтамасыз ету. LUME атауы мен логотипі — «LUME Inc.» ЖШС-нің тауар белгілері.",
+    "Код — GNU AGPL v3.0 лицензиясы бойынша еркін бағдарламалық қамтамасыз ету. LUME атауы мен логотипі «LUME Inc.» ЖШС-ге тиесілі және оған жатпайды.",
     "Бұл сайт cookies қоймайды, скрипттер іске қоспайды және басқа серверлерден ештеңе жүктемейді.",
 ]
 contents = "Мазмұны"
 source = "Бастапқы мәтін:"
 history = "өзгерістер тарихы"
 legal-intro = [
-    "Мұндағы әр құжат қазақ, орыс және ағылшын тілдерінде бар, үшеуі де бір нәрсені айтады. Олар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
+    "Мұндағы әр құжат орыс, қазақ және ағылшын тілдерінде бар. Қазақ және орыс тілдеріндегі мәтіндердің күші бірдей; алшақтық болса, орыс тіліндегі мәтін қолданылады, ағылшын тіліндегісі — аударма. Құжаттар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
     "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервердің қай жерде жұмыс істейтіні және басқалары.",
 ]
 

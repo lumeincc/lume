@@ -153,6 +153,30 @@ class Site(unittest.TestCase):
             problems = build.check(output)
         self.assertEqual(len(problems), 5, problems)
 
+    def test_the_stylesheet_may_load_only_this_sites_fonts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "fonts").mkdir()
+            (output / "fonts" / "a.woff2").write_bytes(b"font")
+            (output / "style.css").write_text(
+                "a{src:url(fonts/a.woff2)}b{src:url(fonts/missing.woff2)}c{src:url(https://example.com/f.woff2)}"
+                "d{src:url(fonts/../style.css)}e{background:url(img.png)}",
+                encoding="utf-8",
+            )
+            problems = build.check(output)
+        self.assertEqual(len(problems), 4, problems)
+
+    def test_dot_numbers_draw_every_cell_of_each_digit(self) -> None:
+        svg = build.dot_matrix("709")
+        self.assertIn('viewBox="0 0 17 7"', svg)
+        self.assertEqual(svg.count("<circle"), 3 * 5 * 7)
+        lit = sum(row.count("#") for digit in "709" for row in build.DIGITS[digit])
+        self.assertEqual(svg.count("<circle") - svg.count('class="off"'), lit)
+
+    def test_the_policy_allows_fonts_only_from_this_site(self) -> None:
+        self.assertIn("font-src 'self'", build.POLICY)
+        self.assertIn("default-src 'none'", build.POLICY)
+
     def test_links_between_languages_resolve(self) -> None:
         privacy = self.site.by_route[("ru", "legal/privacy")]
         self.assertEqual(self.site.resolve(privacy, "PRIVACY.md"), "../../../en/legal/privacy/")

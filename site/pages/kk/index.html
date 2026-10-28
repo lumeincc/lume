@@ -3,22 +3,31 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <section class="hero">
-<picture>
-<source srcset="/assets/logo-day.png" media="(prefers-color-scheme: light)">
-<img src="/assets/logo-night.png" width="500" height="500" alt="">
-</picture>
-<h1>LUME</h1>
-<p class="tagline">Хабарламаңызды жеткізуге қажет мөлшерден артық сіз туралы ештеңе білмейтін, ұштан-ұшқа шифрланған мессенджер.</p>
-<p class="pill">Әзірлену үстінде · жүктеп алатын қосымша әлі жоқ</p>
+<div class="field" aria-hidden="true"><i></i><i class="p2"></i><i class="p3"></i><i class="p4"></i><i class="p5"></i><i class="p6"></i></div>
+<div class="stage" aria-hidden="true"><span class="burst"></span><span class="corona"></span><span class="disc"></span></div>
+<div class="hero-inner">
+<span class="eclipse" aria-hidden="true"><i></i></span>
+<p class="status"><span class="live"></span>Әзірлену үстінде · жүктеп алатын қосымша әлі жоқ</p>
+<h1>Ұштан-ұшқа шифрлау. <em>Телефон нөмірінсіз.</em></h1>
+<p class="lead">Хабарламаңызды жеткізуге қажет мөлшерден артық сіз туралы ештеңе білмейтін мессенджер.</p>
 <div class="actions">
-<a class="button primary-action" href="/how-it-works/">Қалай жұмыс істейді</a>
-<a class="button" href="https://github.com/lumeincc/lume">Бастапқы код</a>
+<a class="btn cta" href="/how-it-works/">Қалай жұмыс істейді</a>
+<a class="btn ghost" href="https://github.com/lumeincc/lume">Бастапқы код</a>
+</div>
 </div>
 </section>
 
+<div class="stats">
+<div class="stat">{{dots-24}}<p>қалпына келтіру фразасының сөзі — бұл бүкіл аккаунтыңыз</p></div>
+<div class="stat">{{dots-768}}<p>ML-KEM-768 — кванттық компьютерлер пайда болған жағдайға қорғаныс</p></div>
+<div class="stat">{{dots-0}}<p>трекер, жарнама және аналитика</p></div>
+<div class="stat">{{dots-30}}<p>күн — сервер жеткізілмеген хабарламаны одан ұзақ ұстамайды</p></div>
+</div>
+
 <section class="section">
-<h2>LUME деген не</h2>
-<p class="lead">Android мен Windows-қа арналған мессенджер. Ол оны қызмет көрсететін адамдар сіздің не жазатыныңызды оқи алмайтындай және кімнің кімге жазатынын көре алмайтындай етіп жасалған.</p>
+<p class="meta"><span>01</span>LUME деген не</p>
+<h2>Хат алмасуыңызды <em>оқи алмайтын мессенджер</em></h2>
+<p class="lead">Android мен Windows-қа арналған. Оны қызмет көрсететін адамдар сіздің не жазатыныңызды оқи алмайтындай және кімнің кімге жазатынын көре алмайтындай етіп жасалған.</p>
 <div class="grid pairs">
 <div class="card">
 <h3>Аккаунтыңыз — кілт</h3>
@@ -40,9 +49,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>Неден қорғайды, неден қорғамайды</h2>
+<p class="meta"><span>02</span>Қорғаныс туралы шынын айтсақ</p>
+<h2>Неден қорғайды, <em>неден қорғамайды</em></h2>
 <p class="lead">Өз қорғанысын асыра бағалайтын мессенджер адамдарды қауіпке душар етеді. Бұл тізімдер спецификациядан алынып, қарапайым тілмен баяндалған.</p>
-<div class="grid">
+<div class="grid pairs">
 <div class="card yes">
 <h3>Қорғау үшін жасалған</h3>
 <ul>
@@ -70,8 +80,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section">
-<h2>LUME қазір қай кезеңде</h2>
-<p class="lead">LUME ашық түрде әзірленуде. Әлі ештеңе шығарылған жоқ, ал спецификация — жоба, {{spec-revision}}-ревизия — әлі өзгеруі мүмкін.</p>
+<p class="meta"><span>03</span>LUME қазір қай кезеңде</p>
+<h2>Ашық түрде жасалуда. <em>Әлі шығарылған жоқ.</em></h2>
+<p class="lead">Спецификация — жоба, {{spec-revision}}-ревизия — әлі өзгеруі мүмкін.</p>
 <div class="grid">
 <div class="card done">
 <h3>Жасалды және тестіленді</h3>
@@ -104,13 +115,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </section>
 
 <section class="section links">
-<h2>Толығырақ</h2>
+<p class="meta"><span>04</span>Толығырақ</p>
+<h2>LUME туралы <em>білуге тұрарлықтың бәрі</em></h2>
 <div class="grid">
 <a class="card" href="/how-it-works/"><h3>Қалай жұмыс істейді</h3><p>Аккаунттар, шифрлау және сервер — математикасыз.</p></a>
 <a class="card" href="/safety-number/"><h3>Әңгімелесушіні тексеру</h3><p>Ортада ешкім жоқ екеніне көз жеткізу үшін қауіпсіздік нөмірін салыстырыңыз.</p></a>
 <a class="card" href="/security/"><h3>Осалдық туралы хабарлау</h3><p>Қорғаныстан қате таптыңыз ба? Бізге жабық түрде жазыңыз.</p></a>
 <a class="card" href="/open-source/"><h3>Ашық код</h3><p>Код, оның лицензиясы және бәрін өзіңіз қалай тексеруге болады.</p></a>
-<a class="card" href="/legal/privacy/"><h3>Құпиялылық саясаты</h3><p>Сервер сіз туралы не сақтайды және онда ешқашан не болмайды.</p></a>
+<a class="card" href="/legal/"><h3>Құжаттар</h3><p>Құпиялылық саясаты, келісім және басқа барлық құжаттар.</p></a>
 <a class="card" href="/en/spec/crypto/"><h3>Спецификация</h3><p>Барлық кілттер мен конструкциялар — криптографтар мен әзірлеушілерге арналған. Ағылшын тілінде.</p></a>
 </div>
 </section>

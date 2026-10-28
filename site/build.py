@@ -23,7 +23,7 @@ SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 OUTPUT = ROOT / "build" / "site"
 CACHE = ROOT / "build" / "site-cache"
-POLICY = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+POLICY = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'"
 HEADERS = {
     "Content-Security-Policy": POLICY + "; frame-ancestors 'none'",
     "Referrer-Policy": "no-referrer",
@@ -33,7 +33,21 @@ HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
 }
 REVISION = re.compile(r"\brevision (\d+)\b")
-TOKEN = re.compile(r"\{\{([a-z-]+)\}\}")
+TOKEN = re.compile(r"\{\{([a-z0-9-]+)\}\}")
+DOTS = re.compile(r"dots-(\d+)")
+STYLE_URL = re.compile(r"url\(([^)]*)\)")
+DIGITS = {
+    "0": (".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."),
+    "1": ("..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."),
+    "2": (".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"),
+    "3": ("#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###."),
+    "4": ("...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."),
+    "5": ("#####", "#....", "####.", "....#", "....#", "#...#", ".###."),
+    "6": ("..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."),
+    "7": ("#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."),
+    "8": (".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."),
+    "9": (".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."),
+}
 LEADING_COMMENT = re.compile(r"\A\s*<!--.*?-->\s*", re.S)
 LEADING_STYLE_COMMENT = re.compile(r"\A\s*/\*.*?\*/\s*", re.S)
 URL_ATTRIBUTE = re.compile(r'\b(href|src)="([^"]*)"')
@@ -87,6 +101,18 @@ def relative(start: PurePosixPath, target: PurePosixPath, directory: bool) -> st
 
 def strip_leading_comment(text: str) -> str:
     return LEADING_COMMENT.sub("", text, count=1)
+
+
+def dot_matrix(number: str) -> str:
+    circles = []
+    for position, digit in enumerate(number):
+        left = position * 6
+        for row, line in enumerate(DIGITS[digit]):
+            for column, cell in enumerate(line):
+                lit = "" if cell == "#" else ' class="off"'
+                circles.append(f'<circle{lit} cx="{left + column + 0.5}" cy="{row + 0.5}" r="0.4"/>')
+    width = len(number) * 6 - 1
+    return f'<svg class="dots" viewBox="0 0 {width} 7" aria-hidden="true" focusable="false">{"".join(circles)}</svg>'
 
 
 def spec_revision() -> str:
@@ -176,6 +202,9 @@ class Site:
 
     def substitute(self, page: Page, text: str) -> str:
         def token(match: re.Match[str]) -> str:
+            digits = DOTS.fullmatch(match[1])
+            if digits is not None:
+                return dot_matrix(digits[1])
             if match[1] not in self.tokens:
                 raise BuildError(f"{page.source}: unknown token {match[0]}")
             return self.tokens[match[1]]
@@ -200,6 +229,7 @@ class Site:
         self.output.mkdir(parents=True)
         stylesheet = LEADING_STYLE_COMMENT.sub("", (SITE / "style.css").read_text(encoding="utf-8"), count=1)
         (self.output / "style.css").write_text(stylesheet, encoding="utf-8", newline="\n")
+        shutil.copytree(SITE / "fonts", self.output / "fonts")
         self.images()
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))
         for page in self.pages:
@@ -304,10 +334,8 @@ class Site:
         return (
             '<header class="site-header"><div class="bar">'
             f'<a class="brand" href="{home}">'
-            '<picture>'
-            f'<source srcset="{root}assets/mark-day.png" media="(prefers-color-scheme: light)">'
             f'<img src="{root}assets/mark-night.png" width="32" height="32" alt="">'
-            "</picture><span>LUME</span></a>"
+            "<span>LUME</span></a>"
             f'<nav class="primary" aria-label="{words["navigation-label"]}">{"".join(links)}</nav>'
             f'<nav class="languages" aria-label="{words["language-label"]}">{"".join(switches)}</nav>'
             "</div></header>"
@@ -399,8 +427,12 @@ def check(output: Path) -> list[str]:
                 for url in [part.strip().split(" ")[0] for part in value.split(",")] if attribute == "srcset" else [value]:
                     problems += check_url(output, path, name, tag.lower(), url, identifiers)
     stylesheet = (output / "style.css").read_text(encoding="utf-8")
-    if "url(" in stylesheet or "@import" in stylesheet or "/*" in stylesheet:
-        problems.append("style.css: loads a resource or carries a comment")
+    if "@import" in stylesheet or "/*" in stylesheet:
+        problems.append("style.css: imports a stylesheet or carries a comment")
+    for target in STYLE_URL.findall(stylesheet):
+        location = target.strip("\"'")
+        if not location.startswith("fonts/") or ".." in location or not (output / location).is_file():
+            problems.append(f"style.css: loads {location}, which is not a font served by this site")
     return problems
 
 
