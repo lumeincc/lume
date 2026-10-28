@@ -77,7 +77,9 @@ CI.
    unencrypted data, and never to a silent fallback to a weaker mode.
 5. **Commit state only on success.** Ratchet and handshake state change only
    after an authenticated decrypt succeeds; every failure leaves the session
-   exactly as it was.
+   exactly as it was, except that skipped keys past their lifetime are deleted
+   first, even when the message is refused (CRYPTO.md §6.5). Nothing after the
+   body authenticates may fail: memory it needs is reserved before.
 6. **Bound everything an attacker controls**: skipped keys, message sizes,
    prekey counts, collection lengths.
 7. **Domain-separate every derivation** with a distinct, versioned label from

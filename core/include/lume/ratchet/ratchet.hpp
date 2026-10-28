@@ -66,8 +66,7 @@ struct State {
 [[nodiscard]] Result<wire::RatchetMessage> encrypt(State& state, crypto::ByteView plaintext);
 
 [[nodiscard]] Result<crypto::SecretBytes> decrypt(
-    State& state, const wire::RatchetMessage& message, std::uint64_t now,
-    std::size_t skipped_key_limit = max_skipped_keys);
+    State& state, const wire::RatchetMessage& message, std::uint64_t now, std::size_t skipped_key_limit);
 
 void expire(State& state, std::uint64_t now);
 

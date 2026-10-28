@@ -16,9 +16,9 @@ namespace {
 
 constexpr std::size_t key_size = 32;
 
-std::span<std::uint8_t> slot(crypto::SecretBytes& arena, std::size_t index)
+std::span<std::uint8_t> slots(crypto::SecretBytes& arena, std::size_t first, std::size_t count)
 {
-    return arena.writable().subspan(index * key_size, key_size);
+    return arena.writable().subspan(first * key_size, count * key_size);
 }
 
 crypto::ByteView slot(const crypto::SecretBytes& arena, std::size_t index)
@@ -29,14 +29,14 @@ crypto::ByteView slot(const crypto::SecretBytes& arena, std::size_t index)
 void move_slot(crypto::SecretBytes& arena, std::size_t from, std::size_t to)
 {
     if (from != to) {
-        std::ranges::copy(slot(std::as_const(arena), from), slot(arena, to).begin());
+        std::ranges::copy(slot(std::as_const(arena), from), slots(arena, to, 1).begin());
     }
 }
 
 void clear_slots(crypto::SecretBytes& arena, std::size_t from, std::size_t to)
 {
     if (from < to) {
-        std::ranges::fill(arena.writable().subspan(from * key_size, (to - from) * key_size), std::uint8_t{0});
+        std::ranges::fill(slots(arena, from, to - from), std::uint8_t{0});
     }
 }
 
@@ -51,33 +51,31 @@ template <typename Keep>
 void SkippedKeys::keep_only(Keep keep)
 {
     const std::size_t chains_before = chains_.size();
+    const std::size_t entries_before = entries_.size();
     std::size_t read = 0;
     std::size_t written = 0;
     std::size_t chains_kept = 0;
     for (std::size_t chain = 0; chain < chains_before; ++chain) {
-        auto& entries = chains_.at(chain).entries;
         std::size_t kept = 0;
-        for (std::size_t index = 0; index < entries.size(); ++index) {
-            if (keep(chain, index, entries.at(index))) {
+        for (std::size_t index = 0; index < chains_.at(chain).count; ++index) {
+            if (keep(chain, read, entries_.at(read))) {
                 move_slot(message_keys_, read, written);
-                entries.at(kept) = entries.at(index);
-                ++kept;
+                entries_.at(written) = entries_.at(read);
                 ++written;
+                ++kept;
             }
             ++read;
         }
-        entries.resize(kept);
         if (kept == 0) {
             continue;
         }
         move_slot(header_keys_, chain, chains_kept);
-        if (chains_kept != chain) {
-            chains_.at(chains_kept) = std::move(chains_.at(chain));
-        }
+        chains_.at(chains_kept) = Chain{.ratchet_key = chains_.at(chain).ratchet_key, .count = kept};
         ++chains_kept;
     }
-    chains_.resize(chains_kept);
-    clear_slots(message_keys_, written, read);
+    chains_.erase(chains_.begin() + static_cast<std::ptrdiff_t>(chains_kept), chains_.end());
+    entries_.erase(entries_.begin() + static_cast<std::ptrdiff_t>(written), entries_.end());
+    clear_slots(message_keys_, written, entries_before);
     clear_slots(header_keys_, chains_kept, chains_before);
 }
 
@@ -87,16 +85,13 @@ SkippedKeys SkippedKeys::clone() const
     copy.header_keys_ = header_keys_.clone();
     copy.message_keys_ = message_keys_.clone();
     copy.chains_ = chains_;
+    copy.entries_ = entries_;
     return copy;
 }
 
 std::size_t SkippedKeys::size() const noexcept
 {
-    std::size_t total = 0;
-    for (const auto& chain : chains_) {
-        total += chain.entries.size();
-    }
-    return total;
+    return entries_.size();
 }
 
 std::size_t SkippedKeys::chain_count() const noexcept
@@ -119,12 +114,13 @@ const RatchetKey& SkippedKeys::ratchet_key(std::size_t chain) const
 
 std::span<const SkippedEntry> SkippedKeys::entries(std::size_t chain) const
 {
-    return chains_.at(chain).entries;
+    const auto count = chains_.at(chain).count;
+    return std::span<const SkippedEntry>(entries_).subspan(offset(chain), count);
 }
 
 crypto::ByteView SkippedKeys::message_key(std::size_t chain, std::size_t index) const
 {
-    if (index >= chains_.at(chain).entries.size()) {
+    if (index >= chains_.at(chain).count) {
         throw std::out_of_range("no such skipped key");
     }
     return slot(message_keys_, offset(chain) + index);
@@ -132,12 +128,30 @@ crypto::ByteView SkippedKeys::message_key(std::size_t chain, std::size_t index) 
 
 std::optional<std::size_t> SkippedKeys::find(std::size_t chain, std::uint32_t number) const
 {
-    const auto& entries = chains_.at(chain).entries;
-    const auto match = std::ranges::find(entries, number, &SkippedEntry::number);
-    if (match == entries.end()) {
+    const auto chain_entries = entries(chain);
+    const auto match = std::ranges::find(chain_entries, number, &SkippedEntry::number);
+    if (match == chain_entries.end()) {
         return std::nullopt;
     }
-    return static_cast<std::size_t>(match - entries.begin());
+    return static_cast<std::size_t>(match - chain_entries.begin());
+}
+
+void SkippedKeys::reserve(std::size_t limit)
+{
+    const auto bound = std::min(limit, max_skipped_keys);
+    if (bound == 0) {
+        return;
+    }
+    if (header_keys_.empty()) {
+        header_keys_ = crypto::SecretBytes(max_skipped_header_keys * key_size);
+    }
+    if (message_keys_.size() < bound * key_size) {
+        crypto::SecretBytes larger(bound * key_size);
+        std::ranges::copy(message_keys_.view().first(entries_.size() * key_size), larger.writable().begin());
+        message_keys_ = std::move(larger);
+    }
+    chains_.reserve(max_skipped_header_keys);
+    entries_.reserve(bound);
 }
 
 void SkippedKeys::add(
@@ -149,32 +163,35 @@ void SkippedKeys::add(
     if (bound == 0 || count == 0) {
         return;
     }
-    reserve();
-    for (std::size_t position = count > bound ? count - bound : 0; position < count; ++position) {
-        while (size() >= bound) {
-            erase(0, 0);
+    reserve(bound);
+    const auto kept = std::min(count, bound);
+    const auto first = count - kept;
+    if (entries_.size() + kept > bound) {
+        const auto dropped = entries_.size() + kept - bound;
+        keep_only([dropped](std::size_t, std::size_t position, const SkippedEntry&) { return position >= dropped; });
+    }
+    if (!continues_last_chain(header_key, ratchet_key)) {
+        if (chains_.size() == max_skipped_header_keys) {
+            keep_only([](std::size_t chain, std::size_t, const SkippedEntry&) { return chain != 0; });
         }
-        if (!continues_last_chain(header_key, ratchet_key)) {
-            if (chains_.size() == max_skipped_header_keys) {
-                keep_only([](std::size_t chain, std::size_t, const SkippedEntry&) { return chain != 0; });
-            }
-            std::ranges::copy(header_key.view(), slot(header_keys_, chains_.size()).begin());
-            chains_.push_back(Chain{.ratchet_key = ratchet_key, .entries = {}});
-        }
-        std::ranges::copy(message_keys.subspan(position * key_size, key_size), slot(message_keys_, size()).begin());
-        chains_.back().entries.push_back(
+        std::ranges::copy(header_key.view(), slots(header_keys_, chains_.size(), 1).begin());
+        chains_.push_back(Chain{.ratchet_key = ratchet_key, .count = 0});
+    }
+    std::ranges::copy(message_keys.subspan(first * key_size), slots(message_keys_, entries_.size(), kept).begin());
+    for (std::size_t position = first; position < count; ++position) {
+        entries_.push_back(
             SkippedEntry{.number = first_number + static_cast<std::uint32_t>(position), .stored_at = stored_at});
     }
+    chains_.back().count += kept;
 }
 
 void SkippedKeys::erase(std::size_t chain, std::size_t index)
 {
-    if (index >= chains_.at(chain).entries.size()) {
+    if (index >= chains_.at(chain).count) {
         throw std::out_of_range("no such skipped key");
     }
-    keep_only([chain, index](std::size_t at_chain, std::size_t at_index, const SkippedEntry&) {
-        return at_chain != chain || at_index != index;
-    });
+    const auto target = offset(chain) + index;
+    keep_only([target](std::size_t, std::size_t position, const SkippedEntry&) { return position != target; });
 }
 
 void SkippedKeys::expire(std::uint64_t now)
@@ -186,7 +203,7 @@ std::size_t SkippedKeys::offset(std::size_t chain) const
 {
     std::size_t total = 0;
     for (std::size_t before = 0; before < chain; ++before) {
-        total += chains_.at(before).entries.size();
+        total += chains_.at(before).count;
     }
     return total;
 }
@@ -195,14 +212,6 @@ bool SkippedKeys::continues_last_chain(const crypto::SecretBytes& header_key, co
 {
     return !chains_.empty() && chains_.back().ratchet_key == ratchet_key
         && header_key.equals(slot(header_keys_, chains_.size() - 1));
-}
-
-void SkippedKeys::reserve()
-{
-    if (message_keys_.empty()) {
-        message_keys_ = crypto::SecretBytes(max_skipped_keys * key_size);
-        header_keys_ = crypto::SecretBytes(max_skipped_header_keys * key_size);
-    }
 }
 
 }

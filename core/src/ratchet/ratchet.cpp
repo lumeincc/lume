@@ -278,6 +278,9 @@ Result<SecretBytes> continue_chain(State& state, const wire::RatchetHeader& head
     if (!skipped) {
         return std::unexpected(skipped.error());
     }
+    if (!skipped->message_keys.empty()) {
+        state.skipped.reserve(delivery.limit);
+    }
     auto step = kdf_ck(skipped->chain_key);
     auto plaintext = crypto::aead_open(step.message_key, delivery.associated_data, delivery.body);
     if (!plaintext) {
@@ -308,6 +311,10 @@ Result<SecretBytes> next_chain(
     auto current = skip(turned->receiving.chain_key, 0, header.message_number);
     if (!current) {
         return std::unexpected(current.error());
+    }
+    const auto previous_keys = *previous ? (*previous)->message_keys.size() : 0;
+    if (previous_keys + current->message_keys.size() != 0) {
+        state.skipped.reserve(delivery.limit);
     }
     auto step = kdf_ck(current->chain_key);
     auto plaintext = crypto::aead_open(step.message_key, delivery.associated_data, delivery.body);

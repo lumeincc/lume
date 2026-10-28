@@ -307,7 +307,7 @@ void altered_first_message(
         auto second_session = ratchet::start_as_bob(*twin_keys, published.signed_prekey);
         report.check(
             "so Alice's first message cannot be replayed into a second session",
-            fails_with(ratchet::decrypt(second_session, *first, now), ratchet::Error::unknown_header));
+            fails_with(ratchet::decrypt(second_session, *first, now, ratchet::max_skipped_keys), ratchet::Error::unknown_header));
     }
 
     auto altered = initiation.header;
@@ -348,7 +348,7 @@ std::optional<Conversation> session(
 
 bool reads(ratchet::State& receiver, const wire::RatchetMessage& message, std::string_view expected, std::uint64_t now)
 {
-    const auto opened = ratchet::decrypt(receiver, message, now);
+    const auto opened = ratchet::decrypt(receiver, message, now, ratchet::max_skipped_keys);
     return opened && text_of(opened->view()) == expected;
 }
 
@@ -375,12 +375,12 @@ void conversation(Report& report, Conversation& chat, std::uint64_t now)
     const bool in_any_order = reads(chat.bob, burst.at(2), "message 3", now) && reads(chat.bob, burst.at(0), "message 1", now)
         && reads(chat.bob, burst.at(1), "message 2", now);
     report.check("three messages that arrive out of order (3, 1, 2) all open", in_any_order);
-    report.check("a message the relay replays is refused", fails_with(ratchet::decrypt(chat.bob, burst.at(0), now), ratchet::Error::old_or_duplicate));
+    report.check("a message the relay replays is refused", fails_with(ratchet::decrypt(chat.bob, burst.at(0), now, ratchet::max_skipped_keys), ratchet::Error::old_or_duplicate));
 
     const auto last = must(ratchet::encrypt(chat.alice, bytes_of("message 4")), "encrypt a message");
     auto altered = last;
     altered.body.back() = static_cast<std::uint8_t>(altered.body.back() ^ 1U);
-    report.check("a message changed on the way is refused", fails_with(ratchet::decrypt(chat.bob, altered, now), ratchet::Error::authentication_failed));
+    report.check("a message changed on the way is refused", fails_with(ratchet::decrypt(chat.bob, altered, now, ratchet::max_skipped_keys), ratchet::Error::authentication_failed));
     report.check("and the session is untouched: the genuine message still opens", reads(chat.bob, last, "message 4", now));
 }
 

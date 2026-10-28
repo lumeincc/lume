@@ -38,6 +38,7 @@ public:
     [[nodiscard]] crypto::ByteView message_key(std::size_t chain, std::size_t index) const;
     [[nodiscard]] std::optional<std::size_t> find(std::size_t chain, std::uint32_t number) const;
 
+    void reserve(std::size_t limit);
     void add(
         const crypto::SecretBytes& header_key, const RatchetKey& ratchet_key, std::uint32_t first_number,
         crypto::ByteView message_keys, std::uint64_t stored_at, std::size_t limit);
@@ -47,12 +48,11 @@ public:
 private:
     struct Chain {
         RatchetKey ratchet_key{};
-        std::vector<SkippedEntry> entries;
+        std::size_t count = 0;
     };
 
     [[nodiscard]] std::size_t offset(std::size_t chain) const;
     [[nodiscard]] bool continues_last_chain(const crypto::SecretBytes& header_key, const RatchetKey& ratchet_key) const;
-    void reserve();
 
     template <typename Keep>
     void keep_only(Keep keep);
@@ -60,6 +60,7 @@ private:
     crypto::SecretBytes header_keys_;
     crypto::SecretBytes message_keys_;
     std::vector<Chain> chains_;
+    std::vector<SkippedEntry> entries_;
 };
 
 }

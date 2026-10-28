@@ -175,7 +175,7 @@ bool opens_first_message(const Initiation& initiation, const SessionKeys& respon
     const Bytes text{'h', 'i'};
     const auto message = ratchet::encrypt(*alice, text);
     auto receiver = ratchet::start_as_bob(response, bob.signed_prekey);
-    return message && ratchet::decrypt(receiver, *message, now).has_value();
+    return message && ratchet::decrypt(receiver, *message, now, ratchet::max_skipped_keys).has_value();
 }
 
 TEST(Handshake, MatchesTheLumeVectors)
