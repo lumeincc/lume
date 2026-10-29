@@ -149,6 +149,16 @@ proves it with Wycheproof's modulus-overflow vectors.
   number does not multiply the guard pages. Values that exist only inside one
   function call — a recovery-phrase word while it is looked up, its index, an
   intermediate bit buffer — sit on the stack and in registers and are not wiped.
+- **Locking memory is best effort.** `sodium_malloc` asks the system to keep
+  its pages out of swap, and the system may refuse: Windows locks no more than a
+  process's minimum working set, 200 KiB by default, and Android limits locked
+  memory per app. The client raises the limit at start-up where the platform
+  allows it — on Windows, the minimum working set, to cover the secrets it
+  expects to hold — checks every lock, and counts the ones that fail in its
+  diagnostics. A key on a page that was not locked can reach swap or the page
+  file and outlive its wiping there; on disk it is protected only by the
+  device's disk encryption — BitLocker, FileVault or Android's file-based
+  encryption.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.
@@ -393,10 +403,12 @@ envelope is dropped.
 3. Otherwise look up the private prekeys by kind and id; an unknown id aborts.
 4. **Replay guard.** When no one-time key was used, reject an initial header
    whose `SHA256(EK_A ‖ CT)` was already accepted under the same `SPK`/`PQSPK`.
-   The set is dropped with the key. A replay that changes `EK_A` or `CT` to get
-   past the tag — even to a key that gives the same X25519 results, such as
-   `1/u` (§2) — changes `TH`, so Bob derives other keys, Alice's first message
-   does not authenticate in step 5, and nothing is stored.
+   The set is dropped with the key, and a session deleted before the user
+   accepted it takes its tag with it (§6.6). A replay that changes `EK_A` or
+   `CT` to get past the tag — even to a key that gives the same X25519
+   results, such as `1/u` (§2) — changes `TH`, so Bob derives other keys,
+   Alice's first message does not authenticate in step 5, and nothing is
+   stored.
 5. Recompute `SK, HKa, NHKb, AD`, initialise the ratchet as Bob (§6.3), and
    decrypt **on a scratch copy**. Only if it authenticates: store the session,
    delete the used one-time private keys, pin Alice. Otherwise discard
@@ -527,12 +539,22 @@ the state.
 | | Value | Why |
 |---|---|---|
 | Skips in one step | 256 | larger `n − Nr` or `pn − Nr` is rejected before deriving any key |
-| Skipped keys per session | 1024, oldest evicted | bounds memory and vault size: about 32 KiB of keys in one locked allocation |
+| Skipped keys per session | 1024, oldest evicted | bounds memory and vault size: about 32 KiB of keys in one allocation |
 | Skipped keys per session the user has not accepted — a first contact on the introduction lane or a request (§9.3) | 32, oldest evicted | a stranger's envelopes cannot make the recipient hold more |
-| Such unaccepted sessions | 50 in all, oldest deleted first | matches the relay's queue of pending introductions (PROTOCOL §6) |
+| Unaccepted sessions from the introduction lane without an invite | 50, oldest deleted first | strangers cannot grow the vault, and the relay queues no more than this (PROTOCOL §6.3) |
+| Unaccepted sessions per invite | 20, oldest deleted first | the relay's own bound per invite; the people one invite reached cannot displace those of another |
+| Unaccepted requests on tokens kept from before a recovery (§9.3) | 1 per token, a newer request replacing the older | only whoever holds a token — the contact it was issued to, or the relay — can take its place, so no stranger displaces a returning contact |
 | Distinct header keys in the skipped store | 8, oldest chain evicted | bounds trial decryptions per incoming header |
 | Skipped key lifetime | 14 days | deleted at every unlock, at least once a day while the app runs, and before every decryption, whether or not messages arrive |
 | Sessions per contact | 3 (§5.5) | bounds trial decryptions across sessions |
+
+The three kinds of unaccepted session are counted apart: introductions never
+displace requests, and no invite displaces another. Deleting an unaccepted
+session also deletes its replay tag (§5.4), so the initiator's next envelope
+with the same header starts it again — unless the handshake used a one-time
+key, which is gone by then; that initiator gets through once it starts a new
+session (§5.4). Whenever an unaccepted session is deleted before the user
+has seen it, the app tells the user that some requests were lost.
 
 ### 6.7 What the ratchet heals against
 
