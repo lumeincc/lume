@@ -592,8 +592,12 @@ pad(m) = m ‖ 0x80 ‖ 0x00…        to the smallest bucket ≥ len(m) + 1
 buckets: 2048, 4096, 8192, 16384, 32768, 65536, 69632 bytes
 ```
 
-Unpadding scans from the end for `0x80` after zero bytes and rejects anything
-else. Padding hides the exact length of a message, not whether it carries a
+Unpadding accepts exactly the outputs of `pad`: the length is a bucket, the
+last non-zero byte is `0x80`, and that bucket is the smallest one longer than
+the message before the marker. Any other input — another length, no marker, a
+non-zero byte after it, a larger bucket than the message needs — is malformed
+and is handled like a failed AEAD. Changing the buckets needs a new `Seal`
+version. Padding hides the exact length of a message, not whether it carries a
 handshake: an envelope with an initial header and introduction has about 1.6 KB
 more fixed overhead than an ordinary one, which lands it in a larger bucket for
 some content lengths. Content above about 64 KiB goes as an attachment (§11).
