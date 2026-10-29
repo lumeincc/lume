@@ -30,8 +30,23 @@
 #include <unistd.h>
 #endif
 
+#ifdef __SANITIZE_ADDRESS__
+#define LUME_ADDRESS_SANITIZER
+#endif
+#ifdef __has_feature
+#if __has_feature(address_sanitizer)
+#define LUME_ADDRESS_SANITIZER
+#endif
+#endif
+
 namespace lume::crypto {
 namespace {
+
+#ifdef LUME_ADDRESS_SANITIZER
+constexpr bool locks_are_intercepted = true;
+#else
+constexpr bool locks_are_intercepted = false;
+#endif
 
 bool system_lock_limit_reaches_target()
 {
@@ -108,6 +123,9 @@ TEST(Library, ReportsWhetherTheLockLimitReachesItsTarget)
 
 TEST(Library, CountsEveryLockThatFails)
 {
+    if (locks_are_intercepted) {
+        GTEST_SKIP() << "AddressSanitizer turns mlock into a no-op that always succeeds";
+    }
 #ifndef _WIN32
     if (geteuid() == 0) {
         GTEST_SKIP() << "root locks memory without a limit";
