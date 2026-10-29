@@ -759,6 +759,13 @@ Each derived key has one job. Records are encrypted under keys derived from
 `VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
 nothing else.
 
+`PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
+its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
+encoding of what the user typed, normalised to NFC by the platform; at most
+1024 bytes. A new passphrase must be valid UTF-8 and hold at least 10 code
+points, or 14 in software-only mode (§10.2). `Khw` is 32 bytes on every
+platform. `0^32` is 32 zero bytes.
+
 ### 10.2 Hardware binding per platform
 
 `HW` is evaluated inside hardware with a key that cannot be exported, so every
@@ -769,6 +776,11 @@ passphrase guess has to run on the original device.
 | Android, Keystore at TEE or StrongBox level | HMAC-SHA256 with a non-exportable Keystore key created with `setUnlockedDeviceRequired(true)` | a Keystore operation on this unlocked device |
 | Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation is the raw 32 bytes of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, set through `NCRYPT_PCP_USAGEAUTH_PROPERTY`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
 | Anything else | **software only**: a DPAPI-protected random `Khw` on Windows, an app-private random `Khw` on Android | nothing beyond Argon2id once the secret is read |
+
+`ECDH(K_tpm, P)` is the 32-byte big-endian x-coordinate of the shared point,
+as SEC 1 defines it; a provider that returns the raw secret in another byte
+order has it reversed first. The core derives the usage authorisation and
+`Khw` from it; creating `K_tpm` and computing the ECDH belong to the platform.
 
 **What the TPM adds.** `K_tpm` and `P` are fixed, so on Windows `HW(x)` is a
 per-device constant that the TPM releases only for the right `x`. It binds the
@@ -811,8 +823,13 @@ VaultHeader { version, salt, ops, mem, hw_mode, tpm_point: opt<bytes[65]>, wrapp
 check = HMAC(K_check, L("vault/check") ‖ enc(header without check))
 ```
 
+Its field layout is in [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures);
+`wrapped_data_key` is `n ‖ AEAD(KEK, n, L("vault/data-key"), VK)`, 72 bytes.
 `ops` and `mem` must lie between the floor and the ceiling; anything outside is
-an integrity error. A wrong passphrase fails `check`.
+an integrity error, found before `PWHash` runs. Unlocking computes `Kpw`, `Khw`
+and `KEK`, then compares `check` in constant time: a wrong passphrase fails
+`check`. A header whose `check` verifies but whose `VK` does not unwrap is an
+integrity error.
 
 | | `ops` | `mem` |
 |---|---|---|
@@ -828,6 +845,13 @@ record = nonce ‖ AEAD(K_rec, nonce, L("vault/record") ‖ u8(type) ‖ lp(id) 
 root   = Σ HMAC(K_root, L("vault/root") ‖ u8(type) ‖ lp(id) ‖ u64(counter))  mod 2^256, over the type's live records
 tag    = HMAC(K_man, L("vault/manifest") ‖ enc(Manifest { epoch, types: list<{ type, count, root }> }))
 ```
+
+`id` is at most 64 bytes, and `counter` grows by one on every write of a
+record, so an older copy of a record has another term. Terms and roots are
+256-bit big-endian integers. The manifest lists each type that has a live
+record, in ascending order, with its number of live records; `epoch` is the
+header's, and `tag` is compared in constant time. Its field layout is in
+[PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures).
 
 `root` is updated incrementally — subtract a record's term, add the new one — so
 a write does not rehash the type, and because the terms are keyed, nobody

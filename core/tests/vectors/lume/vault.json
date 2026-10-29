@@ -1,0 +1,258 @@
+{
+  "description": "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3: Argon2id with one lane and a 32-byte output, the key schedule of section 10.1 including the TPM binding with a real P-256 ECDH, headers that open under their master key, records, roots and a manifest; seeds are SHA-256(\"LUME vault vector \" || name); a header refusal must be refused with the error it names when opened under its master key, a record refusal when opened at its address, a manifest refusal when checked at its epoch",
+  "generator": "core/tools/generate_vault_vectors.mjs",
+  "argon2id": [
+    {
+      "name": "floor",
+      "description": "the floor cost of section 10.3",
+      "passphrase": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt": "826fc589fd0f83f37283dab8742d07cd",
+      "ops": 2,
+      "mem": 65536,
+      "key": "7df873f9ec2c55b86d395d0de2c3ca8ab641e06cd643ab8662d6ce8e8bd09aeb"
+    },
+    {
+      "name": "android",
+      "description": "the Android default cost with a passphrase outside ASCII",
+      "passphrase": "d0bfd0b0d180d0bed0bbd18c20d0bdd0b020d18dd182d0bed0bc20d183d181d182d180d0bed0b9d181d182d0b2d0b5",
+      "salt": "fd48780b6dd74c0803b18d3774640c75",
+      "ops": 3,
+      "mem": 65536,
+      "key": "b3a9d35854c6f4b5a2a7f767451adbd48c14f4534df95dcecb1a7f67a1eb622c"
+    },
+    {
+      "name": "smallest",
+      "description": "the smallest cost libsodium accepts, with an empty passphrase",
+      "passphrase": "",
+      "salt": "d32bf5690524d92447aa7c0200f04677",
+      "ops": 1,
+      "mem": 8,
+      "key": "c8d4ba91ce0202a2e6c192bef04dc048c068468f27723ed4685dde37d04ac635"
+    }
+  ],
+  "keys": {
+    "passphrase_key": "7df873f9ec2c55b86d395d0de2c3ca8ab641e06cd643ab8662d6ce8e8bd09aeb",
+    "salt": "826fc589fd0f83f37283dab8742d07cd",
+    "ops": 2,
+    "mem": 65536,
+    "data_key": "1838f801c0e2095d4f25c1d16465dcd415c17bd8e1c0f85fbe1c1a40d47e5d19",
+    "record_key": "e8f849827f67a2861b327ed79409dc26c10a1e115a246eb82acefc8dab46feab",
+    "manifest_key": "9c7f746e9a8ff5911bad7844ad965f255e866ad8fe1c6d3e4f3b58a5928cb214",
+    "root_key": "13ce333fa32152c81f1ce24939d05bab63403451f6f09ab6c387ec9f4cea9986",
+    "keystore": {
+      "hardware_key": "d630e11838116ca53fc880a489b184a1cf6da2ce3743c46708782a432920b3b6",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "check_key": "bbc1aec8c07cbdfd968f23c0997a991c8c429f5fcf067773f06c41177c2cf32e"
+    },
+    "tpm": {
+      "authorisation": "3a4222e8eb5c45da8870711aa7e4427e3ef04bd0fd4b1166850540829d964956",
+      "point": "04b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d6464",
+      "shared_secret": "c0e0c217937f486260714d90d9396c4c39112980c470261d249171a862ce4fac",
+      "hardware_key": "f25bd4d4f18281c8a07d152a16e8166fabbe0898e955c44173a3bc763c824daa",
+      "master_key": "77c8cf131d8c98f503a68c62d1f538fc1a522c4d43b637820bf75bf118962de6"
+    }
+  },
+  "headers": [
+    {
+      "name": "keystore",
+      "description": "an Android vault at epoch 7",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "hw_mode": 1,
+      "epoch": 7,
+      "tpm_point": null,
+      "nonce": "9401064e1b2c4abdcf39653170b430fc861ae8be02c84266",
+      "wrapped_data_key": "9401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf",
+      "check": "173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd000000020001000001009401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf0000000000000007173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c"
+    },
+    {
+      "name": "tpm",
+      "description": "a Windows vault bound to a TPM key, with the point P in its header",
+      "master_key": "77c8cf131d8c98f503a68c62d1f538fc1a522c4d43b637820bf75bf118962de6",
+      "hw_mode": 2,
+      "epoch": 1,
+      "tpm_point": "04b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d6464",
+      "nonce": "5935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e",
+      "wrapped_data_key": "5935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e13ea4557b872ffeeafc5101c293ad5a3807e68bad40ea4ce4a3869e23dfe0b1e40fb07d27ba1d78f72fa0806bfacbbc6",
+      "check": "6fa2096a90e41de013094e05915e4a4339a634e95d0d3a839f5b3f37de2f18d6",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd0000000200010000020104b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d64645935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e13ea4557b872ffeeafc5101c293ad5a3807e68bad40ea4ce4a3869e23dfe0b1e40fb07d27ba1d78f72fa0806bfacbbc600000000000000016fa2096a90e41de013094e05915e4a4339a634e95d0d3a839f5b3f37de2f18d6"
+    }
+  ],
+  "header_refusals": [
+    {
+      "name": "another_hardware_key",
+      "description": "the right passphrase key with another hardware key",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd000000020001000001009401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf0000000000000007173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c",
+      "master_key": "990a7a465670a19ff549789d19ab9a5e35127af503627706bd90dccaddaa8126",
+      "error": "wrong_passphrase"
+    },
+    {
+      "name": "another_passphrase",
+      "description": "another passphrase key with the right hardware key",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd000000020001000001009401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf0000000000000007173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c",
+      "master_key": "57dad34ade1bfe11f845bf80c6efd2e48c6af320e07950c798ae915186872544",
+      "error": "wrong_passphrase"
+    },
+    {
+      "name": "tampered_epoch",
+      "description": "the epoch was changed after the check was computed",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd000000020001000001009401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf0000000000000008173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "error": "wrong_passphrase"
+    },
+    {
+      "name": "ops_below_floor",
+      "description": "one pass, with a check that verifies",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd000000010001000001001deaca71f297a770d1d7b0435dfe74f6f1a2d834a1b2f7dcf496d82a6a2f26c7e2b6d214e64d4bfd311870a77d901bfda30e36705175cfba02580817185fe27f73e755b1a31475e1000000000000000701650558ace88320ade9f8cae9085443b102327caa691038ccbfaa70cc846371",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "error": "integrity"
+    },
+    {
+      "name": "mem_above_ceiling",
+      "description": "1 GiB and 1 KiB, with a check that verifies",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd0000000200100001010000b3ba803a3dad11ca6edaf011c81fbdcdea216e3e658e8c8ae8355bd939d11c76ad2f886574191ad800fe23626755504c617acf6a8456df7ca5f1144976f5f4c00457881ee19ba60000000000000007137159a5c27ac3da68f167c162d0a18fc6b1e426bf480608f7b654ee568b4439",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "error": "integrity"
+    },
+    {
+      "name": "data_key_does_not_unwrap",
+      "description": "a check that verifies over a wrapped data key that does not authenticate",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd00000002000100000100a0e53d52b29a848a1d7ce18402bc991b19dc60e7f62ee3c24034d2f56f26a98d0422f8f56923d6fec12ac301240a463f3437737604914027392271bee8dce2cf0852fa81ce5490040000000000000007a7f06e99390f5c1984e00e0bef8b4aa16d15f6155d8b5060c331f838477ed19a",
+      "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
+      "error": "integrity"
+    }
+  ],
+  "records": [
+    {
+      "name": "short",
+      "description": "a short record of type 1",
+      "type": 1,
+      "id": "636f6e746163742031",
+      "counter": "1",
+      "payload": "68656c6c6f2c207661756c74",
+      "nonce": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce",
+      "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eaeaa6226e3f75294f97f5203491ebf12c565f3efb287",
+      "root_term": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2"
+    },
+    {
+      "name": "day",
+      "description": "a day of history of type 2",
+      "type": 2,
+      "id": "d2e3e816fa0b68810a865c6838f37b7bf3a2fc7c",
+      "counter": "7",
+      "payload": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "nonce": "024a6738814913e1f1c4f6606836fdb081d607c05d915558",
+      "record": "024a6738814913e1f1c4f6606836fdb081d607c05d91555868f70afba0ab64911660cba02e4e0dfcbcaad24cc5934dfba2ae91e76af26aade9b5cf0b82a09864e92df1f1888d5cf29d3b485850974db687e6a4951f05aceeadf093d479093dab6a4a3fe27bf6f393daa5d294befa0ab7bf62f12bc65b8dcc91cdfe351f21048128876d1f61de3f7644de71f2361f3b739a9cf6f3d022c4e98df67465cf3991cb01578141bf927c0ae0925ad77d86303cdb5ac8c57919e13c55e12652aa358b817494d875a2428baec5b8c88f6dc4bf093b2ddf80f115093906d8f61f0541e4d770ca7da04cb798f9ac0dd5de37b46d5cd644dd86908d9a6290d52a30ff6f961da09a098d0e6623add8f9e236c2d5651488b4b6d79c91529de1956ab014a59add39639ed2dbe92ecc9262d9f26f6f63e096c761b5e6da61b2eea554a6a84aadfd8242106a50ed9a2b738482b31e318a5b5bfcd3e9ad348ebface7452ebe89e313bc7cf940c65e9e1bf8cd1860c5054de74fc0aba73c4bfa6346a6dc3aa39f7e1884ba7974f18e3042f4d0783635023ee4e85c631b751b76bfaf3eaf90e5c7e58de66ddd20d806db2fe53f697ecf297a51832adfe801ad5916ab77633207089cc80b0a6f6bef2c14b627d7e6c018f3ac2142cb2905cba4837011b00c47dc6f8789bc46cd4f8400f3f9b6dd7f4ea58964850ffb27990222961fff9ebc212bf9f5667ecf4629f183edca470a8dff334596a999bd43194ea700673e006c16914fea52d0a979769fa1f768d82eb42006e4b84a1d583ea7376917f81afa1bae20ae6428fd4344ef27b9adebe14db07719f8f217dcde8eba9ad767bb7d5314b254e0312195c1e38ababb1f843c9327530f7d05465a293d32680abb58485661303c4ced82304bb48af34e25eeff6c8285df72256791ec92fc821ac9fd5b9cafab30264617e68257ba99a2936547448581e200491a51e3c80a377c35f1cc1685132a3dc7c3383c56818eadd094d4fc5caa3101c7109834200345fbde23e3d9cc6bf91fedf1d5f5f37744f91216dc403613c6914c9f8820535b12818a54d1e198db6bd74f33d7989f5fd52849bdbfdefeed1c3e062366e9d1001ccac3542d47b34a5d4120e395c8e2c731acc741d0cf4377f6126d41c519d6fcc4753f6921efb72a7f9f6ade1dc9bc46d62176720dc8e85d721e985b50f1464f4a3c9c88052bc292ccb3a71223d2abcfc595f68d653a1489fa4fcc207cd5d0057d361ddca935363d9a9f5d05a67927ff88f3d774ca2a5416610864f225cf13f8f82303ff4eb3897ddd7e55d5fb8f531cd8af2ccfac70a4491dd8c2cf8d3a4353267bdf15d2a4afb6254e6eda074fef274fd9825b0a8e888b9c516eadf7df9de35857c87fe719c853a7353bbfef493b048b981c7bb99e0913f87d1023065337cf82b1f29baad6e5cecec77011a365c4464924b38a44c246a7f26ef70b",
+      "root_term": "530fa52c1fb5f81e35fd20c10eda6ffc9b6a3dbf9820736d3fde6abfa6598eb0"
+    },
+    {
+      "name": "empty",
+      "description": "an empty id and an empty payload",
+      "type": 2,
+      "id": "",
+      "counter": "0",
+      "payload": "",
+      "nonce": "30f4c9707544f540d5455359b7778fbf48b4ffade81920eb",
+      "record": "30f4c9707544f540d5455359b7778fbf48b4ffade81920ebf341eb04e34fe85dd93477945a8774bf",
+      "root_term": "fac114396e6d1b3d8507a850a0023b4717149ec90ce749bae7f2ce8274ad5d8c"
+    },
+    {
+      "name": "largest_id",
+      "description": "an id at its 64-byte bound and the largest counter",
+      "type": 2,
+      "id": "02e1d78ad55b5bdf22dbf33e16159901e85cb07a0967725143d6d2829bd1a3bdeeff7ace14ddf8eb5d48cd68e3c06710273d03daf335c33d291c038dfd00973d",
+      "counter": "18446744073709551615",
+      "payload": "59dd8df55d6f6cd6d9734b39b502c4bd363c2d88d0220c42814ebeb8e70496bc",
+      "nonce": "b7b16ab6d8047c8633169b87c10542fddeea348a9d95841c",
+      "record": "b7b16ab6d8047c8633169b87c10542fddeea348a9d95841cb142fca44a8c57147ab158fc8df12a88eb77d22f652fd3576a74f0f8f240df612eb2ce5249792add2397125954fc5c30",
+      "root_term": "a8441f91927c8c405918b55642c62836f1f3903b9e4eca4d6d26a24b94c35ada"
+    }
+  ],
+  "record_refusals": [
+    {
+      "name": "another_type",
+      "description": "the record read as another type",
+      "type": 2,
+      "id": "636f6e746163742031",
+      "counter": "1",
+      "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eaeaa6226e3f75294f97f5203491ebf12c565f3efb287",
+      "error": "integrity"
+    },
+    {
+      "name": "another_id",
+      "description": "the record read under another id",
+      "type": 1,
+      "id": "636f6e746163742032",
+      "counter": "1",
+      "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eaeaa6226e3f75294f97f5203491ebf12c565f3efb287",
+      "error": "integrity"
+    },
+    {
+      "name": "older_counter",
+      "description": "the record read with the counter of an older write",
+      "type": 1,
+      "id": "636f6e746163742031",
+      "counter": "0",
+      "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eaeaa6226e3f75294f97f5203491ebf12c565f3efb287",
+      "error": "integrity"
+    },
+    {
+      "name": "flipped_byte",
+      "description": "one byte of the ciphertext flipped",
+      "type": 1,
+      "id": "636f6e746163742031",
+      "counter": "1",
+      "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eafaa6226e3f75294f97f5203491ebf12c565f3efb287",
+      "error": "integrity"
+    }
+  ],
+  "roots": {
+    "type_1": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2",
+    "type_2": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+    "update": {
+      "description": "the type 2 record \"day\" is written again with counter 8: subtract its old term, add the new one",
+      "before": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+      "removed_term": "530fa52c1fb5f81e35fd20c10eda6ffc9b6a3dbf9820736d3fde6abfa6598eb0",
+      "added_term": "5cdc2f1c81cb21a715c6b3d361c4ae19f1717cf551edc3db4b5421a1552e6596",
+      "after": "ffe162e782b4c924f3e7117a448d1197fa79abf9fd23d7e3a06d926f5e9f1dfc"
+    },
+    "from_zero": {
+      "description": "removing a term from the empty root wraps around 2^256",
+      "term": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2",
+      "after": "e4c2ec8c44808a88f5b015065aa86f0800095b560505db4b800cbb265044e91e"
+    }
+  },
+  "manifest": {
+    "epoch": 7,
+    "types": [
+      {
+        "type": 1,
+        "count": 1,
+        "root": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2"
+      },
+      {
+        "type": 2,
+        "count": 3,
+        "root": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716"
+      }
+    ],
+    "encoded": "0000000000000007000201000000011b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+    "tag": "81036bdb085dabb5c515b1f0f35ef05d4f4b534e0768031cc58173a7694981e1",
+    "refusals": [
+      {
+        "name": "another_epoch",
+        "description": "the manifest checked against the header of the next epoch",
+        "encoded": "0000000000000007000201000000011b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+        "epoch": 8,
+        "error": "integrity"
+      },
+      {
+        "name": "tampered_count",
+        "description": "the count of type 1 changed after the tag was computed",
+        "encoded": "0000000000000007000201000000021b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+        "epoch": 7,
+        "error": "integrity"
+      }
+    ]
+  }
+}

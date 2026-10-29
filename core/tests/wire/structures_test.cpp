@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -202,6 +203,44 @@ Seal random_seal()
     value.ephemeral_key = random_array<x25519_key_size>();
     value.nonce = random_array<nonce_size>();
     value.box = *rc::gen::container<Bytes>(rc::gen::arbitrary<std::uint8_t>());
+    return value;
+}
+
+VaultHeader random_vault_header()
+{
+    VaultHeader value;
+    value.salt = random_array<vault_salt_size>();
+    value.ops = any_integer<std::uint32_t>();
+    value.mem = any_integer<std::uint32_t>();
+    value.hw_mode = *rc::gen::element(HardwareMode::keystore, HardwareMode::tpm, HardwareMode::software);
+    if (value.hw_mode == HardwareMode::tpm) {
+        auto point = random_array<tpm_point_size>();
+        point.front() = tpm_point_uncompressed;
+        value.tpm_point = point;
+    }
+    value.wrapped_data_key = random_array<wrapped_data_key_size>();
+    value.epoch = any_integer<std::uint64_t>();
+    value.check = random_array<vault_check_size>();
+    return value;
+}
+
+Manifest random_manifest()
+{
+    Manifest value;
+    value.epoch = any_integer<std::uint64_t>();
+    auto types = *rc::gen::container<std::vector<std::uint8_t>>(rc::gen::arbitrary<std::uint8_t>());
+    std::ranges::sort(types);
+    const auto [first, last] = std::ranges::unique(types);
+    types.erase(first, last);
+    if (types.size() > manifest_types_bound) {
+        types.resize(manifest_types_bound);
+    }
+    for (const auto type : types) {
+        value.types.push_back(ManifestEntry{
+            .type = type,
+            .count = *rc::gen::inRange<std::uint32_t>(1, std::numeric_limits<std::uint32_t>::max()),
+            .root = random_array<manifest_root_size>()});
+    }
     return value;
 }
 
@@ -513,6 +552,110 @@ TEST(WireStructures, NonCanonicalOptionalsAreRejected)
     EXPECT_EQ(test::error_of(decode(introduction, read_introduction)), Error::non_canonical);
 }
 
+constexpr std::size_t hw_mode_offset = 1 + vault_salt_size + 4 + 4;
+
+VaultHeader tpm_header()
+{
+    VaultHeader value;
+    value.hw_mode = HardwareMode::tpm;
+    crypto::ByteArray<tpm_point_size> point{};
+    point.front() = tpm_point_uncompressed;
+    value.tpm_point = point;
+    return value;
+}
+
+TEST(WireStructures, VaultHeadersHaveTheirProtocolSize)
+{
+    EXPECT_EQ(wrapped_data_key_size, 72U);
+    EXPECT_EQ(encode(VaultHeader{}).size(), 1U + 16 + 4 + 4 + 1 + 1 + 72 + 8 + 32);
+    EXPECT_EQ(encode(tpm_header()).size(), 1U + 16 + 4 + 4 + 1 + 1 + 65 + 72 + 8 + 32);
+    EXPECT_EQ(encode_unsigned(tpm_header()).size() + vault_check_size, encode(tpm_header()).size());
+    EXPECT_TRUE(decode(encode(tpm_header()), read_vault_header).has_value());
+}
+
+TEST(WireStructures, OnlyVaultVersionOneIsAccepted)
+{
+    auto header = encode(VaultHeader{});
+    for (const int version : {0, 2, 255}) {
+        header.front() = static_cast<std::uint8_t>(version);
+        EXPECT_EQ(test::error_of(decode(header, read_vault_header)), Error::unsupported_version) << version;
+    }
+}
+
+TEST(WireStructures, VaultHeadersCarryATpmPointExactlyForTheTpm)
+{
+    for (const int mode : {0, 4, 255}) {
+        auto header = encode(VaultHeader{});
+        header.at(hw_mode_offset) = static_cast<std::uint8_t>(mode);
+        EXPECT_EQ(test::error_of(decode(header, read_vault_header)), Error::invalid_value) << mode;
+    }
+    auto tpm_without_point = encode(VaultHeader{});
+    tpm_without_point.at(hw_mode_offset) = static_cast<std::uint8_t>(HardwareMode::tpm);
+    EXPECT_EQ(test::error_of(decode(tpm_without_point, read_vault_header)), Error::invalid_value);
+    for (const auto mode : {HardwareMode::keystore, HardwareMode::software}) {
+        auto point_without_tpm = encode(tpm_header());
+        point_without_tpm.at(hw_mode_offset) = static_cast<std::uint8_t>(mode);
+        EXPECT_EQ(test::error_of(decode(point_without_tpm, read_vault_header)), Error::invalid_value);
+    }
+    auto compressed = encode(tpm_header());
+    compressed.at(hw_mode_offset + 2) = 0x02;
+    EXPECT_EQ(test::error_of(decode(compressed, read_vault_header)), Error::invalid_value);
+    auto two_presence = encode(VaultHeader{});
+    two_presence.at(hw_mode_offset + 1) = 2;
+    EXPECT_EQ(test::error_of(decode(two_presence, read_vault_header)), Error::non_canonical);
+
+    auto unknown_mode = VaultHeader{};
+    unknown_mode.hw_mode = static_cast<HardwareMode>(4);
+    EXPECT_THROW((void)encode(unknown_mode), std::invalid_argument);
+    auto tpm_missing_point = tpm_header();
+    tpm_missing_point.tpm_point.reset();
+    EXPECT_THROW((void)encode(tpm_missing_point), std::invalid_argument);
+    auto keystore_with_point = tpm_header();
+    keystore_with_point.hw_mode = HardwareMode::keystore;
+    EXPECT_THROW((void)encode(keystore_with_point), std::invalid_argument);
+    auto compressed_point = tpm_header();
+    crypto::ByteArray<tpm_point_size> point{};
+    point.front() = 0x03;
+    compressed_point.tpm_point = point;
+    EXPECT_THROW((void)encode_unsigned(compressed_point), std::invalid_argument);
+}
+
+TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
+{
+    const auto entry = [](std::uint8_t type, std::uint32_t count) {
+        return ManifestEntry{.type = type, .count = count, .root = {}};
+    };
+    EXPECT_EQ(encode(Manifest{}).size(), 8U + 2);
+    Manifest full;
+    for (std::size_t type = 0; type < manifest_types_bound; ++type) {
+        full.types.push_back(entry(static_cast<std::uint8_t>(type), 1));
+    }
+    EXPECT_EQ(encode(full).size(), 8U + 2 + (manifest_types_bound * (1 + 4 + 32)));
+    EXPECT_TRUE(decode(encode(full), read_manifest).has_value());
+    auto too_many = full;
+    too_many.types.push_back(entry(200, 1));
+    EXPECT_THROW((void)encode(too_many), std::length_error);
+
+    for (const auto& types : std::vector<std::vector<ManifestEntry>>{
+             {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}}) {
+        const Manifest wrong{.epoch = 1, .types = types};
+        EXPECT_THROW((void)encode(wrong), std::invalid_argument);
+        auto bytes = Writer{}.u64(1).count(types.size(), manifest_types_bound).take();
+        for (const auto& item : types) {
+            const auto encoded = Writer{}.u8(item.type).u32(item.count).fixed(item.root).take();
+            bytes.insert(bytes.end(), encoded.begin(), encoded.end());
+        }
+        EXPECT_EQ(test::error_of(decode(bytes, read_manifest)), Error::non_canonical);
+    }
+
+    auto counted_too_many = encode(Manifest{});
+    counted_too_many.back() = static_cast<std::uint8_t>(manifest_types_bound + 1);
+    EXPECT_EQ(test::error_of(decode(counted_too_many, read_manifest)), Error::over_bound);
+    auto counted_but_missing = encode(Manifest{});
+    counted_but_missing.back() = static_cast<std::uint8_t>(manifest_types_bound);
+    EXPECT_EQ(test::error_of(decode(counted_but_missing, read_manifest)), Error::truncated);
+}
+
 RC_GTEST_PROP(WireStructureProperties, PrekeyXRoundTrips, ())
 {
     check_round_trip(random_prekey_x(), read_prekey_x);
@@ -578,6 +721,16 @@ RC_GTEST_PROP(WireStructureProperties, SealRoundTrips, ())
     check_round_trip(random_seal(), read_seal);
 }
 
+RC_GTEST_PROP(WireStructureProperties, VaultHeaderRoundTrips, ())
+{
+    check_round_trip(random_vault_header(), read_vault_header);
+}
+
+RC_GTEST_PROP(WireStructureProperties, ManifestRoundTrips, ())
+{
+    check_round_trip(random_manifest(), read_manifest);
+}
+
 RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncoding, (const Bytes& input))
 {
     const auto check = [&input](auto read) {
@@ -598,6 +751,8 @@ RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncodin
     check(read_content);
     check(read_directory_keys);
     check(read_card);
+    check(read_vault_header);
+    check(read_manifest);
 }
 
 }

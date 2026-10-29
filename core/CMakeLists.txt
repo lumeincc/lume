@@ -15,6 +15,7 @@ add_library(lume_core STATIC
     src/crypto/library.cpp
     src/crypto/memory_lock.cpp
     src/crypto/mlkem.cpp
+    src/crypto/pwhash.cpp
     src/crypto/random.cpp
     src/crypto/secret_bytes.cpp
     src/crypto/self_test.cpp
@@ -29,6 +30,8 @@ add_library(lume_core STATIC
     src/safety/safety_number.cpp
     src/seal/padding.cpp
     src/seal/seal.cpp
+    src/vault/keys.cpp
+    src/vault/records.cpp
     src/wire/codec.cpp
     src/wire/structures.cpp
 )
