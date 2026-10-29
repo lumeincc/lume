@@ -10,6 +10,7 @@ add_executable(lume_core_tests
     support/hex.cpp
     support/hex_test.cpp
     support/vectors.cpp
+    card/card_test.cpp
     crypto/aead_test.cpp
     crypto/ed25519_test.cpp
     crypto/encoding_test.cpp

@@ -240,7 +240,8 @@ Card               = { certificate: UsernameCertificate, bind: bytes[64], genera
                        group_id: bytes[16], expires_at: u64, signature: bytes[64] }
 ```
 
-Every `seal_key` and `ssk` is kind 4. Decoding refuses any other kind, and a
+Every `seal_key` and `ssk` is kind 4, and a `Card`'s `spk` is kind 1 and its
+`pqspk` kind 2. Decoding refuses any other kind, and a
 sender checks the kind, the signature and the age of a seal key before it
 seals to it (CRYPTO §8), wherever the key came from. `enc_header` is
 `24 + enc(Header) + 16 = 80` bytes. A `Seal` of the largest

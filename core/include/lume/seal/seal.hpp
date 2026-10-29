@@ -12,6 +12,8 @@
 
 namespace lume::seal {
 
+inline constexpr std::uint64_t card_seal_key_usable_for = std::uint64_t{30} * 24 * 60 * 60;
+
 enum class Error : std::uint8_t {
     too_long,
     not_a_seal_key,
@@ -38,6 +40,11 @@ struct Recipient {
 [[nodiscard]] Result<wire::Seal> seal(const Recipient& recipient, const wire::Inner& inner, std::uint64_t now);
 
 [[nodiscard]] Result<wire::Inner> open(
+    std::uint32_t seal_key_id, const crypto::X25519KeyPair& seal_key, const wire::Seal& envelope);
+
+[[nodiscard]] Result<wire::Seal> seal_card(const Recipient& recipient, const wire::Card& card, std::uint64_t now);
+
+[[nodiscard]] Result<wire::Card> open_card(
     std::uint32_t seal_key_id, const crypto::X25519KeyPair& seal_key, const wire::Seal& envelope);
 
 }

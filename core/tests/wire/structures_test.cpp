@@ -143,6 +143,27 @@ Introduction random_introduction()
     return value;
 }
 
+Card random_card()
+{
+    Card value;
+    value.certificate = random_username_certificate();
+    value.bind = random_array<signature_size>();
+    value.generation = any_integer<std::uint32_t>();
+    value.spk = random_prekey_x();
+    value.spk.kind = PrekeyKind::signed_prekey;
+    value.spk.signature = random_array<signature_size>();
+    value.pqspk = random_prekey_kem();
+    value.pqspk.kind = PrekeyKind::kem_last_resort;
+    value.ssk = random_prekey_x();
+    value.ssk.kind = PrekeyKind::seal_key;
+    value.ssk.signature = random_array<signature_size>();
+    value.token = random_array<token_size>();
+    value.group_id = random_array<group_id_size>();
+    value.expires_at = any_integer<std::uint64_t>();
+    value.signature = random_array<signature_size>();
+    return value;
+}
+
 Content random_content()
 {
     Content value;
@@ -315,6 +336,34 @@ TEST(WireStructures, UnsignedEncodingsLeaveOnlyTheSignatureOut)
     const auto unsigned_certificate = encode_unsigned(certificate);
     ASSERT_EQ(unsigned_certificate.size() + signature_size, signed_certificate.size());
     EXPECT_TRUE(std::ranges::equal(unsigned_certificate, crypto::ByteView(signed_certificate).first(unsigned_certificate.size())));
+}
+
+TEST(WireStructures, CardsCarryTheirOwnKindsOfKey)
+{
+    const auto prekey_x = encode(PrekeyX{}).size();
+    const auto prekey_kem = encode(PrekeyKem{}).size();
+    const auto certificate = encode(UsernameCertificate{}).size();
+    EXPECT_EQ(encode(Card{}).size(), certificate + 64 + 4 + prekey_x + prekey_kem + prekey_x + 32 + 16 + 8 + 64);
+    EXPECT_TRUE(decode(encode(Card{}), read_card).has_value());
+
+    const auto spk_at = certificate + 64 + 4;
+    const auto pqspk_at = spk_at + prekey_x;
+    const auto ssk_at = pqspk_at + prekey_kem;
+    for (const auto& [offset, refused] : {std::pair{spk_at, 4}, std::pair{pqspk_at, 3}, std::pair{ssk_at, 1}}) {
+        auto card = encode(Card{});
+        card.at(offset) = static_cast<std::uint8_t>(refused);
+        EXPECT_EQ(test::error_of(decode(card, read_card)), Error::invalid_value) << offset;
+    }
+
+    Card seal_key_as_spk;
+    seal_key_as_spk.spk.kind = PrekeyKind::seal_key;
+    EXPECT_THROW((void)encode(seal_key_as_spk), std::invalid_argument);
+    Card one_time_kem;
+    one_time_kem.pqspk.kind = PrekeyKind::kem_one_time;
+    EXPECT_THROW((void)encode(one_time_kem), std::invalid_argument);
+    Card signed_prekey_as_ssk;
+    signed_prekey_as_ssk.ssk.kind = PrekeyKind::signed_prekey;
+    EXPECT_THROW((void)encode(signed_prekey_as_ssk), std::invalid_argument);
 }
 
 TEST(WireStructures, ContentFieldsAreInProtocolOrder)
@@ -494,6 +543,11 @@ RC_GTEST_PROP(WireStructureProperties, DirectoryKeysRoundTrip, ())
     check_round_trip(random_directory_keys(), read_directory_keys);
 }
 
+RC_GTEST_PROP(WireStructureProperties, CardRoundTrips, ())
+{
+    check_round_trip(random_card(), read_card);
+}
+
 RC_GTEST_PROP(WireStructureProperties, InitialHeaderRoundTrips, ())
 {
     check_round_trip(random_initial_header(), read_initial_header);
@@ -543,6 +597,7 @@ RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncodin
     check(read_introduction);
     check(read_content);
     check(read_directory_keys);
+    check(read_card);
 }
 
 }
