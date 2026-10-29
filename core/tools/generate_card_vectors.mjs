@@ -148,8 +148,46 @@ const asSeal = aeadDecrypt(Buffer.from(hkdfSync("sha256", dh(aliceSeal.secret, e
   nonce, Buffer.concat([label("seal/ad"), u8(1), u32(aliceSeal.id), ephemeral, aliceSeal.public]), box);
 if (asSeal) throw new Error("a sealed card must not open as a sealed message");
 
+const expected = { recipient: bytes(alice.signing_key), group_id: groupId, member: bytes(bob.signing_key), now };
+const refuse = (check) => {
+  if (check.now >= expiresAt) return "expired";
+  if (!check.group_id.equals(groupId)) return "wrong_group";
+  if (!check.member.equals(bytes(bob.signing_key)) || check.member.equals(check.recipient)) return "wrong_member";
+  const message = Buffer.concat([label("card"), check.recipient, groupId, sha256(token), u64(expiresAt)]);
+  if (!verify(null, message, ed25519Public(bytes(bob.signing_key)), cardSignature)) return "invalid_signature";
+  return null;
+};
+if (refuse(expected) !== null) throw new Error("the vector card must be accepted by its own recipient");
+const stranger = bytes(identities[0].signing_key);
+const checkRefusals = [
+  ["another_group", "the card is offered as an introduction in another group", { ...expected, group_id: seedOf("other group").subarray(0, 16) }],
+  ["another_member", "the card is offered as coming from another member", { ...expected, member: stranger }],
+  ["another_recipient", "the card is shown to someone it was not made for", { ...expected, recipient: stranger }],
+  ["expired", "the card is checked at the moment it expires", { ...expected, now: expiresAt }],
+].map(([name, description, check]) => {
+  const error = refuse(check);
+  if (!error) throw new Error(`${name} must be refused`);
+  return { name, description, recipient: hex(check.recipient), group_id: hex(check.group_id), member: hex(check.member), now: check.now, error };
+});
+
+const sealedPlaintext = (plaintext, seed) => {
+  const stream = randomStream(seed);
+  const secret = stream(32);
+  const publicKey = x25519PublicOf(secret);
+  const iv = stream(24);
+  const sealedBox = aeadEncrypt(envelopeKey(dh(secret, aliceSeal.public), publicKey, aliceSeal.public), iv,
+    associatedData(aliceSeal.id, publicKey, aliceSeal.public), plaintext);
+  return Buffer.concat([u8(1), u32(aliceSeal.id), publicKey, iv, u32(sealedBox.length), sealedBox]);
+};
+const withoutMarker = Buffer.concat([encodedCard, Buffer.alloc(2048 - encodedCard.length)]);
+if (unpad(withoutMarker) !== null) throw new Error("a card followed only by zeros must not unpad");
+const envelopeRefusals = [
+  ["padding_without_marker", "the card is followed only by zero bytes", withoutMarker, "authentication_failed"],
+  ["trailing_byte", "correctly padded, but one byte follows the card", pad(Buffer.concat([encodedCard, u8(0)])), "malformed"],
+].map(([name, description, plaintext, error]) => ({ name, description, envelope: hex(sealedPlaintext(plaintext, `LUME card vector ${name}`)), error }));
+
 const document = {
-  description: "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name)",
+  description: "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name); a check refusal must be refused with the error it names when the card is checked with that recipient, group, member and time, and an envelope refusal when it is opened",
   generator: "core/tools/generate_card_vectors.mjs",
   now,
   producer: handshake.bob,
@@ -173,6 +211,8 @@ const document = {
   },
   random_seed: randomSeed,
   envelope: hex(envelope),
+  check_refusals: checkRefusals,
+  envelope_refusals: envelopeRefusals,
 };
 writeFileSync(outputFile, JSON.stringify(document, null, 2) + "\n");
 console.log("wrote the card vectors");

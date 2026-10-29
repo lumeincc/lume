@@ -906,13 +906,19 @@ signature = Sign(IKsig.sk, L("card") ‖ recipient.ik_sig ‖ group_id ‖ SHA25
 A card's `spk` is a signed prekey (kind 1), its `pqspk` the last-resort KEM
 prekey (kind 2) and its `ssk` a seal key (kind 4); decoding refuses any other
 kind. The receiver checks a card before it uses anything in it: the card has
-not expired and expires no more than 7 days from now; its signature verifies
-under the certificate's `ik_sig`, for the receiver's own `ik_sig`; and its keys
-pass every check of §5.1 step 2, including §4's 9 days. A card that expires
-more than 9 days after the `created_at` of any key it carries is refused, so
-the producer sets `expires_at` to the earlier of 7 days from now and 9 days
-after its oldest key: a late answer must not reach a key whose private half is
-about to be deleted (§4).
+not expired and expires no more than 7 days from now; it names the group it
+arrived for, and its certificate names the member the membership update
+introduces, never the receiver itself; its signature verifies under the
+certificate's `ik_sig`, for the receiver's own `ik_sig`; and its keys pass every
+check of §5.1 step 2, including §4's 9 days. A card that expires more than 9
+days after the `created_at` of any key it carries is refused, so the producer
+sets `expires_at` to the earlier of 7 days from now and 9 days after its oldest
+key: a late answer must not reach a key whose private half is about to be
+deleted (§4). The card's certificate is then checked as in §5.3, with the
+card's identity as the peer; if that fails, the member is still introduced but
+shown as an unverified contact, never under the name the certificate claims.
+A card that expires before it is used is dropped, and the inviter asks its
+member for a fresh one.
 
 A card is sealed with the construction of §8, under the labels `card/key` and
 `card/ad` instead of `seal/key` and `seal/ad` —
@@ -920,12 +926,12 @@ A card is sealed with the construction of §8, under the labels `card/key` and
 to a **seal key** of its recipient — never to `IKdh`. A card for the newcomer is sealed to the `SSK` the
 newcomer put in their acceptance, which the inviter passes on with the
 membership update; the newcomer's card for a member is sealed to the `ssk` in
-that member's card. Either seal key is checked first: its signature under the
+that member's card, while that card has not expired. Either seal key is checked first: its signature under the
 recipient's `ik_sig` (§4), and its age — for a card up to 30 days past its
 `created_at` instead of the 9 days of §4, since the card lives 7 days and the
 private half 40, so a member who answers late can still be introduced. So the member who forwards a card
 cannot read the token, and a card has the same sender forward secrecy as a
-seal (§8). It expires in 7 days. It holds everything §5.1 needs, so the
+seal (§8). It expires within 7 days. It holds everything §5.1 needs, so the
 receiver opens a session over the card's token without asking the relay for
 anything. The two members then rotate the token inside their new session.
 Identities that arrive this way are marked "introduced by <name>" until verified

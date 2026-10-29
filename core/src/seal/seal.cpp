@@ -76,6 +76,12 @@ Bytes associated_data(const Labels& labels, std::uint32_t seal_key_id, ByteView 
         .take();
 }
 
+bool encodable_text(std::string_view text, std::size_t bound)
+{
+    const Bytes bytes(text.begin(), text.end());
+    return bytes.size() <= bound && wire::is_valid_text(bytes);
+}
+
 bool sender_is_initiator(const wire::Inner& inner)
 {
     return !inner.initial || inner.initial->ik_sig == inner.sender;
@@ -180,7 +186,8 @@ Result<wire::Seal> seal_card_with(const Recipient& recipient, const wire::Card& 
         return std::unexpected(checked.error());
     }
     if (card.spk.kind != wire::PrekeyKind::signed_prekey || card.pqspk.kind != wire::PrekeyKind::kem_last_resort
-        || card.ssk.kind != wire::PrekeyKind::seal_key || !card.spk.signature || !card.ssk.signature) {
+        || card.ssk.kind != wire::PrekeyKind::seal_key || !card.spk.signature || !card.ssk.signature
+        || !encodable_text(card.certificate.username, wire::username_bound) || now >= card.expires_at) {
         return std::unexpected(Error::malformed);
     }
     const auto padded = pad(wire::encode(card));

@@ -4,7 +4,7 @@
 #pragma once
 
 #include "lume/crypto/bytes.hpp"
-#include "lume/crypto/error.hpp"
+#include "lume/directory/directory.hpp"
 #include "lume/handshake/handshake.hpp"
 #include "lume/identity/identity.hpp"
 #include "lume/wire/structures.hpp"
@@ -21,23 +21,41 @@ inline constexpr std::uint64_t card_lifetime = 7 * day;
 enum class Error : std::uint8_t {
     expired,
     bad_lifetime,
+    wrong_group,
+    wrong_member,
     invalid_signature,
-    outlives_its_keys,
+    invalid_keys,
     identity_changed,
     generation_went_down,
-    invalid_keys,
+    outlives_its_keys,
+    not_the_owner,
+    library_failure,
 };
 
 template <typename T>
 using Result = std::expected<T, Error>;
 
-[[nodiscard]] crypto::Bytes card_message(crypto::ByteView recipient_ik_sig, const wire::Card& card);
+using SigningKey = crypto::ByteArray<wire::ed25519_key_size>;
+using GroupId = crypto::ByteArray<wire::group_id_size>;
 
-[[nodiscard]] crypto::Result<wire::Card> sign_card(
-    const identity::Identity& owner, wire::Card card, crypto::ByteView recipient_ik_sig);
+struct Expected {
+    SigningKey recipient{};
+    GroupId group_id{};
+    SigningKey member{};
+};
 
-[[nodiscard]] Result<handshake::Bundle> check_card(
-    const wire::Card& card, crypto::ByteView recipient_ik_sig, std::uint64_t now,
-    const std::optional<handshake::Pin>& pinned);
+struct CheckedCard {
+    handshake::Bundle bundle;
+    bool name_verified = false;
+};
+
+[[nodiscard]] crypto::Bytes card_message(const SigningKey& recipient, const wire::Card& card);
+
+[[nodiscard]] Result<wire::Card> sign_card(
+    const identity::Identity& owner, wire::Card card, const SigningKey& recipient, std::uint64_t now);
+
+[[nodiscard]] Result<CheckedCard> check_card(
+    const wire::Card& card, const Expected& expected, std::uint64_t now, const std::optional<handshake::Pin>& pinned,
+    const directory::Directory& names);
 
 }
