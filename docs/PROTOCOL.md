@@ -106,10 +106,18 @@ week. The relay serves the newest one (`GetDirectoryKeys`, §4.2); a client
 fetches it whenever it refreshes its own certificate and at most once a day
 otherwise, keeps the list with the highest `sequence` it has verified, and
 ignores one with a lower `sequence`, so it cannot be rolled back; one with the
-same `sequence` is accepted only if it is identical. A list in which two keys
-share a `key_id`, a key is both listed and revoked, or a key's `not_before` is
-not before its `not_after` is refused. A certificate is accepted only from a key
-on a current list whose window contains the time of the check.
+same `sequence` is accepted only if it is identical apart from its signature.
+A list in which two keys share a `key_id` or a public key, a `key_id` is
+revoked twice or both listed and revoked, or a key's `not_before` is not before
+its `not_after` is refused. A `key_id` is never reused: a list that gives a
+`key_id` another public key than the client's current list, or lists a
+`key_id` that list revokes, is refused. A certificate is accepted only from a
+key on a current list whose window — `not_before` with the allowed clock skew,
+up to but not including `not_after` — contains the time of the check, and only
+if its username follows the rule of §6.3. A key stops signing at least 31 days
+before its `not_after`, so every certificate it signed expires inside its
+window, and a name stays verified only until the certificate it was accepted
+with expires.
 Without a current list a client shows names as unverified, with the safety
 number.
 
@@ -121,7 +129,10 @@ which key verified the name and when it accepted it, by its own clock. When a
 list revokes that key, every name the client accepted with it at or after
 `since`, less a day of margin, goes back to unverified — unless the contact was
 verified by safety number — until a fresh certificate arrives. The client's
-own record decides, because a stolen key can write any `issued_at`. Clients
+own record decides, because a stolen key can write any `issued_at`. A revoked
+key stays under `revoked` for at least 45 days after `since`: the last list
+that still named it as a key stays current for up to 14 days, and a
+certificate accepted under it lives at most 31 more. Clients
 send their refreshed certificate in an `Introduction` in the next message of
 each session after the weekly refresh. A relay that withholds the new list can
 keep a revoked key working for at most the 14 days the old list has left.

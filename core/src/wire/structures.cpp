@@ -4,6 +4,7 @@
 #include "lume/wire/structures.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <expected>
 #include <initializer_list>
 #include <stdexcept>
@@ -12,6 +13,9 @@
 
 namespace lume::wire {
 namespace {
+
+constexpr std::size_t directory_key_size = 4 + ed25519_key_size + 8 + 8;
+constexpr std::size_t revoked_key_size = 4 + 8;
 
 constexpr std::initializer_list<PrekeyKind> x25519_kinds{
     PrekeyKind::signed_prekey, PrekeyKind::seal_key, PrekeyKind::one_time_prekey};
@@ -296,6 +300,9 @@ Result<DirectoryKeys> read_directory_keys(Reader& reader)
     if (!keys) {
         return std::unexpected(keys.error());
     }
+    if (reader.remaining() / directory_key_size < *keys) {
+        return std::unexpected(Error::truncated);
+    }
     value.keys.resize(*keys);
     for (auto& key : value.keys) {
         if (!reader.into(key.key_id) || !reader.into(key.public_key) || !reader.into(key.not_before)
@@ -306,6 +313,9 @@ Result<DirectoryKeys> read_directory_keys(Reader& reader)
     const auto revoked = reader.count(revoked_keys_bound);
     if (!revoked) {
         return std::unexpected(revoked.error());
+    }
+    if (reader.remaining() / revoked_key_size < *revoked) {
+        return std::unexpected(Error::truncated);
     }
     value.revoked.resize(*revoked);
     for (auto& entry : value.revoked) {

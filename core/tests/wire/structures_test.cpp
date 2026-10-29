@@ -289,6 +289,13 @@ TEST(WireStructures, DirectoryKeyListsAreBounded)
     auto counted_too_many = encode(DirectoryKeys{});
     counted_too_many.at(8 + 8 + 8 + 1) = static_cast<std::uint8_t>(directory_keys_bound + 1);
     EXPECT_EQ(test::error_of(decode(counted_too_many, read_directory_keys)), Error::over_bound);
+
+    auto counted_but_missing = encode(DirectoryKeys{});
+    counted_but_missing.at(8 + 8 + 8 + 1) = static_cast<std::uint8_t>(directory_keys_bound);
+    EXPECT_EQ(test::error_of(decode(counted_but_missing, read_directory_keys)), Error::truncated);
+    auto revoked_but_missing = encode(DirectoryKeys{});
+    revoked_but_missing.at(8 + 8 + 8 + 2 + 1) = static_cast<std::uint8_t>(revoked_keys_bound);
+    EXPECT_EQ(test::error_of(decode(revoked_but_missing, read_directory_keys)), Error::truncated);
 }
 
 TEST(WireStructures, UnsignedEncodingsLeaveOnlyTheSignatureOut)

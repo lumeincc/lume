@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <expected>
 #include <optional>
+#include <string_view>
 
 namespace lume::directory {
 
@@ -22,12 +23,13 @@ inline constexpr std::uint64_t revocation_margin = day;
 enum class Error : std::uint8_t {
     invalid_signature,
     malformed,
-    lifetime_too_long,
+    bad_lifetime,
     not_yet_valid,
     expired,
     rolled_back,
     conflicting_list,
-    list_expired,
+    no_current_list,
+    invalid_username,
     unknown_key,
     key_outside_window,
     wrong_identity,
@@ -41,27 +43,30 @@ using Result = std::expected<T, Error>;
 
 [[nodiscard]] crypto::Bytes certificate_message(const wire::UsernameCertificate& certificate);
 
-class TrustedList {
-public:
-    [[nodiscard]] static Result<TrustedList> verify(crypto::ByteView root_key, wire::DirectoryKeys list);
+[[nodiscard]] bool is_valid_username(std::string_view username) noexcept;
 
-    [[nodiscard]] const wire::DirectoryKeys& keys() const noexcept;
+class Directory {
+public:
+    explicit Directory(const crypto::ByteArray<wire::ed25519_key_size>& root_key) noexcept;
+
+    [[nodiscard]] Result<void> restore(wire::DirectoryKeys stored);
+    [[nodiscard]] Result<void> accept(wire::DirectoryKeys fetched, std::uint64_t now);
+
+    [[nodiscard]] const std::optional<wire::DirectoryKeys>& list() const noexcept;
     [[nodiscard]] bool current_at(std::uint64_t now) const noexcept;
 
+    [[nodiscard]] Result<void> check_certificate(
+        const wire::UsernameCertificate& certificate, std::uint64_t now, const identity::PublicIdentity& peer,
+        const crypto::ByteArray<wire::account_id_size>& account_id) const;
+
+    [[nodiscard]] bool distrusts(std::uint32_t key_id, std::uint64_t accepted_at) const noexcept;
+
 private:
-    explicit TrustedList(wire::DirectoryKeys list) noexcept;
+    [[nodiscard]] Result<void> verify(const wire::DirectoryKeys& list) const;
+    [[nodiscard]] Result<void> follows(const wire::DirectoryKeys& list) const;
 
-    wire::DirectoryKeys list_;
+    crypto::ByteArray<wire::ed25519_key_size> root_key_;
+    std::optional<wire::DirectoryKeys> list_;
 };
-
-[[nodiscard]] Result<TrustedList> accept_list(
-    crypto::ByteView root_key, wire::DirectoryKeys candidate, std::uint64_t now,
-    const std::optional<TrustedList>& held);
-
-[[nodiscard]] Result<void> check_certificate(
-    const TrustedList& list, const wire::UsernameCertificate& certificate, std::uint64_t now,
-    const identity::PublicIdentity& peer, const crypto::ByteArray<wire::account_id_size>& account_id);
-
-[[nodiscard]] bool distrusts(const TrustedList& list, std::uint32_t key_id, std::uint64_t accepted_at) noexcept;
 
 }
