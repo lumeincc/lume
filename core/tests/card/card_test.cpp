@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <expected>
 #include <functional>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -128,9 +129,18 @@ wire::Card signed_as_is(const Producer& producer, const identity::Identity& reci
     return card;
 }
 
+Member member_of(const identity::Identity& owner)
+{
+    const auto identity = identity::public_identity(owner);
+    return Member{.signing_key = identity.signing_key, .exchange_key = identity.exchange_key};
+}
+
 Expected expected_for(const identity::Identity& recipient, const wire::Card& card)
 {
-    return Expected{.recipient = signing_key_of(recipient), .group_id = card.group_id, .member = card.certificate.ik_sig};
+    return Expected{
+        .recipient = signing_key_of(recipient),
+        .group_id = card.group_id,
+        .member = Member{.signing_key = card.certificate.ik_sig, .exchange_key = card.certificate.ik_dh}};
 }
 
 const directory::Directory& no_names()
@@ -159,6 +169,12 @@ Error error_named(const std::string& name)
 {
     if (name == "expired") {
         return Error::expired;
+    }
+    if (name == "bad_lifetime") {
+        return Error::bad_lifetime;
+    }
+    if (name == "outlives_its_keys") {
+        return Error::outlives_its_keys;
     }
     if (name == "wrong_group") {
         return Error::wrong_group;
@@ -211,10 +227,10 @@ TEST(Card, MatchesTheLumeVectors)
     ASSERT_TRUE(
         names.accept(must(wire::decode(hex_field(directory_vectors.at("list"), "encoded"), wire::read_directory_keys)), at)
             .has_value());
-    const Expected expected{.recipient = signing_key_of(alice), .group_id = card.group_id, .member = signing_key_of(bob)};
+    const Expected expected{.recipient = signing_key_of(alice), .group_id = card.group_id, .member = member_of(bob)};
     const auto checked_card = check_card(card, expected, at, std::nullopt, names);
     ASSERT_TRUE(checked_card.has_value());
-    EXPECT_TRUE(checked_card->name_verified);
+    EXPECT_TRUE(checked_card->name_check.has_value());
     EXPECT_EQ(checked_card->bundle.identity.exchange_key, identity::public_identity(bob).exchange_key);
     EXPECT_TRUE(handshake::initiate(alice, checked_card->bundle, std::nullopt, at).has_value());
 
@@ -223,14 +239,18 @@ TEST(Card, MatchesTheLumeVectors)
         const Expected other{
             .recipient = array_of<wire::ed25519_key_size>(hex_field(refusal, "recipient")),
             .group_id = array_of<wire::group_id_size>(hex_field(refusal, "group_id")),
-            .member = array_of<wire::ed25519_key_size>(hex_field(refusal, "member"))};
+            .member = Member{
+                .signing_key = array_of<wire::ed25519_key_size>(hex_field(refusal, "member_ik_sig")),
+                .exchange_key = array_of<wire::x25519_key_size>(hex_field(refusal, "member_ik_dh"))}};
+        const auto refused =
+            refusal.contains("card") ? must(wire::decode(hex_field(refusal, "card"), wire::read_card)) : card;
         const auto when = refusal.at("now").get<std::uint64_t>();
-        EXPECT_EQ(test::error_of(check_card(card, other, when, std::nullopt, names)),
+        EXPECT_EQ(test::error_of(check_card(refused, other, when, std::nullopt, names)),
             error_named(refusal.at("error").get<std::string>()))
             << refusal.at("name").get<std::string>();
         ++check_refusals;
     }
-    EXPECT_EQ(check_refusals, 4);
+    EXPECT_EQ(check_refusals, 7);
 
     const auto& seal_vector = vectors.at("recipient_seal_key");
     const auto keys = must(crypto::x25519_from_secret(SecretBytes::copy_of(hex_field(seal_vector, "secret"))));
@@ -273,7 +293,7 @@ TEST(Card, CarriesEverythingAHandshakeNeeds)
     const auto alice = new_identity();
     const auto result = checked(signed_card(bob, alice, unsigned_card(bob)), alice);
     ASSERT_TRUE(result.has_value());
-    EXPECT_FALSE(result->name_verified);
+    EXPECT_EQ(test::error_of(result->name_check), directory::Error::no_current_list);
     EXPECT_FALSE(result->bundle.one_time_prekey.has_value());
     EXPECT_TRUE(handshake::initiate(alice, result->bundle, std::nullopt, now).has_value());
 }
@@ -303,14 +323,18 @@ TEST(Card, ChecksTheNameItCarries)
     const auto genuine = signed_card(bob, alice, card);
     const auto verified = check_card(genuine, expected_for(alice, genuine), now, std::nullopt, names);
     ASSERT_TRUE(verified.has_value());
-    EXPECT_TRUE(verified->name_verified);
+    EXPECT_TRUE(verified->name_check.has_value());
 
     auto impostor = card;
     impostor.certificate.username = "admin";
     const auto shown = signed_card(bob, alice, impostor);
     const auto unverified = check_card(shown, expected_for(alice, shown), now, std::nullopt, names);
     ASSERT_TRUE(unverified.has_value());
-    EXPECT_FALSE(unverified->name_verified);
+    EXPECT_EQ(test::error_of(unverified->name_check), directory::Error::invalid_signature);
+
+    const auto after_the_list = check_card(genuine, expected_for(alice, genuine), now + (2 * directory::day), std::nullopt, names);
+    ASSERT_TRUE(after_the_list.has_value());
+    EXPECT_EQ(test::error_of(after_the_list->name_check), directory::Error::no_current_list);
 }
 
 TEST(Card, IsBoundToItsGroupAndItsMember)
@@ -323,14 +347,57 @@ TEST(Card, IsBoundToItsGroupAndItsMember)
     EXPECT_EQ(test::error_of(check_card(card, other_group, now, std::nullopt, no_names())), Error::wrong_group);
 
     auto other_member = expected_for(alice, card);
-    other_member.member = signing_key_of(new_identity());
+    other_member.member = member_of(new_identity());
     EXPECT_EQ(test::error_of(check_card(card, other_member, now, std::nullopt, no_names())), Error::wrong_member);
+    auto other_signing_key = expected_for(alice, card);
+    other_signing_key.member.signing_key = signing_key_of(new_identity());
+    EXPECT_EQ(test::error_of(check_card(card, other_signing_key, now, std::nullopt, no_names())), Error::wrong_member);
+    auto other_exchange_key = expected_for(alice, card);
+    other_exchange_key.member.exchange_key = member_of(new_identity()).exchange_key;
+    EXPECT_EQ(test::error_of(check_card(card, other_exchange_key, now, std::nullopt, no_names())), Error::wrong_member);
 
     auto to_itself = expected_for(alice, card);
-    to_itself.recipient = to_itself.member;
+    to_itself.recipient = to_itself.member.signing_key;
     EXPECT_EQ(test::error_of(check_card(card, to_itself, now, std::nullopt, no_names())), Error::wrong_member);
     EXPECT_EQ(test::error_of(sign_card(bob.identity, unsigned_card(bob), signing_key_of(bob.identity), now)),
         Error::wrong_member);
+    EXPECT_EQ(test::error_of(sign_card(bob.identity, unsigned_card(bob), SigningKey{}, now)), Error::wrong_member);
+}
+
+TEST(Card, ChecksInTheOrderTheSpecGives)
+{
+    const Producer bob;
+    const auto alice = new_identity();
+    const auto refused = [](const wire::Card& card, const Expected& expected,
+                             const std::optional<handshake::Pin>& pinned = std::nullopt) {
+        return test::error_of(check_card(card, expected, now, pinned, no_names()));
+    };
+    auto forged = signed_card(bob, alice, unsigned_card(bob));
+    forged.signature.front() = static_cast<std::uint8_t>(forged.signature.front() ^ 0x01U);
+    auto other_group = expected_for(alice, forged);
+    other_group.group_id.front() = static_cast<std::uint8_t>(other_group.group_id.front() ^ 0x01U);
+    auto other_member = expected_for(alice, forged);
+    other_member.member = member_of(new_identity());
+    auto other_group_and_member = other_member;
+    other_group_and_member.group_id = other_group.group_id;
+    EXPECT_EQ(refused(forged, other_group), Error::wrong_group);
+    EXPECT_EQ(refused(forged, other_member), Error::wrong_member);
+    EXPECT_EQ(refused(forged, other_group_and_member), Error::wrong_group);
+
+    auto too_long = unsigned_card(bob);
+    too_long.expires_at = now + card_lifetime + skew + 1;
+    auto too_long_elsewhere = expected_for(alice, too_long);
+    too_long_elsewhere.group_id = other_group.group_id;
+    EXPECT_EQ(refused(signed_as_is(bob, alice, too_long), too_long_elsewhere), Error::bad_lifetime);
+
+    auto forged_with_a_wrong_kind = signed_as_is(bob, alice, unsigned_card(bob, Keys{.pq_kind = wire::PrekeyKind::kem_one_time}));
+    forged_with_a_wrong_kind.signature.front() = static_cast<std::uint8_t>(forged_with_a_wrong_kind.signature.front() ^ 0x01U);
+    EXPECT_EQ(refused(forged_with_a_wrong_kind, expected_for(alice, forged_with_a_wrong_kind)), Error::invalid_signature);
+
+    const auto outliving = signed_as_is(bob, alice, unsigned_card(bob, Keys{.spk = now + card_lifetime - usable_for - 1}));
+    const handshake::Pin someone_else{.identity = identity::public_identity(new_identity()), .generation = 1};
+    EXPECT_EQ(refused(outliving, expected_for(alice, outliving)), Error::outlives_its_keys);
+    EXPECT_EQ(refused(outliving, expected_for(alice, outliving), someone_else), Error::identity_changed);
 }
 
 TEST(Card, IsBoundToItsRecipientAndItsContents)
@@ -404,18 +471,56 @@ TEST(Card, SigningFollowsTheProducerRule)
     const Producer bob;
     const auto alice = new_identity();
     EXPECT_EQ(signed_card(bob, alice, unsigned_card(bob)).expires_at, now + card_lifetime);
-    const auto older = signed_card(bob, alice, unsigned_card(bob, Keys{.spk = now - (5 * day)}));
-    EXPECT_EQ(older.expires_at, now - (5 * day) + usable_for);
-    EXPECT_TRUE(checked(older, alice).has_value());
+    const std::uint64_t five_days_ago = now - (5 * day);
+    for (const auto& keys : {Keys{.spk = five_days_ago}, Keys{.pqspk = five_days_ago}, Keys{.ssk = five_days_ago}}) {
+        const auto older = signed_card(bob, alice, unsigned_card(bob, keys));
+        EXPECT_EQ(older.expires_at, five_days_ago + usable_for);
+        EXPECT_TRUE(checked(older, alice).has_value());
+    }
 
     EXPECT_EQ(test::error_of(sign_card(bob.identity, unsigned_card(bob, Keys{.ssk = now - usable_for}), signing_key_of(alice), now)),
         Error::outlives_its_keys);
+
+    constexpr std::uint64_t late = std::numeric_limits<std::uint64_t>::max() - day;
+    const auto at_the_end = sign_card(
+        bob.identity, unsigned_card(bob, Keys{.spk = late, .pqspk = late, .ssk = late}), signing_key_of(alice), late);
+    ASSERT_TRUE(at_the_end.has_value());
+    EXPECT_EQ(at_the_end->expires_at, std::numeric_limits<std::uint64_t>::max());
+}
+
+TEST(Card, SignsOnlyWhatItsReceiverAccepts)
+{
+    const Producer bob;
+    const auto alice = new_identity();
+    const auto refused = [&bob, &alice](const wire::Card& card) {
+        return test::error_of(sign_card(bob.identity, card, signing_key_of(alice), now));
+    };
     const Producer mallory;
+    const auto stranger = identity::public_identity(mallory.identity);
+    auto other_signing_key = unsigned_card(bob);
+    other_signing_key.certificate.ik_sig = stranger.signing_key;
+    EXPECT_EQ(refused(other_signing_key), Error::not_the_owner);
+    auto other_exchange_key = unsigned_card(bob);
+    other_exchange_key.certificate.ik_dh = stranger.exchange_key;
+    EXPECT_EQ(refused(other_exchange_key), Error::not_the_owner);
+    auto other_binding = unsigned_card(bob);
+    other_binding.bind = stranger.binding;
+    EXPECT_EQ(refused(other_binding), Error::not_the_owner);
     EXPECT_EQ(test::error_of(sign_card(mallory.identity, unsigned_card(bob), signing_key_of(alice), now)),
         Error::not_the_owner);
+
     auto wrong_kind = unsigned_card(bob);
     wrong_kind.pqspk.kind = wire::PrekeyKind::kem_one_time;
-    EXPECT_EQ(test::error_of(sign_card(bob.identity, wrong_kind, signing_key_of(alice), now)), Error::invalid_keys);
+    EXPECT_EQ(refused(wrong_kind), Error::invalid_keys);
+    auto forged_key = unsigned_card(bob);
+    forged_key.ssk.key = crypto::x25519_generate().public_key;
+    EXPECT_EQ(refused(forged_key), Error::invalid_keys);
+    auto other_generation = unsigned_card(bob);
+    other_generation.generation = 2;
+    EXPECT_EQ(refused(other_generation), Error::invalid_keys);
+    EXPECT_EQ(refused(unsigned_card(bob, Keys{.pqspk = now + skew + 1})), Error::invalid_keys);
+    EXPECT_TRUE(sign_card(bob.identity, unsigned_card(bob, Keys{.pqspk = now + skew}), signing_key_of(alice), now)
+                    .has_value());
 }
 
 TEST(Card, ChecksItsKeysLikeABundle)
@@ -424,7 +529,7 @@ TEST(Card, ChecksItsKeysLikeABundle)
     const auto alice = new_identity();
     auto forged_key = unsigned_card(bob);
     forged_key.spk.key = crypto::x25519_generate().public_key;
-    EXPECT_EQ(test::error_of(checked(signed_card(bob, alice, forged_key), alice)), Error::invalid_keys);
+    EXPECT_EQ(test::error_of(checked(signed_as_is(bob, alice, forged_key), alice)), Error::invalid_keys);
 
     auto wrong_binding = unsigned_card(bob);
     wrong_binding.bind.front() = static_cast<std::uint8_t>(wrong_binding.bind.front() ^ 0x01U);
@@ -432,7 +537,7 @@ TEST(Card, ChecksItsKeysLikeABundle)
 
     auto other_generation = unsigned_card(bob);
     other_generation.generation = 2;
-    EXPECT_EQ(test::error_of(checked(signed_card(bob, alice, other_generation), alice)), Error::invalid_keys);
+    EXPECT_EQ(test::error_of(checked(signed_as_is(bob, alice, other_generation), alice)), Error::invalid_keys);
 
     const auto one_time_kem = unsigned_card(bob, Keys{.pq_kind = wire::PrekeyKind::kem_one_time});
     EXPECT_EQ(test::error_of(checked(signed_as_is(bob, alice, one_time_kem), alice)), Error::invalid_keys);
@@ -444,7 +549,14 @@ TEST(Card, ChecksItsKeysLikeABundle)
     non_canonical.spk = must(handshake::make_prekey_x(bob.identity,
         handshake::PrekeyFacts{.kind = wire::PrekeyKind::signed_prekey, .id = 1, .created_at = now, .generation = 1},
         unreduced));
-    EXPECT_EQ(test::error_of(checked(signed_card(bob, alice, non_canonical), alice)), Error::invalid_keys);
+    EXPECT_EQ(test::error_of(checked(signed_as_is(bob, alice, non_canonical), alice)), Error::invalid_keys);
+    EXPECT_EQ(test::error_of(sign_card(bob.identity, non_canonical, signing_key_of(alice), now)), Error::invalid_keys);
+
+    auto non_canonical_ssk = unsigned_card(bob);
+    non_canonical_ssk.ssk = must(handshake::make_prekey_x(bob.identity,
+        handshake::PrekeyFacts{.kind = wire::PrekeyKind::seal_key, .id = 3, .created_at = now, .generation = 1},
+        unreduced));
+    EXPECT_EQ(test::error_of(checked(signed_as_is(bob, alice, non_canonical_ssk), alice)), Error::invalid_keys);
 
     auto from_the_future = unsigned_card(bob, Keys{.spk = now + skew + 1});
     from_the_future.expires_at = now + day;
@@ -541,6 +653,12 @@ TEST(CardSeal, RefusesWhatItCannotSealOrOpen)
     auto expired = good;
     expired.expires_at = now;
     EXPECT_EQ(refused(expired), seal::Error::malformed);
+    auto longest = good;
+    longest.expires_at = now + card_lifetime + skew;
+    EXPECT_TRUE(seal::seal_card(recipient, longest, now).has_value());
+    auto too_far_ahead = good;
+    too_far_ahead.expires_at = now + card_lifetime + skew + 1;
+    EXPECT_EQ(refused(too_far_ahead), seal::Error::malformed);
 
     auto sealed = must(seal::seal_card(recipient, good, now));
     EXPECT_EQ(test::error_of(seal::open_card(recipient.seal_key.id + 1, keys, sealed)), seal::Error::wrong_key);

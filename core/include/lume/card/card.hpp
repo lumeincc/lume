@@ -36,17 +36,23 @@ template <typename T>
 using Result = std::expected<T, Error>;
 
 using SigningKey = crypto::ByteArray<wire::ed25519_key_size>;
+using ExchangeKey = crypto::ByteArray<wire::x25519_key_size>;
 using GroupId = crypto::ByteArray<wire::group_id_size>;
+
+struct Member {
+    SigningKey signing_key{};
+    ExchangeKey exchange_key{};
+};
 
 struct Expected {
     SigningKey recipient{};
     GroupId group_id{};
-    SigningKey member{};
+    Member member{};
 };
 
 struct CheckedCard {
     handshake::Bundle bundle;
-    bool name_verified = false;
+    directory::Result<void> name_check = std::unexpected(directory::Error::no_current_list);
 };
 
 [[nodiscard]] crypto::Bytes card_message(const SigningKey& recipient, const wire::Card& card);

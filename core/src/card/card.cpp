@@ -28,6 +28,12 @@ std::uint64_t oldest_key(const wire::Card& card) noexcept
     return std::min({card.spk.created_at, card.pqspk.created_at, card.ssk.created_at});
 }
 
+std::uint64_t saturating_add(std::uint64_t value, std::uint64_t increment) noexcept
+{
+    constexpr auto limit = std::numeric_limits<std::uint64_t>::max();
+    return value > limit - increment ? limit : value + increment;
+}
+
 bool outlives(std::uint64_t expires_at, std::uint64_t created_at) noexcept
 {
     return expires_at > created_at && expires_at - created_at > handshake::rotating_key_usable_for;
@@ -78,17 +84,14 @@ Result<wire::Card> sign_card(
         || card.bind != identity.binding) {
         return std::unexpected(Error::not_the_owner);
     }
-    if (recipient == identity.signing_key) {
+    if (recipient == identity.signing_key || !crypto::ed25519_is_valid_public_key(recipient)) {
         return std::unexpected(Error::wrong_member);
     }
-    if (!right_kinds(card)) {
+    if (!right_kinds(card) || !handshake::check_bundle(bundle_of(card), std::nullopt, now)) {
         return std::unexpected(Error::invalid_keys);
     }
-    const auto oldest = oldest_key(card);
-    const auto usable_until = oldest > std::numeric_limits<std::uint64_t>::max() - handshake::rotating_key_usable_for
-        ? std::numeric_limits<std::uint64_t>::max()
-        : oldest + handshake::rotating_key_usable_for;
-    card.expires_at = std::min(now + card_lifetime, usable_until);
+    card.expires_at = std::min(
+        saturating_add(now, card_lifetime), saturating_add(oldest_key(card), handshake::rotating_key_usable_for));
     if (card.expires_at <= now) {
         return std::unexpected(Error::outlives_its_keys);
     }
@@ -113,7 +116,8 @@ Result<CheckedCard> check_card(
     if (card.group_id != expected.group_id) {
         return std::unexpected(Error::wrong_group);
     }
-    if (card.certificate.ik_sig != expected.member || card.certificate.ik_sig == expected.recipient) {
+    if (card.certificate.ik_sig != expected.member.signing_key || card.certificate.ik_dh != expected.member.exchange_key
+        || card.certificate.ik_sig == expected.recipient) {
         return std::unexpected(Error::wrong_member);
     }
     if (!crypto::ed25519_verify(card.certificate.ik_sig, card_message(expected.recipient, card), card.signature)) {
@@ -130,9 +134,9 @@ Result<CheckedCard> check_card(
         || outlives(card.expires_at, card.ssk.created_at)) {
         return std::unexpected(Error::outlives_its_keys);
     }
-    const bool name_verified =
-        names.check_certificate(card.certificate, now, bundle.identity, card.certificate.account_id).has_value();
-    return CheckedCard{.bundle = bundle, .name_verified = name_verified};
+    return CheckedCard{
+        .bundle = bundle,
+        .name_check = names.check_certificate(card.certificate, now, bundle.identity, card.certificate.account_id)};
 }
 
 }

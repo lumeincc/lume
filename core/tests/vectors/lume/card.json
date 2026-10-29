@@ -1,5 +1,5 @@
 {
-  "description": "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name); a check refusal must be refused with the error it names when the card is checked with that recipient, group, member and time, and an envelope refusal when it is opened",
+  "description": "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name); a check refusal must be refused with the error it names when the card, or the card it carries, is checked with that recipient, group, member pair and time, and an envelope refusal when it is opened",
   "generator": "core/tools/generate_card_vectors.mjs",
   "now": 1800003600,
   "producer": 4,
@@ -29,7 +29,8 @@
       "description": "the card is offered as an introduction in another group",
       "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
       "group_id": "b6212951bb909890681a4f41ed40429c",
-      "member": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
       "now": 1800003600,
       "error": "wrong_group"
     },
@@ -38,7 +39,18 @@
       "description": "the card is offered as coming from another member",
       "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
       "group_id": "b85876e4146a243002ff164b1bc3781e",
-      "member": "ecad18e97aa32e3dd6a7232243c5fe0cf7ef1fb6ff201b7f4bf366ad65a85743",
+      "member_ik_sig": "ecad18e97aa32e3dd6a7232243c5fe0cf7ef1fb6ff201b7f4bf366ad65a85743",
+      "member_ik_dh": "9c97b6b25a34840937b1fa276204ada51f51a8dc9d4f1f88c5de5220f67c1b4e",
+      "now": 1800003600,
+      "error": "wrong_member"
+    },
+    {
+      "name": "another_exchange_key",
+      "description": "the membership update names the member's signing key with another exchange key",
+      "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
+      "group_id": "b85876e4146a243002ff164b1bc3781e",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "9c97b6b25a34840937b1fa276204ada51f51a8dc9d4f1f88c5de5220f67c1b4e",
       "now": 1800003600,
       "error": "wrong_member"
     },
@@ -47,7 +59,8 @@
       "description": "the card is shown to someone it was not made for",
       "recipient": "ecad18e97aa32e3dd6a7232243c5fe0cf7ef1fb6ff201b7f4bf366ad65a85743",
       "group_id": "b85876e4146a243002ff164b1bc3781e",
-      "member": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
       "now": 1800003600,
       "error": "invalid_signature"
     },
@@ -56,9 +69,31 @@
       "description": "the card is checked at the moment it expires",
       "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
       "group_id": "b85876e4146a243002ff164b1bc3781e",
-      "member": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
       "now": 1800608400,
       "error": "expired"
+    },
+    {
+      "name": "too_far_ahead",
+      "description": "the card is checked when it still has more than 7 days and the clock skew to live",
+      "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
+      "group_id": "b85876e4146a243002ff164b1bc3781e",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
+      "now": 1800003299,
+      "error": "bad_lifetime"
+    },
+    {
+      "name": "outlives_its_keys",
+      "description": "a card signed to expire one second after its keys stop being usable",
+      "card": "0a0b0c0100000003626f62a7b377ea74d769ae786508b29c07c24ce708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c4289aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d00000001000000006b496180000000006b70ee80812d944a9a9c31f5276bd26c9a7648d4c46f7dfa2965c08dae979b5e70be699961b3f8ba93744e11b06b9a8b5dfcfa587be63c8f03b8e7cacff1162fde95b40739aeee3dab3b35cd30f2c096dff8f37c2adada22d41449d93d9a73aff8fc73532c8d975f97baa0c3f2f406a7c1601b71d70bdd8a55086bcce5d0b1aa9f995e07000000010100001000000000006b49d2005510c413c7831ea33d4fa0782f15901c0a49bd39874286e03be11fb30bb31c3f0119a1deaf1a9421b3e81f8632744eddb6ffd2dc9b3b44d3692d3cebe452e1eeb7a488be26cafaa99698ea31db431f87479ca1eba8b8b5d68974b861db190cc00e0200002000000000006b49d200a8e651a1e685f22478a8954f007bc7711b930772c78f092e82878e3e937f367967532913a8d53dfdf4bfb1f8846746596705cf345142b972a3f16325c40c2952a37b25897e5ef35fbaeb73a4acbeb6a0b89942ceb195531cfc0a07993954483e6cbc87c06aa74ff0cac5207e535b260aa98d1198c07da605c4d11020f6c9f7bb68bb3456c73a01b710bc99d17739a51716aa01660c8b628b2f5602ba65f07ea993336e896e83f2c5731bbf03460c5b6c8afecb748ee391e98934a2c57d4d069f50d88b30d6966f38c37bc649b82634ce7722645ccd625063364646d6d699db57b45eb67465e16de4d406a818b9eae1ca916a2594489708a43cea88b02a4c03d09b44815c97101caf5048bbcb247ae2366cdc254ba22129f45b3b0eb399ca91a303402830ec01db7b2ca480cf350409b216094b7b0c3ae33ce10a9124e89651ab901ea253c8415bd7825f02bb229369af972028f22875ea55af16d3bc69f70c2ee8b75f28b47dd391f989ade314729c331fa04c1917b278c3eb602868512821adc825c64577ce1e63b1d9644a612948a3483c7f1b9a258000e30196944a403627609c76c7ea6b5de01764d24379117b9ea29848dc555c454bceae1ba5cc72c74ab96b9c91b910d26b88b25639d4778ae26c7c6151a19c6cd7938454372465e4c5ec29245acb3db5379de3dabfa629a7c04a8353a8530c95acb732bb4bb81932bb2ca7a848cd366801444abe23c83b366a87d6a3cf360924c002bae90af65c48060b3752f2badf1ab2722072554a5059753594e6a702761fc97684c8c4a7540a6b07fbc9de87c974aa8809d928c7f4cbbf8045aea5bc667825fd05a521f1a4bf539210c7113bc37b3e58b0cbfc53c841cbb0371de2e511b989cb7c70c023366d78f9c37ef047f8720be1c759a8d96b93f65a94114ffaf60d9a81795e995c71152a4691a5a602a9e1f3599e37c768c7bc108994c0669f3adc957d46b4b6256968e290d7892ea85464ee7a750f39c5e3152c2dfc56d8b0c924ba8a959a68096547f66423c838982a5794b9e1533771331a9a656c28828beb9126a60e95e8c5d906832c7710705576b1fb9507269ddaf8c95ce9719b2ca8dd112be10bcc9f4a37bd1b1eeeb33ecda76ae9f69a5d4b2923a86957671d619335be1c4c2c77ce87c41f98a8cc466460fa300aaf5b301f0a1d09c88e65da4d8ee64f68c02189bbb3584baff716c85db654048a004333489393a07427cd3e217e6a345f6c2c2b13c27b337271c0b27b2dbaa00d237600b5b594e8cf2dd625ea76cf0ed899122c9796b4b0187004258049a477cd11d68c49b9a0e7b00bce8cac7864cbb375140084744c93062694ca795c4f40e7acc9c5a1884072d8c38dafb501ee4184dd5a819ec24ec1651261f962b17a7215aa4a748c15836c389137678204838d7195a85b4f98a1b574c4cd7909cd1f833effd1485543229d3748d9b5cd6c17b9b3b84aef8bce13e683733659c79542d615782a71cdeee792bab51bdc4bbfe8308e663144ede8491830ad98b4634f64aba8b9c042272653920f380c1a17ca87ced7aac41c82888793181a6f76e197b7b90ef90943bb3844912911d8551e5466c5767ab0bc61a1a3f736162ec098a900b12dd8fabbfb3fe8cb1dc4e8315f2af0d32f0017ae136e19f028142bbea2c1855a98336274e019de73fc9fc332cb6c0dc5fb3e8f756fdd299ba15b61affd030bac4dcbc9708bb18c7e140dc03b6ff66fb0d1c8d27c0aa73850040400003000000000006b49d200f324a16ebadb0028e0b552caa3594ef278c76d3afa03883f550245f9bb2b86210102330e576cd4e88c00bfb9f2973bbc6fff08c72d84c781ed70490fea888b1116457fdf1adf0762f5e902ccac7ef9e9ff2dcb930b7c2bef96f934add3b064280b5a1063869ca748fb391ed56365c2db19ed6d12443cda0a308475c57d8e0ecac2b85876e4146a243002ff164b1bc3781e000000006b55af8118df4221898fa61f6ae321f058078499f9277a6bac0f369adf88640467eac6c07628a6d36f6000eb64efc41ba750daa10a1ccae1dfebf6b59d31d957c18d0302",
+      "recipient": "c5bc610b5f85dd19a201dbce433e395238c516d794c82774a17a57ae0b23b5c6",
+      "group_id": "b85876e4146a243002ff164b1bc3781e",
+      "member_ik_sig": "e708aeb817c838181213da9e4df5ebd51714e4dcaab67b8cdea8be5ff3e58c42",
+      "member_ik_dh": "89aa4569ccff9a32fdabb7d6dd1cda2494b9a0ddc4ba3cac608084ac5e5e422d",
+      "now": 1800172801,
+      "error": "outlives_its_keys"
     }
   ],
   "envelope_refusals": [

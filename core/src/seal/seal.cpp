@@ -4,6 +4,7 @@
 #include "lume/seal/seal.hpp"
 
 #include "crypto/aead_internal.hpp"
+#include "lume/card/card.hpp"
 #include "lume/crypto/aead.hpp"
 #include "lume/crypto/encoding.hpp"
 #include "lume/crypto/kdf.hpp"
@@ -78,8 +79,12 @@ Bytes associated_data(const Labels& labels, std::uint32_t seal_key_id, ByteView 
 
 bool encodable_text(std::string_view text, std::size_t bound)
 {
-    const Bytes bytes(text.begin(), text.end());
-    return bytes.size() <= bound && wire::is_valid_text(bytes);
+    return text.size() <= bound && wire::is_valid_text(Bytes(text.begin(), text.end()));
+}
+
+bool within_card_lifetime(const wire::Card& card, std::uint64_t now) noexcept
+{
+    return now < card.expires_at && card.expires_at - now <= card::card_lifetime + handshake::allowed_clock_skew;
 }
 
 bool sender_is_initiator(const wire::Inner& inner)
@@ -187,7 +192,7 @@ Result<wire::Seal> seal_card_with(const Recipient& recipient, const wire::Card& 
     }
     if (card.spk.kind != wire::PrekeyKind::signed_prekey || card.pqspk.kind != wire::PrekeyKind::kem_last_resort
         || card.ssk.kind != wire::PrekeyKind::seal_key || !card.spk.signature || !card.ssk.signature
-        || !encodable_text(card.certificate.username, wire::username_bound) || now >= card.expires_at) {
+        || !encodable_text(card.certificate.username, wire::username_bound) || !within_card_lifetime(card, now)) {
         return std::unexpected(Error::malformed);
     }
     const auto padded = pad(wire::encode(card));

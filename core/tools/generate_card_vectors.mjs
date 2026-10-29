@@ -116,15 +116,25 @@ const unsignedCertificate = Buffer.concat([
 const certificateSignature = signed(bytes(directory.directory_keys[0].seed), Buffer.concat([label("certificate"), unsignedCertificate]));
 const encodedCertificate = Buffer.concat([unsignedCertificate, certificateSignature]);
 
+const skew = 5 * 60;
+const cardLifetime = 7 * day;
+const keyUsableFor = 9 * day;
 const token = seedOf("token");
 const groupId = seedOf("group").subarray(0, 16);
-const expiresAt = now + 7 * day;
-const cardMessage = Buffer.concat([label("card"), bytes(alice.signing_key), groupId, sha256(token), u64(expiresAt)]);
-const cardSignature = signed(bytes(bob.signing_seed), cardMessage);
-const encodedCard = Buffer.concat([
-  encodedCertificate, bytes(bob.binding), u32(generation), encodePrekeyX(spk), encodePrekeyKem(pqspk), encodePrekeyX(ssk),
-  token, groupId, u64(expiresAt), cardSignature,
-]);
+const cardMessageFor = (recipient, expires) => Buffer.concat([label("card"), recipient, groupId, sha256(token), u64(expires)]);
+const cardFor = (expires) => {
+  const signature = signed(bytes(bob.signing_seed), cardMessageFor(bytes(alice.signing_key), expires));
+  const encoded = Buffer.concat([
+    encodedCertificate, bytes(bob.binding), u32(generation), encodePrekeyX(spk), encodePrekeyKem(pqspk), encodePrekeyX(ssk),
+    token, groupId, u64(expires), signature,
+  ]);
+  return { expiresAt: expires, signature, encoded };
+};
+const expiresAt = Math.min(now + cardLifetime, createdAt + keyUsableFor);
+const vectorCard = cardFor(expiresAt);
+const cardMessage = cardMessageFor(bytes(alice.signing_key), expiresAt);
+const cardSignature = vectorCard.signature;
+const encodedCard = vectorCard.encoded;
 
 const aliceSeal = { id: 0x00c0ffee, created_at: now - 20 * day, secret: seedOf("alice seal key") };
 aliceSeal.public = x25519PublicOf(aliceSeal.secret);
@@ -148,26 +158,52 @@ const asSeal = aeadDecrypt(Buffer.from(hkdfSync("sha256", dh(aliceSeal.secret, e
   nonce, Buffer.concat([label("seal/ad"), u8(1), u32(aliceSeal.id), ephemeral, aliceSeal.public]), box);
 if (asSeal) throw new Error("a sealed card must not open as a sealed message");
 
-const expected = { recipient: bytes(alice.signing_key), group_id: groupId, member: bytes(bob.signing_key), now };
+const expected = {
+  card: vectorCard, recipient: bytes(alice.signing_key), group_id: groupId,
+  member_ik_sig: bytes(bob.signing_key), member_ik_dh: bytes(bob.exchange_key), now,
+};
+const keyUsableAt = (at) => createdAt <= at + skew && at - createdAt <= keyUsableFor;
 const refuse = (check) => {
-  if (check.now >= expiresAt) return "expired";
+  const { card } = check;
+  if (check.now >= card.expiresAt) return "expired";
+  if (card.expiresAt - check.now > cardLifetime + skew) return "bad_lifetime";
   if (!check.group_id.equals(groupId)) return "wrong_group";
-  if (!check.member.equals(bytes(bob.signing_key)) || check.member.equals(check.recipient)) return "wrong_member";
-  const message = Buffer.concat([label("card"), check.recipient, groupId, sha256(token), u64(expiresAt)]);
-  if (!verify(null, message, ed25519Public(bytes(bob.signing_key)), cardSignature)) return "invalid_signature";
+  if (!check.member_ik_sig.equals(bytes(bob.signing_key)) || !check.member_ik_dh.equals(bytes(bob.exchange_key))
+    || check.member_ik_sig.equals(check.recipient)) return "wrong_member";
+  if (!verify(null, cardMessageFor(check.recipient, card.expiresAt), ed25519Public(bytes(bob.signing_key)), card.signature)) {
+    return "invalid_signature";
+  }
+  if (!keyUsableAt(check.now)) return "invalid_keys";
+  if (card.expiresAt - createdAt > keyUsableFor) return "outlives_its_keys";
   return null;
 };
 if (refuse(expected) !== null) throw new Error("the vector card must be accepted by its own recipient");
-const stranger = bytes(identities[0].signing_key);
+const outliving = cardFor(createdAt + keyUsableFor + 1);
+const outlivingCheckedAt = outliving.expiresAt - cardLifetime;
+if (refuse({ ...expected, card: outliving, now: outlivingCheckedAt }) !== "outlives_its_keys") {
+  throw new Error("the outliving card must fail only the rule that a card may not outlive its keys");
+}
+const stranger = identities[0];
 const checkRefusals = [
   ["another_group", "the card is offered as an introduction in another group", { ...expected, group_id: seedOf("other group").subarray(0, 16) }],
-  ["another_member", "the card is offered as coming from another member", { ...expected, member: stranger }],
-  ["another_recipient", "the card is shown to someone it was not made for", { ...expected, recipient: stranger }],
+  ["another_member", "the card is offered as coming from another member",
+    { ...expected, member_ik_sig: bytes(stranger.signing_key), member_ik_dh: bytes(stranger.exchange_key) }],
+  ["another_exchange_key", "the membership update names the member's signing key with another exchange key",
+    { ...expected, member_ik_dh: bytes(stranger.exchange_key) }],
+  ["another_recipient", "the card is shown to someone it was not made for", { ...expected, recipient: bytes(stranger.signing_key) }],
   ["expired", "the card is checked at the moment it expires", { ...expected, now: expiresAt }],
+  ["too_far_ahead", "the card is checked when it still has more than 7 days and the clock skew to live",
+    { ...expected, now: expiresAt - cardLifetime - skew - 1 }],
+  ["outlives_its_keys", "a card signed to expire one second after its keys stop being usable",
+    { ...expected, card: outliving, now: outlivingCheckedAt }],
 ].map(([name, description, check]) => {
   const error = refuse(check);
   if (!error) throw new Error(`${name} must be refused`);
-  return { name, description, recipient: hex(check.recipient), group_id: hex(check.group_id), member: hex(check.member), now: check.now, error };
+  return {
+    name, description, ...(check.card === vectorCard ? {} : { card: hex(check.card.encoded) }),
+    recipient: hex(check.recipient), group_id: hex(check.group_id), member_ik_sig: hex(check.member_ik_sig),
+    member_ik_dh: hex(check.member_ik_dh), now: check.now, error,
+  };
 });
 
 const sealedPlaintext = (plaintext, seed) => {
@@ -187,7 +223,7 @@ const envelopeRefusals = [
 ].map(([name, description, plaintext, error]) => ({ name, description, envelope: hex(sealedPlaintext(plaintext, `LUME card vector ${name}`)), error }));
 
 const document = {
-  description: "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name); a check refusal must be refused with the error it names when the card is checked with that recipient, group, member and time, and an envelope refusal when it is opened",
+  description: "LUME introduction card, CRYPTO.md section 11.2, computed with Node.js crypto (OpenSSL) and the shared XChaCha20-Poly1305 checked against Wycheproof: Bob's card for Alice (cases 4 and 3 of identity.json) with Bob's keys from case 0 of handshake.json, the ML-KEM key being the Wycheproof mlkem_768_test.json case it names, and a certificate signed by directory key 1 of directory.json; the card is sealed under card/key and card/ad to a seal key of Alice that is 20 days old, inside the 30 days a card seal allows; seeds are SHA-256(\"LUME card vector \" || name); a check refusal must be refused with the error it names when the card, or the card it carries, is checked with that recipient, group, member pair and time, and an envelope refusal when it is opened",
   generator: "core/tools/generate_card_vectors.mjs",
   now,
   producer: handshake.bob,
