@@ -14,7 +14,7 @@ namespace lume::seal::detail {
 using RandomSource = std::function<void(std::span<std::uint8_t>)>;
 
 [[nodiscard]] Result<wire::Seal> seal(
-    const wire::PrekeyX& seal_key, const wire::Inner& inner, const RandomSource& random);
+    const Recipient& recipient, const wire::Inner& inner, std::uint64_t now, const RandomSource& random);
 
 [[nodiscard]] Result<wire::Inner> inner_of(crypto::ByteView padded);
 

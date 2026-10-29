@@ -634,7 +634,10 @@ both identities — fails unless the message really came from that session.
 recipient — from a bundle, a card, an introduction, or a seal-key update inside
 the session — as long as it is within the §4 window. When the cached key is
 more than 7 days past its `created_at`, the sender first fetches the current
-one from the relay with its delivery token (PROTOCOL §4.3).
+one from the relay with its delivery token (PROTOCOL §4.3). Before every seal
+the sender checks the key's signature under the recipient's identity and
+generation (§4), whichever way the key arrived, so a key the relay hands out
+cannot point the seal at anyone else.
 
 **Forward secrecy of the sender.** A seal key's private half is deleted 40 days
 after its `created_at` (§4), so a recorded

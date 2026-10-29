@@ -3,7 +3,9 @@
 
 #include "lume/wire/structures.hpp"
 
+#include "support/expected.hpp"
 #include "support/mutate.hpp"
+#include "support/utf8.hpp"
 #include "support/vectors.hpp"
 
 #include <gtest/gtest.h>
@@ -16,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace lume::wire {
 namespace {
@@ -65,8 +68,15 @@ UsernameCertificate random_username_certificate()
 {
     UsernameCertificate value;
     value.key_id = any_integer<std::uint32_t>();
-    const auto length = *rc::gen::inRange<std::size_t>(0, username_bound + 1);
-    value.username = *rc::gen::container<std::string>(length, rc::gen::inRange('a', static_cast<char>('z' + 1)));
+    const auto code_points = *rc::gen::container<std::vector<std::uint32_t>>(rc::gen::oneOf(
+        rc::gen::inRange<std::uint32_t>(1, 0xd800), rc::gen::inRange<std::uint32_t>(0xe000, 0x110000)));
+    for (const auto code_point : code_points) {
+        const auto bytes = test::utf8_of(code_point);
+        if (value.username.size() + bytes.size() > username_bound) {
+            break;
+        }
+        value.username.append(bytes.begin(), bytes.end());
+    }
     value.account_id = random_array<account_id_size>();
     value.ik_sig = random_array<ed25519_key_size>();
     value.ik_dh = random_array<x25519_key_size>();
@@ -269,21 +279,39 @@ TEST(WireStructures, ContentFieldsAreInProtocolOrder)
 
 TEST(WireStructures, IntroductionsCarryOnlySealKeys)
 {
-    Introduction signed_prekey_instead;
-    signed_prekey_instead.seal_key.kind = PrekeyKind::signed_prekey;
-    EXPECT_EQ(decode(encode(signed_prekey_instead), read_introduction).error(), Error::invalid_value);
-
-    Introduction one_time_prekey_instead;
-    one_time_prekey_instead.seal_key.kind = PrekeyKind::one_time_prekey;
-    one_time_prekey_instead.seal_key.signature.reset();
-    EXPECT_EQ(decode(encode(one_time_prekey_instead), read_introduction).error(), Error::invalid_value);
-
     auto introduction = encode(Introduction{});
-    for (const int kind : {0, 2, 3, 6, 255}) {
+    for (const int kind : {0, 1, 2, 3, 5, 6, 255}) {
         introduction.at(introduction_seal_key_offset) = static_cast<std::uint8_t>(kind);
-        EXPECT_EQ(decode(introduction, read_introduction).error(), Error::invalid_value) << kind;
+        EXPECT_EQ(test::error_of(decode(introduction, read_introduction)), Error::invalid_value) << kind;
     }
     EXPECT_TRUE(decode(encode(Introduction{}), read_introduction).has_value());
+}
+
+TEST(WireStructures, WritersRefuseWhatTheirReadersRefuse)
+{
+    auto signed_one_time = signed_prekey();
+    signed_one_time.kind = PrekeyKind::one_time_prekey;
+    EXPECT_THROW((void)encode(signed_one_time), std::invalid_argument);
+    auto unsigned_signed = one_time_prekey();
+    unsigned_signed.kind = PrekeyKind::signed_prekey;
+    EXPECT_THROW((void)encode(unsigned_signed), std::invalid_argument);
+    auto kem_kind = signed_prekey();
+    kem_kind.kind = PrekeyKind::kem_last_resort;
+    EXPECT_THROW((void)encode(kem_kind), std::invalid_argument);
+
+    PrekeyKem x25519_kind;
+    x25519_kind.kind = PrekeyKind::signed_prekey;
+    EXPECT_THROW((void)encode(x25519_kind), std::invalid_argument);
+    InitialHeader header;
+    header.pq_kind = PrekeyKind::seal_key;
+    EXPECT_THROW((void)encode(header), std::invalid_argument);
+
+    Introduction signed_prekey_instead;
+    signed_prekey_instead.seal_key.kind = PrekeyKind::signed_prekey;
+    EXPECT_THROW((void)encode(signed_prekey_instead), std::invalid_argument);
+    Content content;
+    content.introduction = signed_prekey_instead;
+    EXPECT_THROW((void)encode(content), std::invalid_argument);
 }
 
 TEST(WireStructures, UsernamesAreBoundedText)
@@ -291,10 +319,10 @@ TEST(WireStructures, UsernamesAreBoundedText)
     EXPECT_TRUE(decode(encode(certificate_named(std::string(username_bound, 'a'))), read_username_certificate).has_value());
     EXPECT_THROW((void)encode(certificate_named(std::string(username_bound + 1, 'a'))), std::length_error);
     EXPECT_THROW((void)encode(certificate_named(std::string("a\0b", 3))), std::invalid_argument);
-    EXPECT_EQ(
-        decode(with_username_bytes(Bytes(username_bound + 1, 'a')), read_username_certificate).error(), Error::over_bound);
-    EXPECT_EQ(decode(with_username_bytes({'a', 0x00, 'b'}), read_username_certificate).error(), Error::invalid_text);
-    EXPECT_EQ(decode(with_username_bytes({'a', 0xC3}), read_username_certificate).error(), Error::invalid_text);
+    EXPECT_EQ(test::error_of(decode(with_username_bytes(Bytes(username_bound + 1, 'a')), read_username_certificate)),
+        Error::over_bound);
+    EXPECT_EQ(test::error_of(decode(with_username_bytes({'a', 0x00, 'b'}), read_username_certificate)), Error::invalid_text);
+    EXPECT_EQ(test::error_of(decode(with_username_bytes({'a', 0xC3}), read_username_certificate)), Error::invalid_text);
     const auto accented = decode(with_username_bytes({0xC3, 0xA9}), read_username_certificate);
     ASSERT_TRUE(accented.has_value());
     EXPECT_EQ(accented->username, "\xC3\xA9");
@@ -348,7 +376,7 @@ TEST(WireStructures, BodiesAreBounded)
     EXPECT_THROW((void)encode(content_with_body(content_body_bound + 1)), std::length_error);
     auto content = Writer{}.fixed(Bytes(content_id_size)).u8(0).present(false).u32(content_body_bound + 1).take();
     content.resize(content.size() + content_body_bound + 1);
-    EXPECT_EQ(decode(content, read_content).error(), Error::over_bound);
+    EXPECT_EQ(test::error_of(decode(content, read_content)), Error::over_bound);
 }
 
 TEST(WireStructures, NonCanonicalOptionalsAreRejected)
@@ -361,10 +389,10 @@ TEST(WireStructures, NonCanonicalOptionalsAreRejected)
     EXPECT_EQ(decode(header, read_initial_header).error(), Error::non_canonical);
     auto content = encode(Content{});
     content.at(content_id_size + 1) = 2;
-    EXPECT_EQ(decode(content, read_content).error(), Error::non_canonical);
+    EXPECT_EQ(test::error_of(decode(content, read_content)), Error::non_canonical);
     auto introduction = encode(Introduction{});
     introduction.back() = 2;
-    EXPECT_EQ(decode(introduction, read_introduction).error(), Error::non_canonical);
+    EXPECT_EQ(test::error_of(decode(introduction, read_introduction)), Error::non_canonical);
 }
 
 RC_GTEST_PROP(WireStructureProperties, PrekeyXRoundTrips, ())

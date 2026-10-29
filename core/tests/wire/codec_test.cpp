@@ -3,6 +3,7 @@
 
 #include "lume/wire/codec.hpp"
 
+#include "support/utf8.hpp"
 #include "support/vectors.hpp"
 
 #include <gtest/gtest.h>
@@ -70,25 +71,6 @@ bool reference_is_valid(const Bytes& text)
         }
     }
     return true;
-}
-
-Bytes encoded(std::uint32_t code_point)
-{
-    if (code_point < 0x80) {
-        return {static_cast<std::uint8_t>(code_point)};
-    }
-    if (code_point < 0x800) {
-        return {static_cast<std::uint8_t>(0xc0U | (code_point >> 6U)), static_cast<std::uint8_t>(0x80U | (code_point & 0x3fU))};
-    }
-    if (code_point < 0x10000) {
-        return {static_cast<std::uint8_t>(0xe0U | (code_point >> 12U)),
-            static_cast<std::uint8_t>(0x80U | ((code_point >> 6U) & 0x3fU)),
-            static_cast<std::uint8_t>(0x80U | (code_point & 0x3fU))};
-    }
-    return {static_cast<std::uint8_t>(0xf0U | (code_point >> 18U)),
-        static_cast<std::uint8_t>(0x80U | ((code_point >> 12U) & 0x3fU)),
-        static_cast<std::uint8_t>(0x80U | ((code_point >> 6U) & 0x3fU)),
-        static_cast<std::uint8_t>(0x80U | (code_point & 0x3fU))};
 }
 
 TEST(WireCodec, IntegersAreBigEndian)
@@ -224,7 +206,7 @@ RC_GTEST_PROP(WireCodecProperties, EncodedCodePointsAreValidText, ())
         rc::gen::inRange<std::uint32_t>(1, 0xd800), rc::gen::inRange<std::uint32_t>(0xe000, 0x110000)));
     Bytes text;
     for (const auto code_point : code_points) {
-        const auto bytes = encoded(code_point);
+        const auto bytes = test::utf8_of(code_point);
         text.insert(text.end(), bytes.begin(), bytes.end());
     }
     RC_ASSERT(is_valid_text(text));

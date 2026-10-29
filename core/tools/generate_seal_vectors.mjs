@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, diffieHellman, hkdfSync } from "node:crypto";
-import { join } from "node:path";
+import { createHash, createPrivateKey, createPublicKey, diffieHellman, hkdfSync, verify } from "node:crypto";
+import { aeadDecrypt, aeadEncrypt, checkAgainstWycheproof } from "./xchacha20poly1305.mjs";
 
-const [handshakeFile, ratchetFile, wycheproofDir, outputFile] = process.argv.slice(2);
+const [identityFile, handshakeFile, ratchetFile, wycheproofDir, outputFile] = process.argv.slice(2);
 
 const bytes = (text) => Buffer.from(text, "hex");
 const hex = (value) => Buffer.from(value).toString("hex");
@@ -20,69 +20,10 @@ const u64 = (value) => {
   out.writeBigUInt64BE(BigInt(value));
   return out;
 };
-const label = (name) => {
-  const text = Buffer.from(`LUME/v1/${name}`, "ascii");
-  return Buffer.concat([u32(text.length), text]);
-};
+const lengthPrefixed = (value) => Buffer.concat([u32(value.length), value]);
+const label = (name) => lengthPrefixed(Buffer.from(`LUME/v1/${name}`, "ascii"));
 
-const rotl = (value, count) => ((value << count) | (value >>> (32 - count))) >>> 0;
-
-const hchacha20 = (key, nonce) => {
-  const state = new Uint32Array(16);
-  state.set([0x61707865, 0x3320646e, 0x79622d32, 0x6b206574]);
-  for (let index = 0; index < 8; index += 1) state[4 + index] = key.readUInt32LE(4 * index);
-  for (let index = 0; index < 4; index += 1) state[12 + index] = nonce.readUInt32LE(4 * index);
-  const quarter = (a, b, c, d) => {
-    state[a] = (state[a] + state[b]) >>> 0;
-    state[d] = rotl(state[d] ^ state[a], 16);
-    state[c] = (state[c] + state[d]) >>> 0;
-    state[b] = rotl(state[b] ^ state[c], 12);
-    state[a] = (state[a] + state[b]) >>> 0;
-    state[d] = rotl(state[d] ^ state[a], 8);
-    state[c] = (state[c] + state[d]) >>> 0;
-    state[b] = rotl(state[b] ^ state[c], 7);
-  };
-  for (let round = 0; round < 10; round += 1) {
-    quarter(0, 4, 8, 12);
-    quarter(1, 5, 9, 13);
-    quarter(2, 6, 10, 14);
-    quarter(3, 7, 11, 15);
-    quarter(0, 5, 10, 15);
-    quarter(1, 6, 11, 12);
-    quarter(2, 7, 8, 13);
-    quarter(3, 4, 9, 14);
-  }
-  const out = Buffer.alloc(32);
-  [0, 1, 2, 3, 12, 13, 14, 15].forEach((word, index) => out.writeUInt32LE(state[word], 4 * index));
-  return out;
-};
-
-const chachaParameters = (key, nonce) => [hchacha20(key, nonce.subarray(0, 16)), Buffer.concat([Buffer.alloc(4), nonce.subarray(16)])];
-
-const aeadEncrypt = (key, nonce, associatedData, plaintext) => {
-  const [subkey, iv] = chachaParameters(key, nonce);
-  const cipher = createCipheriv("chacha20-poly1305", subkey, iv, { authTagLength: 16 });
-  cipher.setAAD(associatedData, { plaintextLength: plaintext.length });
-  return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
-};
-
-const aeadDecrypt = (key, nonce, associatedData, ciphertext) => {
-  if (ciphertext.length < 16) return null;
-  const [subkey, iv] = chachaParameters(key, nonce);
-  const decipher = createDecipheriv("chacha20-poly1305", subkey, iv, { authTagLength: 16 });
-  decipher.setAAD(associatedData, { plaintextLength: ciphertext.length - 16 });
-  decipher.setAuthTag(ciphertext.subarray(ciphertext.length - 16));
-  try {
-    return Buffer.concat([decipher.update(ciphertext.subarray(0, ciphertext.length - 16)), decipher.final()]);
-  } catch {
-    return null;
-  }
-};
-
-const xchachaCheck = JSON.parse(readFileSync(join(wycheproofDir, "xchacha20_poly1305_test.json"), "utf8"))
-  .testGroups.flatMap((group) => group.tests).find((test) => test.tcId === 1);
-const checkCiphertext = aeadEncrypt(bytes(xchachaCheck.key), bytes(xchachaCheck.iv), bytes(xchachaCheck.aad), bytes(xchachaCheck.msg));
-if (hex(checkCiphertext) !== xchachaCheck.ct + xchachaCheck.tag) throw new Error("the XChaCha20-Poly1305 construction disagrees with Wycheproof");
+checkAgainstWycheproof(wycheproofDir);
 
 const randomStream = (seed) => {
   let counter = 0;
@@ -104,9 +45,11 @@ const dh = (secret, peer) => diffieHellman({
   privateKey: x25519Private(secret),
   publicKey: createPublicKey({ key: Buffer.concat([bytes("302a300506032b656e032100"), peer]), format: "der", type: "spki" }),
 });
+const ed25519Public = (key) => createPublicKey({ key: Buffer.concat([bytes("302a300506032b6570032100"), key]), format: "der", type: "spki" });
 
 const fieldPrime = (1n << 255n) - 19n;
 const fromLittleEndian = (value) => BigInt(`0x${Buffer.from(value).reverse().toString("hex")}`);
+const toLittleEndian = (value) => Buffer.from(value.toString(16).padStart(64, "0"), "hex").reverse();
 const isCanonical = (key) => fromLittleEndian(key) < fieldPrime;
 
 const buckets = [2048, 4096, 8192, 16384, 32768, 65536, 69632];
@@ -124,6 +67,12 @@ const unpad = (padded) => {
   if (end < 0 || padded[end] !== 0x80 || bucketFor(end) !== padded.length) return null;
   return padded.subarray(0, end);
 };
+const unpadLeniently = (padded) => {
+  let end = padded.length;
+  while (end > 0 && padded[end - 1] === 0) end -= 1;
+  if (end > 0 && padded[end - 1] === 0x80) end -= 1;
+  return padded.subarray(0, end);
+};
 
 const associatedData = (id, ephemeral, recipient) => Buffer.concat([label("seal/ad"), u8(1), u32(id), ephemeral, recipient]);
 const envelopeKey = (shared, ephemeral, recipient) => Buffer.from(hkdfSync("sha256", shared, Buffer.concat([ephemeral, recipient]), label("seal/key"), 32));
@@ -134,17 +83,30 @@ const decodeSeal = (envelope) => {
 };
 
 const handshake = JSON.parse(readFileSync(handshakeFile, "utf8")).cases[0];
-const sealKey = { id: handshake.seal_key.id, ...keyPair(bytes(handshake.seal_key.secret)) };
+const bob = JSON.parse(readFileSync(identityFile, "utf8")).cases[handshake.bob];
+const sealKey = {
+  id: handshake.seal_key.id,
+  createdAt: handshake.created_at,
+  generation: handshake.generation,
+  signer: bytes(bob.signing_key),
+  signature: bytes(handshake.seal_key.signature),
+  ...keyPair(bytes(handshake.seal_key.secret)),
+};
 if (!sealKey.public.equals(bytes(handshake.seal_key.public))) throw new Error("the seal key of handshake.json does not match its secret");
+const prekeyMessage = Buffer.concat([label("prekey"), u8(4), u32(sealKey.id), u64(sealKey.createdAt), u32(sealKey.generation), lengthPrefixed(sealKey.public)]);
+if (!verify(null, prekeyMessage, ed25519Public(sealKey.signer), sealKey.signature)) throw new Error("the seal key's signature does not verify under Bob's identity");
 
+const sealWith = (plaintext, { random, id = sealKey.id, ephemeral, shared }) => {
+  const nonce = random(24);
+  const key = envelopeKey(shared, ephemeral, sealKey.public);
+  return encodeSeal(id, ephemeral, nonce, aeadEncrypt(key, nonce, associatedData(id, ephemeral, sealKey.public), plaintext));
+};
 const sealPlaintext = (plaintext, random, id = sealKey.id) => {
   const ephemeral = keyPair(random(32));
-  const nonce = random(24);
-  const key = envelopeKey(dh(ephemeral.secret, sealKey.public), ephemeral.public, sealKey.public);
-  return encodeSeal(id, ephemeral.public, nonce, aeadEncrypt(key, nonce, associatedData(id, ephemeral.public, sealKey.public), plaintext));
+  return sealWith(plaintext, { random, id, ephemeral: ephemeral.public, shared: dh(ephemeral.secret, sealKey.public) });
 };
 
-const decodeInner = (data) => {
+const decodeInner = (data, { trailingAllowed = false } = {}) => {
   let at = 0;
   const take = (size) => {
     if (at + size > data.length) throw new Error("truncated");
@@ -171,32 +133,35 @@ const decodeInner = (data) => {
   const length = take(4).readUInt32BE(0);
   if (length > 69000) throw new Error("over_bound");
   take(length);
-  if (at !== data.length) throw new Error("trailing_bytes");
-  return { sender, initial };
+  if (at !== data.length && !trailingAllowed) throw new Error("trailing_bytes");
+  return { sender, initial, bytes: data.subarray(0, at) };
 };
 
-const open = (envelope) => {
+const open = (envelope, disabled = new Set()) => {
+  const on = (check) => !disabled.has(check);
   const seal = decodeSeal(envelope);
-  if (seal.id !== sealKey.id) return { error: "wrong_key" };
-  if (!isCanonical(seal.ephemeral)) return { error: "weak_key" };
+  if (on("key_id") && seal.id !== sealKey.id) return { error: "wrong_key", check: "key_id" };
+  if (on("canonical") && !isCanonical(seal.ephemeral)) return { error: "weak_key", check: "canonical" };
   let shared;
   try {
     shared = dh(sealKey.secret, seal.ephemeral);
   } catch {
-    return { error: "weak_key" };
+    shared = Buffer.alloc(32);
   }
-  if (shared.every((byte) => byte === 0)) return { error: "weak_key" };
-  const padded = aeadDecrypt(envelopeKey(shared, seal.ephemeral, sealKey.public), seal.nonce, associatedData(seal.id, seal.ephemeral, sealKey.public), seal.box);
-  if (!padded) return { error: "authentication_failed" };
-  const inner = unpad(padded);
-  if (!inner) return { error: "authentication_failed" };
+  if (on("low_order") && shared.every((byte) => byte === 0)) return { error: "weak_key", check: "low_order" };
+  const key = envelopeKey(shared, seal.ephemeral, sealKey.public);
+  const padded = aeadDecrypt(key, seal.nonce, associatedData(sealKey.id, seal.ephemeral, sealKey.public), seal.box, { verify: on("aead") });
+  if (!padded) return { error: "authentication_failed", check: "aead" };
+  const inner = on("padding") ? unpad(padded) : unpadLeniently(padded);
+  if (!inner) return { error: "authentication_failed", check: "padding" };
+  let decoded;
   try {
-    const decoded = decodeInner(inner);
-    if (decoded.initial && !decoded.initial.subarray(0, 32).equals(decoded.sender)) return { error: "malformed" };
+    decoded = decodeInner(inner, { trailingAllowed: !on("decode") });
   } catch {
-    return { error: "malformed" };
+    return { error: "malformed", check: "decode" };
   }
-  return { inner };
+  if (on("sender") && decoded.initial && !decoded.initial.subarray(0, 32).equals(decoded.sender)) return { error: "malformed", check: "sender" };
+  return { inner: decoded.bytes };
 };
 
 const sent = Object.fromEntries(JSON.parse(readFileSync(ratchetFile, "utf8")).steps
@@ -225,41 +190,62 @@ const cases = [
   return { name, description, random_seed: seedOf(name), inner: hex(inner), padded_size: pad(inner).length, envelope: hex(envelope) };
 });
 
-const sealedNormally = (name) => sealPlaintext(pad(laterMessage), randomStream(seedOf(name)));
-const withEphemeralKey = (envelope, key) => Buffer.concat([envelope.subarray(0, 5), key, envelope.subarray(37)]);
 const withLastByteChanged = (value) => Buffer.concat([value.subarray(0, value.length - 1), u8(value[value.length - 1] ^ 0x01)]);
 const notTheSender = Buffer.concat([u8(alice[0] ^ 0x01), alice.subarray(1)]);
+const unreducedBasePoint = toLittleEndian(fieldPrime + 9n);
 
 const refusals = [
-  ["wrong_key_id", "sealed correctly, but under seal key id + 1", "wrong_key",
-    (name) => sealPlaintext(pad(laterMessage), randomStream(seedOf(name)), sealKey.id + 1)],
-  ["non_canonical_ephemeral_key", "the ephemeral key is p itself, an unreduced encoding", "weak_key",
-    (name) => withEphemeralKey(sealedNormally(name), bytes("edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"))],
-  ["low_order_ephemeral_key", "the ephemeral key is 0, so the shared secret is all zero", "weak_key",
-    (name) => withEphemeralKey(sealedNormally(name), Buffer.alloc(32))],
-  ["forged_box", "the last byte of the box is changed", "authentication_failed",
-    (name) => withLastByteChanged(sealedNormally(name))],
-  ["padding_in_a_larger_bucket", "the inner fits the 2048 bucket but is padded to 4096", "authentication_failed",
-    (name) => sealPlaintext(Buffer.concat([laterMessage, u8(0x80), Buffer.alloc(4096 - laterMessage.length - 1)]), randomStream(seedOf(name)))],
-  ["padding_without_marker", "the inner is followed only by zero bytes", "authentication_failed",
-    (name) => sealPlaintext(Buffer.concat([laterMessage, Buffer.alloc(2048 - laterMessage.length)]), randomStream(seedOf(name)))],
-  ["byte_after_the_marker", "the last byte of the padding is 0x01", "authentication_failed",
-    (name) => sealPlaintext(withLastByteChanged(pad(laterMessage)), randomStream(seedOf(name)))],
-  ["inner_with_a_trailing_byte", "correctly padded, but the inner has one byte after its last field", "malformed",
-    (name) => sealPlaintext(pad(Buffer.concat([laterMessage, u8(0)])), randomStream(seedOf(name)))],
-  ["sender_is_not_the_initiator", "the sender hint differs from ik_sig of the initial header in one bit", "malformed",
-    (name) => sealPlaintext(pad(encodeInner(notTheSender, initialHeader, messageOf("A0"))), randomStream(seedOf(name)))],
-].map(([name, description, error, make]) => {
-  const envelope = make(name);
+  ["wrong_key_id", "sealed correctly, but under seal key id + 1", "key_id", "wrong_key",
+    (random) => sealPlaintext(pad(laterMessage), random, sealKey.id + 1)],
+  ["ephemeral_key_with_top_bit", "a valid ephemeral key with bit 255 set, sealed consistently with those bytes; X25519 ignores the bit, so only the canonical check refuses it", "canonical", "weak_key",
+    (random) => {
+      const ephemeral = keyPair(random(32));
+      const flagged = Buffer.from(ephemeral.public);
+      flagged[31] |= 0x80;
+      return sealWith(pad(laterMessage), { random, ephemeral: flagged, shared: dh(ephemeral.secret, sealKey.public) });
+    }],
+  ["unreduced_ephemeral_key", "the ephemeral key is p + 9, the base point left unreduced, sealed consistently; the shared secret is then the seal key's own public key, so only the canonical check refuses it", "canonical", "weak_key",
+    (random) => sealWith(pad(laterMessage), { random, ephemeral: unreducedBasePoint, shared: sealKey.public })],
+  ["low_order_ephemeral_key", "the ephemeral key is 0, sealed with the all-zero shared secret it gives, so only the low-order check refuses it", "low_order", "weak_key",
+    (random) => sealWith(pad(laterMessage), { random, ephemeral: Buffer.alloc(32), shared: Buffer.alloc(32) })],
+  ["forged_box", "the last byte of the box, part of the tag, is changed", "aead", "authentication_failed",
+    (random) => withLastByteChanged(sealPlaintext(pad(laterMessage), random))],
+  ["padding_in_a_larger_bucket", "the inner fits the 2048 bucket but is padded to 4096", "padding", "authentication_failed",
+    (random) => sealPlaintext(Buffer.concat([laterMessage, u8(0x80), Buffer.alloc(4096 - laterMessage.length - 1)]), random)],
+  ["padding_without_marker", "the inner is followed only by zero bytes", "padding", "authentication_failed",
+    (random) => sealPlaintext(Buffer.concat([laterMessage, Buffer.alloc(2048 - laterMessage.length)]), random)],
+  ["byte_after_the_marker", "the last byte of the padding is 0x01", "padding", "authentication_failed",
+    (random) => sealPlaintext(withLastByteChanged(pad(laterMessage)), random)],
+  ["empty_plaintext", "the box authenticates an empty plaintext", "padding", "authentication_failed",
+    (random) => sealPlaintext(Buffer.alloc(0), random)],
+  ["inner_with_a_trailing_byte", "correctly padded, but the inner has one byte after its last field", "decode", "malformed",
+    (random) => sealPlaintext(pad(Buffer.concat([laterMessage, u8(0)])), random)],
+  ["sender_is_not_the_initiator", "the sender hint differs from ik_sig of the initial header in one bit", "sender", "malformed",
+    (random) => sealPlaintext(pad(encodeInner(notTheSender, initialHeader, messageOf("A0"))), random)],
+].map(([name, description, check, error, make]) => {
+  const envelope = make(randomStream(seedOf(name)));
   const opened = open(envelope);
-  if (opened.error !== error) throw new Error(`${name} is refused with ${opened.error ?? "nothing"}, not ${error}`);
-  return { name, description, envelope: hex(envelope), error };
+  if (opened.error !== error || opened.check !== check) {
+    throw new Error(`${name} is refused by ${opened.check ?? "nothing"} with ${opened.error ?? "nothing"}, not by ${check} with ${error}`);
+  }
+  const without = open(envelope, new Set([check]));
+  if (without.error === error) throw new Error(`${name} is still refused with ${error} when ${check} is skipped, so it does not test ${check}`);
+  return { name, description, check, envelope: hex(envelope), error };
 });
 
 const document = {
-  description: "LUME sealed sender, CRYPTO.md sections 7.3 and 8, computed with Node.js crypto (OpenSSL) and a JavaScript HChaCha20; the seal key is the one of case 0 of handshake.json; each envelope draws the ephemeral secret (32 bytes) and then the nonce (24 bytes) from SHA-256(random_seed || u64 counter); a refusal must be refused with the error it names",
+  description: "LUME sealed sender, CRYPTO.md sections 7.3 and 8, computed with Node.js crypto (OpenSSL) and a JavaScript HChaCha20 checked against every Wycheproof XChaCha20-Poly1305 case; the seal key is the one of case 0 of handshake.json, signed by its Bob; each envelope draws the ephemeral secret (32 bytes) and then the nonce (24 bytes) from SHA-256(random_seed || u64 counter); a refusal must be refused with the error it names, and the generator has checked that skipping the check it names would change the outcome",
   generator: "core/tools/generate_seal_vectors.mjs",
-  seal_key: { id: sealKey.id, secret: hex(sealKey.secret), public: hex(sealKey.public) },
+  now: handshake.now,
+  seal_key: {
+    id: sealKey.id,
+    created_at: sealKey.createdAt,
+    generation: sealKey.generation,
+    signer: hex(sealKey.signer),
+    signature: hex(sealKey.signature),
+    secret: hex(sealKey.secret),
+    public: hex(sealKey.public),
+  },
   cases,
   refusals,
 };

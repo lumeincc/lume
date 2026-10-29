@@ -6,11 +6,23 @@
 #include <algorithm>
 #include <expected>
 #include <initializer_list>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace lume::wire {
 namespace {
+
+constexpr std::initializer_list<PrekeyKind> x25519_kinds{
+    PrekeyKind::signed_prekey, PrekeyKind::seal_key, PrekeyKind::one_time_prekey};
+constexpr std::initializer_list<PrekeyKind> kem_kinds{PrekeyKind::kem_last_resort, PrekeyKind::kem_one_time};
+
+void require_kind(PrekeyKind kind, std::initializer_list<PrekeyKind> allowed)
+{
+    if (std::ranges::find(allowed, kind) == allowed.end()) {
+        throw std::invalid_argument("a prekey kind its structure does not allow");
+    }
+}
 
 bool read_kind(Reader& reader, PrekeyKind& target, std::initializer_list<PrekeyKind> allowed)
 {
@@ -97,6 +109,10 @@ void write_optional(Writer& writer, const std::optional<T>& value)
 
 void write(Writer& writer, const PrekeyX& value)
 {
+    require_kind(value.kind, x25519_kinds);
+    if (value.signature.has_value() != (value.kind != PrekeyKind::one_time_prekey)) {
+        throw std::invalid_argument("a prekey is signed exactly when it is not a one-time prekey");
+    }
     writer.u8(static_cast<std::uint8_t>(value.kind)).u32(value.id).u64(value.created_at).fixed(value.key);
     writer.present(value.signature.has_value());
     if (value.signature) {
@@ -106,6 +122,7 @@ void write(Writer& writer, const PrekeyX& value)
 
 void write(Writer& writer, const PrekeyKem& value)
 {
+    require_kind(value.kind, kem_kinds);
     writer.u8(static_cast<std::uint8_t>(value.kind))
         .u32(value.id)
         .u64(value.created_at)
@@ -128,6 +145,7 @@ void write(Writer& writer, const UsernameCertificate& value)
 
 void write(Writer& writer, const InitialHeader& value)
 {
+    require_kind(value.pq_kind, kem_kinds);
     writer.fixed(value.ik_sig)
         .fixed(value.ik_dh)
         .fixed(value.bind)
@@ -144,6 +162,7 @@ void write(Writer& writer, const InitialHeader& value)
 
 void write(Writer& writer, const Introduction& value)
 {
+    require_kind(value.seal_key.kind, {PrekeyKind::seal_key});
     writer.fixed(value.account_id).u32(value.generation).fixed(value.token);
     write(writer, value.seal_key);
     write_optional(writer, value.certificate);
@@ -186,7 +205,7 @@ Result<PrekeyX> read_prekey_x(Reader& reader)
 {
     PrekeyX value;
     bool signed_key = false;
-    if (!read_kind(reader, value.kind, {PrekeyKind::signed_prekey, PrekeyKind::seal_key, PrekeyKind::one_time_prekey})
+    if (!read_kind(reader, value.kind, x25519_kinds)
         || !reader.into(value.id) || !reader.into(value.created_at) || !reader.into(value.key)
         || !reader.into(signed_key)) {
         return std::unexpected(reader.error());
@@ -207,7 +226,7 @@ Result<PrekeyX> read_prekey_x(Reader& reader)
 Result<PrekeyKem> read_prekey_kem(Reader& reader)
 {
     PrekeyKem value;
-    if (!read_kind(reader, value.kind, {PrekeyKind::kem_last_resort, PrekeyKind::kem_one_time})
+    if (!read_kind(reader, value.kind, kem_kinds)
         || !reader.into(value.id) || !reader.into(value.created_at) || !reader.into(value.key)
         || !reader.into(value.signature)) {
         return std::unexpected(reader.error());
@@ -232,7 +251,7 @@ Result<InitialHeader> read_initial_header(Reader& reader)
     InitialHeader value;
     if (!reader.into(value.ik_sig) || !reader.into(value.ik_dh) || !reader.into(value.bind)
         || !reader.into(value.ephemeral_key) || !reader.into(value.kem_ciphertext) || !reader.into(value.spk_id)
-        || !read_kind(reader, value.pq_kind, {PrekeyKind::kem_last_resort, PrekeyKind::kem_one_time})
+        || !read_kind(reader, value.pq_kind, kem_kinds)
         || !reader.into(value.pq_id) || !read_optional_u32(reader, value.opk_id)) {
         return std::unexpected(reader.error());
     }
