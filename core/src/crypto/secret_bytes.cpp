@@ -4,6 +4,7 @@
 #include "lume/crypto/secret_bytes.hpp"
 
 #include "backend.hpp"
+#include "memory_lock.hpp"
 
 #include <sodium.h>
 
@@ -24,6 +25,7 @@ SecretBytes::SecretBytes(std::size_t size)
         throw std::bad_alloc();
     }
     size_ = size;
+    detail::lock_or_count(data_, size_);
     sodium_memzero(data_, size_);
 }
 

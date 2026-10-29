@@ -6,17 +6,47 @@
 #include "crypto/backend.hpp"
 #include "crypto/self_test.hpp"
 #include "lume/crypto/hash.hpp"
+#include "lume/crypto/secret_bytes.hpp"
 
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <cstddef>
 #include <expected>
 #include <stdexcept>
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <sys/resource.h>
+#include <unistd.h>
+#endif
+
 namespace lume::crypto {
 namespace {
+
+bool system_lock_limit_reaches_target()
+{
+#ifdef _WIN32
+    SIZE_T minimum = 0;
+    SIZE_T maximum = 0;
+    DWORD flags = 0;
+    return GetProcessWorkingSetSizeEx(GetCurrentProcess(), &minimum, &maximum, &flags) != 0
+        && minimum >= locked_memory_target;
+#else
+    rlimit limit{};
+    return getrlimit(RLIMIT_MEMLOCK, &limit) == 0
+        && (limit.rlim_cur == RLIM_INFINITY || limit.rlim_cur >= locked_memory_target);
+#endif
+}
 
 TEST(Library, InitialisationPassesTheSelfTest)
 {
@@ -65,6 +95,38 @@ TEST(Library, PrimitivesUsedFromManyThreadsAtOnceAgree)
     }
     threads.clear();
     EXPECT_EQ(matching.load(), thread_count);
+}
+
+TEST(Library, ReportsWhetherTheLockLimitReachesItsTarget)
+{
+    ASSERT_TRUE(initialise().has_value());
+    EXPECT_EQ(memory_locking().limit_reaches_target, system_lock_limit_reaches_target());
+#ifdef _WIN32
+    EXPECT_TRUE(memory_locking().limit_reaches_target);
+#endif
+}
+
+TEST(Library, CountsEveryLockThatFails)
+{
+#ifndef _WIN32
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root locks memory without a limit";
+    }
+#endif
+    ASSERT_TRUE(initialise().has_value());
+    const auto before = memory_locking().failed_locks;
+    const std::size_t pages = (locked_memory_target / 4096) + 2048;
+    std::vector<SecretBytes> held;
+    held.reserve(pages);
+    for (std::size_t index = 0; index < pages; ++index) {
+        held.emplace_back(1);
+    }
+    EXPECT_GT(memory_locking().failed_locks, before);
+
+    held.clear();
+    const auto after_release = memory_locking().failed_locks;
+    const SecretBytes fits(1);
+    EXPECT_EQ(memory_locking().failed_locks, after_release);
 }
 
 }

@@ -3,6 +3,7 @@
 
 #include "backend.hpp"
 
+#include "memory_lock.hpp"
 #include "self_test.hpp"
 
 #include <oqs/oqs.h>
@@ -45,6 +46,7 @@ Result<void> start() noexcept
         if (sodium_init() < 0) {
             return std::unexpected(Error::library_failure);
         }
+        raise_lock_limit();
         OQS_init();
         OQS_randombytes_custom_algorithm(&fill_from_sodium);
         const SelfTestScope scope;
