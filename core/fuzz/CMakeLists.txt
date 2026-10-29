@@ -15,4 +15,6 @@ endfunction()
 
 lume_add_fuzzer(lume_padding_fuzzer padding_fuzzer.cpp)
 lume_add_fuzzer(lume_phrase_fuzzer phrase_fuzzer.cpp)
+lume_add_fuzzer(lume_seal_fuzzer seal_fuzzer.cpp)
+target_include_directories(lume_seal_fuzzer PRIVATE ../src)
 lume_add_fuzzer(lume_wire_fuzzer wire_fuzzer.cpp)

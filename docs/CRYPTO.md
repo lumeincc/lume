@@ -620,7 +620,11 @@ sealed = enc(Seal { version: 1, ssk_id, es: ES.pk, nonce, box: AEAD(k, nonce, ad
 inner  = Inner { sender: IKsig_A, initial: opt<InitialHeader>, message: RatchetMessage }
 ```
 
-The recipient computes the same `k` from `DH(SSK_B.sk, ES.pk)`.
+The recipient computes the same `k` from `DH(SSK_B.sk, ES.pk)`. An envelope is
+dropped when its `ssk_id` names no seal key the recipient still holds, when
+`es` is not canonical or is a point of low order (§2), when the box
+does not authenticate or its plaintext is not exactly a padded `Inner` (§7.3),
+or when `sender` differs from `ik_sig` of its initial header (§5.3).
 
 The seal **hides** the sender; it does not authenticate them. Bob finds the
 session for the hinted `IKsig_A`, and the ratchet's AEAD — whose `AD` contains

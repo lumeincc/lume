@@ -54,12 +54,14 @@ Node.js `crypto`, which is OpenSSL — so that both sides have to agree.
 | `safety.json` | fingerprints, safety numbers and invite fingerprints of the identities above, CRYPTO.md §12 |
 | `handshake.json` | prekey signatures and both sides of the PQXDH handshake, with and without a one-time key, CRYPTO.md §4 and §5; the ML-KEM-768 values are the Wycheproof `mlkem_768_test.json` case each entry names, not copied; each case also gives `1/EK_A mod p`, which OpenSSL confirms gives the same X25519 results as `EK_A` and which must give other session keys |
 | `ratchet.json` | a 24-step Double Ratchet conversation with header encryption: keys skipped inside a chain and at a DH step, reordered and late messages, two replays that must be refused without changing anything, every header and body byte, CRYPTO.md §6; computed by an independent JavaScript implementation whose XChaCha20 is checked against Wycheproof first |
+| `seal.json` | sealed sender to the seal key of `handshake.json` case 0, CRYPTO.md §7.3 and §8: a first message with its initial header, a later one, and a 4095-byte inner that fills the 4096 bucket; and nine envelopes that must be refused for the reason each names — a wrong key id, a non-canonical or low-order ephemeral key, a forged box, three kinds of bad padding, a byte after the inner, and a sender hint that is not the initiator; the generator opens every envelope with its own implementation of the checks before it writes the file |
 
 ```bash
 node core/tools/generate_identity_vectors.mjs core/third_party/bip39/english.txt core/tests/vectors/trezor/bip39_vectors.json core/tests/vectors/lume/identity.json
 node core/tools/generate_safety_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/lume/safety.json
 node core/tools/generate_handshake_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/wycheproof core/tests/vectors/lume/handshake.json
 node core/tools/generate_ratchet_vectors.mjs core/tests/vectors/lume/handshake.json core/tests/vectors/wycheproof core/tests/vectors/lume/ratchet.json
+node core/tools/generate_seal_vectors.mjs core/tests/vectors/lume/handshake.json core/tests/vectors/lume/ratchet.json core/tests/vectors/wycheproof core/tests/vectors/lume/seal.json
 ```
 
 The generator checks its own phrase encoding against the Trezor vectors before
