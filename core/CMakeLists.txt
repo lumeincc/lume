@@ -5,6 +5,7 @@ find_package(unofficial-sodium CONFIG REQUIRED)
 find_package(liboqs CONFIG REQUIRED)
 
 add_library(lume_core STATIC
+    src/card/card.cpp
     src/crypto/aead.cpp
     src/crypto/backend.cpp
     src/crypto/ed25519.cpp

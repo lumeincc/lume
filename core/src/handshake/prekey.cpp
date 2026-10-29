@@ -117,13 +117,18 @@ bool is_rotating(wire::PrekeyKind kind) noexcept
 
 bool is_usable_at(wire::PrekeyKind kind, std::uint64_t created_at, std::uint64_t now) noexcept
 {
+    return is_usable_at(kind, created_at, now, rotating_key_usable_for);
+}
+
+bool is_usable_at(wire::PrekeyKind kind, std::uint64_t created_at, std::uint64_t now, std::uint64_t usable_for) noexcept
+{
     if (created_at > now && created_at - now > allowed_clock_skew) {
         return false;
     }
     if (!is_rotating(kind) || created_at >= now) {
         return true;
     }
-    return now - created_at <= rotating_key_usable_for;
+    return now - created_at <= usable_for;
 }
 
 }

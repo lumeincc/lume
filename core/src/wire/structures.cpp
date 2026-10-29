@@ -217,6 +217,19 @@ void write(Writer& writer, const Content& value)
     writer.bytes(value.body, content_body_bound);
 }
 
+void write(Writer& writer, const Card& value)
+{
+    require_kind(value.spk.kind, {PrekeyKind::signed_prekey});
+    require_kind(value.pqspk.kind, {PrekeyKind::kem_last_resort});
+    require_kind(value.ssk.kind, {PrekeyKind::seal_key});
+    write(writer, value.certificate);
+    writer.fixed(value.bind).u32(value.generation);
+    write(writer, value.spk);
+    write(writer, value.pqspk);
+    write(writer, value.ssk);
+    writer.fixed(value.token).fixed(value.group_id).u64(value.expires_at).fixed(value.signature);
+}
+
 void write(Writer& writer, const RatchetHeader& value)
 {
     writer.fixed(value.ratchet_key).u32(value.previous_chain_length).u32(value.message_number);
@@ -363,6 +376,25 @@ Result<Content> read_content(Reader& reader)
     if (!reader.into(value.id) || !reader.into(value.kind)
         || !read_optional(reader, value.introduction, read_introduction)
         || !reader.into(value.body, content_body_bound)) {
+        return std::unexpected(reader.error());
+    }
+    return value;
+}
+
+Result<Card> read_card(Reader& reader)
+{
+    Card value;
+    if (!read_nested(reader, value.certificate, read_username_certificate) || !reader.into(value.bind)
+        || !reader.into(value.generation) || !read_nested(reader, value.spk, read_prekey_x)
+        || !read_nested(reader, value.pqspk, read_prekey_kem) || !read_nested(reader, value.ssk, read_prekey_x)) {
+        return std::unexpected(reader.error());
+    }
+    if (value.spk.kind != PrekeyKind::signed_prekey || value.pqspk.kind != PrekeyKind::kem_last_resort
+        || value.ssk.kind != PrekeyKind::seal_key) {
+        return std::unexpected(Error::invalid_value);
+    }
+    if (!reader.into(value.token) || !reader.into(value.group_id) || !reader.into(value.expires_at)
+        || !reader.into(value.signature)) {
         return std::unexpected(reader.error());
     }
     return value;

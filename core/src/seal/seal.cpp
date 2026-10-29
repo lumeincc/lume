@@ -24,8 +24,13 @@ using crypto::SecretBytes;
 
 using Random = const detail::RandomSource*;
 
-constexpr std::string_view key_label = "seal/key";
-constexpr std::string_view associated_data_label = "seal/ad";
+struct Labels {
+    std::string_view key;
+    std::string_view associated_data;
+};
+
+constexpr Labels message_labels{.key = "seal/key", .associated_data = "seal/ad"};
+constexpr Labels card_labels{.key = "card/key", .associated_data = "card/ad"};
 
 Result<crypto::X25519KeyPair> fresh_key_pair(Random random)
 {
@@ -42,7 +47,7 @@ Result<crypto::X25519KeyPair> fresh_key_pair(Random random)
 }
 
 Result<SecretBytes> envelope_key(
-    const SecretBytes& secret_key, ByteView peer_key, ByteView ephemeral_key, ByteView seal_key)
+    const Labels& labels, const SecretBytes& secret_key, ByteView peer_key, ByteView ephemeral_key, ByteView seal_key)
 {
     if (!crypto::x25519_is_canonical(peer_key)) {
         return std::unexpected(Error::weak_key);
@@ -53,17 +58,17 @@ Result<SecretBytes> envelope_key(
             shared.error() == crypto::Error::weak_public_key ? Error::weak_key : Error::library_failure);
     }
     const auto salt = crypto::Encoder{}.raw(ephemeral_key).raw(seal_key).take();
-    auto key = crypto::hkdf_sha256(salt, shared->view(), crypto::label(key_label), crypto::aead_key_size);
+    auto key = crypto::hkdf_sha256(salt, shared->view(), crypto::label(labels.key), crypto::aead_key_size);
     if (!key) {
         return std::unexpected(Error::library_failure);
     }
     return std::move(*key);
 }
 
-Bytes associated_data(std::uint32_t seal_key_id, ByteView ephemeral_key, ByteView seal_key)
+Bytes associated_data(const Labels& labels, std::uint32_t seal_key_id, ByteView ephemeral_key, ByteView seal_key)
 {
     return crypto::Encoder{}
-        .label(associated_data_label)
+        .label(labels.associated_data)
         .u8(wire::seal_version)
         .u32(seal_key_id)
         .raw(ephemeral_key)
@@ -76,7 +81,7 @@ bool sender_is_initiator(const wire::Inner& inner)
     return !inner.initial || inner.initial->ik_sig == inner.sender;
 }
 
-Result<void> check_recipient(const Recipient& recipient, std::uint64_t now)
+Result<void> check_recipient(const Recipient& recipient, std::uint64_t now, std::uint64_t usable_for)
 {
     const auto& key = recipient.seal_key;
     if (key.kind != wire::PrekeyKind::seal_key) {
@@ -91,37 +96,20 @@ Result<void> check_recipient(const Recipient& recipient, std::uint64_t now)
     if (recipient.generation > recipient.pin.generation) {
         return std::unexpected(Error::generation_went_up);
     }
-    if (!handshake::is_usable_at(key.kind, key.created_at, now)) {
+    if (!handshake::is_usable_at(key.kind, key.created_at, now, usable_for)) {
         return std::unexpected(Error::key_not_usable);
     }
     return {};
 }
 
-Result<wire::Seal> seal_with(const Recipient& recipient, const wire::Inner& inner, std::uint64_t now, Random random)
+Result<wire::Seal> seal_padded(const Recipient& recipient, ByteView padded, const Labels& labels, Random random)
 {
-    if (auto checked = check_recipient(recipient, now); !checked) {
-        return std::unexpected(checked.error());
-    }
-    if (!sender_is_initiator(inner)) {
-        return std::unexpected(Error::malformed);
-    }
-    if (inner.message.body.size() > wire::ratchet_body_bound) {
-        return std::unexpected(Error::too_long);
-    }
-    if (inner.initial && inner.initial->pq_kind != wire::PrekeyKind::kem_last_resort
-        && inner.initial->pq_kind != wire::PrekeyKind::kem_one_time) {
-        return std::unexpected(Error::malformed);
-    }
     const auto& seal_key = recipient.seal_key;
-    const auto padded = pad(wire::encode(inner));
-    if (!padded) {
-        return std::unexpected(Error::too_long);
-    }
     auto ephemeral = fresh_key_pair(random);
     if (!ephemeral) {
         return std::unexpected(ephemeral.error());
     }
-    const auto key = envelope_key(ephemeral->secret_key, seal_key.key, ephemeral->public_key, seal_key.key);
+    const auto key = envelope_key(labels, ephemeral->secret_key, seal_key.key, ephemeral->public_key, seal_key.key);
     if (!key) {
         return std::unexpected(key.error());
     }
@@ -134,12 +122,72 @@ Result<wire::Seal> seal_with(const Recipient& recipient, const wire::Inner& inne
         (*random)(envelope.nonce);
     }
     auto box = crypto::detail::aead_encrypt(
-        *key, envelope.nonce, associated_data(envelope.ssk_id, envelope.ephemeral_key, seal_key.key), *padded);
+        *key, envelope.nonce, associated_data(labels, envelope.ssk_id, envelope.ephemeral_key, seal_key.key),
+        padded);
     if (!box) {
         return std::unexpected(Error::library_failure);
     }
     envelope.box = std::move(*box);
     return envelope;
+}
+
+Result<SecretBytes> open_padded(
+    std::uint32_t seal_key_id, const crypto::X25519KeyPair& seal_key, const wire::Seal& envelope,
+    const Labels& labels)
+{
+    if (envelope.ssk_id != seal_key_id) {
+        return std::unexpected(Error::wrong_key);
+    }
+    const auto key = envelope_key(
+        labels, seal_key.secret_key, envelope.ephemeral_key, envelope.ephemeral_key, seal_key.public_key);
+    if (!key) {
+        return std::unexpected(key.error());
+    }
+    auto padded = crypto::detail::aead_decrypt(
+        *key, envelope.nonce, associated_data(labels, seal_key_id, envelope.ephemeral_key, seal_key.public_key),
+        envelope.box);
+    if (!padded) {
+        return std::unexpected(Error::authentication_failed);
+    }
+    return std::move(*padded);
+}
+
+Result<wire::Seal> seal_with(const Recipient& recipient, const wire::Inner& inner, std::uint64_t now, Random random)
+{
+    if (auto checked = check_recipient(recipient, now, handshake::rotating_key_usable_for); !checked) {
+        return std::unexpected(checked.error());
+    }
+    if (!sender_is_initiator(inner)) {
+        return std::unexpected(Error::malformed);
+    }
+    if (inner.message.body.size() > wire::ratchet_body_bound) {
+        return std::unexpected(Error::too_long);
+    }
+    if (inner.initial && inner.initial->pq_kind != wire::PrekeyKind::kem_last_resort
+        && inner.initial->pq_kind != wire::PrekeyKind::kem_one_time) {
+        return std::unexpected(Error::malformed);
+    }
+    const auto padded = pad(wire::encode(inner));
+    if (!padded) {
+        return std::unexpected(Error::too_long);
+    }
+    return seal_padded(recipient, *padded, message_labels, random);
+}
+
+Result<wire::Seal> seal_card_with(const Recipient& recipient, const wire::Card& card, std::uint64_t now, Random random)
+{
+    if (auto checked = check_recipient(recipient, now, card_seal_key_usable_for); !checked) {
+        return std::unexpected(checked.error());
+    }
+    if (card.spk.kind != wire::PrekeyKind::signed_prekey || card.pqspk.kind != wire::PrekeyKind::kem_last_resort
+        || card.ssk.kind != wire::PrekeyKind::seal_key || !card.spk.signature || !card.ssk.signature) {
+        return std::unexpected(Error::malformed);
+    }
+    const auto padded = pad(wire::encode(card));
+    if (!padded) {
+        return std::unexpected(Error::too_long);
+    }
+    return seal_padded(recipient, *padded, card_labels, random);
 }
 
 }
@@ -151,21 +199,34 @@ Result<wire::Seal> seal(const Recipient& recipient, const wire::Inner& inner, st
 
 Result<wire::Inner> open(std::uint32_t seal_key_id, const crypto::X25519KeyPair& seal_key, const wire::Seal& envelope)
 {
-    if (envelope.ssk_id != seal_key_id) {
-        return std::unexpected(Error::wrong_key);
-    }
-    const auto key =
-        envelope_key(seal_key.secret_key, envelope.ephemeral_key, envelope.ephemeral_key, seal_key.public_key);
-    if (!key) {
-        return std::unexpected(key.error());
-    }
-    const auto padded = crypto::detail::aead_decrypt(
-        *key, envelope.nonce, associated_data(seal_key_id, envelope.ephemeral_key, seal_key.public_key),
-        envelope.box);
+    const auto padded = open_padded(seal_key_id, seal_key, envelope, message_labels);
     if (!padded) {
-        return std::unexpected(Error::authentication_failed);
+        return std::unexpected(padded.error());
     }
     return detail::inner_of(padded->view());
+}
+
+Result<wire::Seal> seal_card(const Recipient& recipient, const wire::Card& card, std::uint64_t now)
+{
+    return seal_card_with(recipient, card, now, nullptr);
+}
+
+Result<wire::Card> open_card(
+    std::uint32_t seal_key_id, const crypto::X25519KeyPair& seal_key, const wire::Seal& envelope)
+{
+    const auto padded = open_padded(seal_key_id, seal_key, envelope, card_labels);
+    if (!padded) {
+        return std::unexpected(padded.error());
+    }
+    const auto message = unpad(padded->view());
+    if (!message) {
+        return std::unexpected(Error::authentication_failed);
+    }
+    auto card = wire::decode(*message, wire::read_card);
+    if (!card) {
+        return std::unexpected(Error::malformed);
+    }
+    return std::move(*card);
 }
 
 namespace detail {
@@ -174,6 +235,12 @@ Result<wire::Seal> seal(
     const Recipient& recipient, const wire::Inner& inner, std::uint64_t now, const RandomSource& random)
 {
     return seal_with(recipient, inner, now, &random);
+}
+
+Result<wire::Seal> seal_card(
+    const Recipient& recipient, const wire::Card& card, std::uint64_t now, const RandomSource& random)
+{
+    return seal_card_with(recipient, card, now, &random);
 }
 
 Result<wire::Inner> inner_of(ByteView padded)

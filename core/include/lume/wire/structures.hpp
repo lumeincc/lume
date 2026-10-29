@@ -32,6 +32,7 @@ inline constexpr std::size_t encrypted_header_size = 80;
 inline constexpr std::size_t account_id_size = 16;
 inline constexpr std::size_t content_id_size = 16;
 inline constexpr std::size_t token_size = 32;
+inline constexpr std::size_t group_id_size = 16;
 inline constexpr std::size_t username_bound = 32;
 inline constexpr std::size_t content_body_bound = 67000;
 inline constexpr std::size_t directory_keys_bound = 8;
@@ -125,6 +126,21 @@ struct Introduction {
     friend bool operator==(const Introduction&, const Introduction&) = default;
 };
 
+struct Card {
+    UsernameCertificate certificate;
+    crypto::ByteArray<signature_size> bind{};
+    std::uint32_t generation = 0;
+    PrekeyX spk;
+    PrekeyKem pqspk;
+    PrekeyX ssk{.kind = PrekeyKind::seal_key};
+    crypto::ByteArray<token_size> token{};
+    crypto::ByteArray<group_id_size> group_id{};
+    std::uint64_t expires_at = 0;
+    crypto::ByteArray<signature_size> signature{};
+
+    friend bool operator==(const Card&, const Card&) = default;
+};
+
 struct Content {
     crypto::ByteArray<content_id_size> id{};
     std::uint8_t kind = 0;
@@ -173,6 +189,7 @@ void write(Writer& writer, const DirectoryKeys& value);
 void write(Writer& writer, const InitialHeader& value);
 void write(Writer& writer, const Introduction& value);
 void write(Writer& writer, const Content& value);
+void write(Writer& writer, const Card& value);
 void write(Writer& writer, const RatchetHeader& value);
 void write(Writer& writer, const RatchetMessage& value);
 void write(Writer& writer, const Inner& value);
@@ -185,6 +202,7 @@ void write(Writer& writer, const Seal& value);
 [[nodiscard]] Result<InitialHeader> read_initial_header(Reader& reader);
 [[nodiscard]] Result<Introduction> read_introduction(Reader& reader);
 [[nodiscard]] Result<Content> read_content(Reader& reader);
+[[nodiscard]] Result<Card> read_card(Reader& reader);
 [[nodiscard]] Result<RatchetHeader> read_ratchet_header(Reader& reader);
 [[nodiscard]] Result<RatchetMessage> read_ratchet_message(Reader& reader);
 [[nodiscard]] Result<Inner> read_inner(Reader& reader);

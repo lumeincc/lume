@@ -38,4 +38,7 @@ struct PrekeyFacts {
 
 [[nodiscard]] bool is_usable_at(wire::PrekeyKind kind, std::uint64_t created_at, std::uint64_t now) noexcept;
 
+[[nodiscard]] bool is_usable_at(
+    wire::PrekeyKind kind, std::uint64_t created_at, std::uint64_t now, std::uint64_t usable_for) noexcept;
+
 }
