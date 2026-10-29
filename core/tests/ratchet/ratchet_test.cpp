@@ -10,6 +10,7 @@
 #include "lume/identity/phrase.hpp"
 #include "ratchet/ratchet_internal.hpp"
 #include "support/mutate.hpp"
+#include "support/random_stream.hpp"
 #include "support/vectors.hpp"
 
 #include <gtest/gtest.h>
@@ -17,7 +18,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <functional>
 #include <limits>
 #include <map>
@@ -159,33 +159,6 @@ Error refusal(State& receiver, const wire::RatchetMessage& message)
     return opened ? Error::library_failure : opened.error();
 }
 
-class RandomStream {
-public:
-    explicit RandomStream(std::string seed)
-        : seed_(std::move(seed))
-    {
-    }
-
-    void operator()(std::span<std::uint8_t> output)
-    {
-        for (auto& byte : output) {
-            if (pool_.empty()) {
-                const Bytes seed(seed_.begin(), seed_.end());
-                const auto block = crypto::sha256({seed, crypto::Encoder{}.u64(counter_).view()});
-                ++counter_;
-                pool_.assign(block.begin(), block.end());
-            }
-            byte = pool_.front();
-            pool_.pop_front();
-        }
-    }
-
-private:
-    std::string seed_;
-    std::uint64_t counter_ = 0;
-    std::deque<std::uint8_t> pool_;
-};
-
 Bytes hex_field(const nlohmann::json& object, const char* name)
 {
     return test::from_hex(object.at(name).get<std::string>());
@@ -214,8 +187,8 @@ TEST(Ratchet, MatchesTheLumeTranscript)
     const auto signed_prekey =
         must(crypto::x25519_from_secret(SecretBytes::copy_of(hex_field(handshake_case.at("signed_prekey"), "secret"))));
 
-    RandomStream alice_random(transcript.at("random_seeds").at("alice").get<std::string>());
-    RandomStream bob_random(transcript.at("random_seeds").at("bob").get<std::string>());
+    test::RandomStream alice_random(transcript.at("random_seeds").at("alice").get<std::string>());
+    test::RandomStream bob_random(transcript.at("random_seeds").at("bob").get<std::string>());
     const detail::RandomSource alice_source = std::ref(alice_random);
     const detail::RandomSource bob_source = std::ref(bob_random);
     auto alice = must(detail::start_as_alice(keys, signed_prekey.public_key, alice_source));

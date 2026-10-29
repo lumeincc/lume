@@ -33,7 +33,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         return 0;
     }
     const auto body = input.subspan(1);
-    switch (input.front() % 7) {
+    switch (input.front() % 10) {
     case 0:
         expect_canonical(body, lume::wire::read_prekey_x);
         break;
@@ -52,8 +52,17 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     case 5:
         expect_canonical(body, lume::wire::read_inner);
         break;
-    default:
+    case 6:
         expect_canonical(body, lume::wire::read_seal);
+        break;
+    case 7:
+        expect_canonical(body, lume::wire::read_username_certificate);
+        break;
+    case 8:
+        expect_canonical(body, lume::wire::read_introduction);
+        break;
+    default:
+        expect_canonical(body, lume::wire::read_content);
         break;
     }
     return 0;

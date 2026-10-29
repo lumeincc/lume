@@ -50,6 +50,7 @@ crypto::Result<wire::PrekeyX> make_prekey_x(
     prekey.created_at = facts.created_at;
     std::ranges::copy(public_key, prekey.key.begin());
     if (facts.kind == wire::PrekeyKind::one_time_prekey) {
+        prekey.signature.reset();
         return prekey;
     }
     if (facts.kind != wire::PrekeyKind::signed_prekey && facts.kind != wire::PrekeyKind::seal_key) {

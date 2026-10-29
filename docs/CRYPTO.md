@@ -642,7 +642,11 @@ sealed = enc(Seal { version: 1, ssk_id, es: ES.pk, nonce, box: AEAD(k, nonce, ad
 inner  = Inner { sender: IKsig_A, initial: opt<InitialHeader>, message: RatchetMessage }
 ```
 
-The recipient computes the same `k` from `DH(SSK_B.sk, ES.pk)`.
+The recipient computes the same `k` from `DH(SSK_B.sk, ES.pk)`. An envelope is
+dropped when its `ssk_id` names no seal key the recipient still holds, when
+`es` is not canonical or is a point of low order (§2), when the box
+does not authenticate or its plaintext is not exactly a padded `Inner` (§7.3),
+or when `sender` differs from `ik_sig` of its initial header (§5.3).
 
 The seal **hides** the sender; it does not authenticate them. Bob finds the
 session for the hinted `IKsig_A`, and the ratchet's AEAD — whose `AD` contains
@@ -652,7 +656,13 @@ both identities — fails unless the message really came from that session.
 recipient — from a bundle, a card, an introduction, or a seal-key update inside
 the session — as long as it is within the §4 window. When the cached key is
 more than 7 days past its `created_at`, the sender first fetches the current
-one from the relay with its delivery token (PROTOCOL §4.3).
+one from the relay with its delivery token (PROTOCOL §4.3). Before every seal
+the sender checks the key's signature (§4) under the identity it has pinned for
+the recipient and under the generation the key claims, whichever way the key
+arrived, so a key the relay hands out cannot point the seal at anyone else. A
+claimed generation below the one the sender holds is refused (§3.3); a higher
+one that verifies means the recipient recovered, and the sender starts a new
+session (§5.4) instead of sealing.
 
 **Forward secrecy of the sender.** A seal key's private half is deleted 40 days
 after its `created_at` (§4), so a recorded
