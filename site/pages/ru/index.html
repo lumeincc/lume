@@ -21,9 +21,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <p class="kicker">Что видит сервер</p>
 <div class="chat" aria-hidden="true">
 <p class="msg in">9fA2#c7E0b&lt;d=41aE?3b%f8C</p>
-<p class="msg out">e1D|5a&amp;0Fc9|b7</p>
-<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8</p>
-<p class="msg out">b0E%7c3A|f9d</p>
+<p class="msg out">e1D|5a&amp;0Fc9|b7A=2d#E0c4</p>
+<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8F%3b</p>
+<p class="msg out">b0E%7c3A|f9d1=Ce&amp;8a2D?f5</p>
 </div>
 <p class="view-note">Отправитель неизвестен</p>
 </div>
@@ -36,6 +36,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <p class="msg out">Договорились</p>
 </div>
 <p class="view-note">Расшифровано на телефоне</p>
+</div>
+<div class="try" hidden>
+<label for="try-text">Напишите сами</label>
+<input id="try-text" class="try-input" type="text" maxlength="140" autocomplete="off" spellcheck="false" placeholder="Например: встретимся в семь">
+<p class="view-note">Сервер получит конверт в 2 КиБ, какой бы длины ни была фраза, а каждая буква меняет весь шифр.</p>
 </div>
 </div>
 </section>
@@ -120,12 +125,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <li>Гибридное постквантовое рукопожатие</li>
 <li>Double Ratchet с шифрованием заголовков</li>
 <li>Двоичный формат сообщений с фаззингом каждого парсера</li>
+<li>Скрытие отправителя и выравнивание длины сообщений</li>
+<li>Проверка имён пользователей без обращения к серверу</li>
 </ul>
 </div>
 <div class="card todo">
 <h3 class="kicker">В работе</h3>
 <ul>
-<li>Содержимое сообщений и скрытие отправителя</li>
 <li>Зашифрованное хранилище на телефоне</li>
 <li>Сервер-ретранслятор</li>
 <li>Приложение для Android</li>

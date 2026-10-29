@@ -164,6 +164,16 @@ td.right, th.right { text-align: right; }
 .msg.out { justify-self: end; background: rgba(255, 255, 255, .14); border-bottom-right-radius: 6px; }
 .server .msg { font-family: var(--font-code); font-size: 13.5px; letter-spacing: .02em; color: var(--fg-2); }
 .view-note { margin: 0; font-family: var(--font-ui); font-size: 13px; color: var(--fg-3); }
+.try { grid-column: 1 / -1; display: grid; gap: 12px; padding: 18px 20px 20px; border-radius: 22px; background: var(--glass); box-shadow: inset 0 0 0 1px var(--glass-line); }
+.try[hidden] { display: none; }
+.try label { font-family: var(--font-ui); font-size: 14px; color: var(--fg-2); }
+.try-input { width: 100%; height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--fg); font-family: var(--font-display); font-weight: 300; font-size: 16px; }
+.try-input::placeholder { color: var(--fg-3); }
+.try-input:focus-visible { outline: 1.5px solid var(--fg); outline-offset: 3px; }
+.msg.live { animation: arrive .3s ease-out; }
+@keyframes arrive { from { opacity: 0; transform: translateY(6px); } }
+body::before { content: ""; position: fixed; inset: -25vmax; z-index: -1; pointer-events: none; background: radial-gradient(closest-side at 30% 32%, rgba(255, 255, 255, .075), transparent), radial-gradient(closest-side at 72% 66%, rgba(255, 255, 255, .05), transparent), radial-gradient(closest-side at 58% 16%, rgba(255, 255, 255, .035), transparent); animation: drift 48s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); } to { transform: translate3d(3%, 2%, 0) rotate(10deg) scale(1.08); } }
 
 .track { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(20px, 2.4vw, 36px); margin: clamp(40px, 5vw, 64px) 0 0; padding: 44px 0 0; list-style: none; }
 .track::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1px; background: var(--glass-line-2); }
@@ -235,5 +245,6 @@ td.right, th.right { text-align: right; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .track .run::before { animation: none !important; }
+  body::before, .msg.live { animation: none; }
   .btn, .links a.card, .index a, .switch span, .switch span::after { transition: none; }
 }

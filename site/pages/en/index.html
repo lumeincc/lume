@@ -21,9 +21,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <p class="kicker">What the server sees</p>
 <div class="chat" aria-hidden="true">
 <p class="msg in">9fA2#c7E0b&lt;d=41aE?3b%f8C</p>
-<p class="msg out">e1D|5a&amp;0Fc9|b7</p>
-<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8</p>
-<p class="msg out">b0E%7c3A|f9d</p>
+<p class="msg out">e1D|5a&amp;0Fc9|b7A=2d#E0c4</p>
+<p class="msg in">C4f*0a9E=b2d&lt;7A1c#e8F%3b</p>
+<p class="msg out">b0E%7c3A|f9d1=Ce&amp;8a2D?f5</p>
 </div>
 <p class="view-note">Sender: unknown</p>
 </div>
@@ -36,6 +36,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <p class="msg out">Deal</p>
 </div>
 <p class="view-note">Decrypted on the device</p>
+</div>
+<div class="try" hidden>
+<label for="try-text">Try it yourself</label>
+<input id="try-text" class="try-input" type="text" maxlength="140" autocomplete="off" spellcheck="false" placeholder="For example: see you at seven">
+<p class="view-note">The server gets a 2 KiB envelope whatever the length of the phrase, and every letter changes the whole cipher.</p>
 </div>
 </div>
 </section>
@@ -120,12 +125,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <li>The hybrid post-quantum handshake</li>
 <li>The Double Ratchet with encrypted headers</li>
 <li>The binary wire format, with a fuzz target for every parser</li>
+<li>Sealed sender and padding of message lengths</li>
+<li>Usernames checked without asking the server</li>
 </ul>
 </div>
 <div class="card todo">
 <h3 class="kicker">In progress</h3>
 <ul>
-<li>Message content and sealed sender</li>
 <li>Encrypted storage on the device</li>
 <li>The relay server</li>
 <li>The Android app</li>
