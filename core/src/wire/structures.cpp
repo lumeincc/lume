@@ -213,13 +213,15 @@ Result<PrekeyX> read_prekey_x(Reader& reader)
     if (signed_key != (value.kind != PrekeyKind::one_time_prekey)) {
         return std::unexpected(Error::invalid_value);
     }
-    if (signed_key) {
-        crypto::ByteArray<signature_size> signature{};
-        if (!reader.into(signature)) {
-            return std::unexpected(reader.error());
-        }
-        value.signature = signature;
+    if (!signed_key) {
+        value.signature.reset();
+        return value;
     }
+    crypto::ByteArray<signature_size> signature{};
+    if (!reader.into(signature)) {
+        return std::unexpected(reader.error());
+    }
+    value.signature = signature;
     return value;
 }
 

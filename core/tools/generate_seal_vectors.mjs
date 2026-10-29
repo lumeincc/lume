@@ -3,7 +3,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash, createPrivateKey, createPublicKey, diffieHellman, hkdfSync, verify } from "node:crypto";
-import { aeadDecrypt, aeadEncrypt, checkAgainstWycheproof } from "./xchacha20poly1305.mjs";
+import { aeadDecrypt, aeadEncrypt, checkAgainstWycheproof, decryptIgnoringTheTag } from "./xchacha20poly1305.mjs";
 
 const [identityFile, handshakeFile, ratchetFile, wycheproofDir, outputFile] = process.argv.slice(2);
 
@@ -150,7 +150,8 @@ const open = (envelope, disabled = new Set()) => {
   }
   if (on("low_order") && shared.every((byte) => byte === 0)) return { error: "weak_key", check: "low_order" };
   const key = envelopeKey(shared, seal.ephemeral, sealKey.public);
-  const padded = aeadDecrypt(key, seal.nonce, associatedData(sealKey.id, seal.ephemeral, sealKey.public), seal.box, { verify: on("aead") });
+  const decrypt = on("aead") ? aeadDecrypt : decryptIgnoringTheTag;
+  const padded = decrypt(key, seal.nonce, associatedData(sealKey.id, seal.ephemeral, sealKey.public), seal.box);
   if (!padded) return { error: "authentication_failed", check: "aead" };
   const inner = on("padding") ? unpad(padded) : unpadLeniently(padded);
   if (!inner) return { error: "authentication_failed", check: "padding" };

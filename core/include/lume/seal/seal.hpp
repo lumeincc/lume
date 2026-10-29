@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "lume/crypto/bytes.hpp"
 #include "lume/crypto/x25519.hpp"
+#include "lume/handshake/handshake.hpp"
 #include "lume/wire/structures.hpp"
 
 #include <cstdint>
@@ -15,7 +15,9 @@ namespace lume::seal {
 enum class Error : std::uint8_t {
     too_long,
     not_a_seal_key,
+    generation_went_down,
     invalid_signature,
+    generation_went_up,
     key_not_usable,
     wrong_key,
     weak_key,
@@ -28,7 +30,7 @@ template <typename T>
 using Result = std::expected<T, Error>;
 
 struct Recipient {
-    crypto::ByteArray<wire::ed25519_key_size> signing_key{};
+    handshake::Pin pin;
     std::uint32_t generation = 0;
     wire::PrekeyX seal_key;
 };

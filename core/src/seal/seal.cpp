@@ -82,8 +82,14 @@ Result<void> check_recipient(const Recipient& recipient, std::uint64_t now)
     if (key.kind != wire::PrekeyKind::seal_key) {
         return std::unexpected(Error::not_a_seal_key);
     }
-    if (!handshake::verify_prekey(recipient.signing_key, key, recipient.generation)) {
+    if (recipient.generation < recipient.pin.generation) {
+        return std::unexpected(Error::generation_went_down);
+    }
+    if (!handshake::verify_prekey(recipient.pin.identity.signing_key, key, recipient.generation)) {
         return std::unexpected(Error::invalid_signature);
+    }
+    if (recipient.generation > recipient.pin.generation) {
+        return std::unexpected(Error::generation_went_up);
     }
     if (!handshake::is_usable_at(key.kind, key.created_at, now)) {
         return std::unexpected(Error::key_not_usable);
@@ -101,6 +107,10 @@ Result<wire::Seal> seal_with(const Recipient& recipient, const wire::Inner& inne
     }
     if (inner.message.body.size() > wire::ratchet_body_bound) {
         return std::unexpected(Error::too_long);
+    }
+    if (inner.initial && inner.initial->pq_kind != wire::PrekeyKind::kem_last_resort
+        && inner.initial->pq_kind != wire::PrekeyKind::kem_one_time) {
+        return std::unexpected(Error::malformed);
     }
     const auto& seal_key = recipient.seal_key;
     const auto padded = pad(wire::encode(inner));

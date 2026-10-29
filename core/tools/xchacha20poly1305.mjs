@@ -46,19 +46,27 @@ export const aeadEncrypt = (key, nonce, associatedData, plaintext) => {
   return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
 };
 
-export const aeadDecrypt = (key, nonce, associatedData, ciphertext, { verify = true } = {}) => {
-  if (ciphertext.length < 16) return null;
+const decipherOf = (key, nonce, associatedData, ciphertext) => {
   const [subkey, iv] = chachaParameters(key, nonce);
   const decipher = createDecipheriv("chacha20-poly1305", subkey, iv, { authTagLength: 16 });
   decipher.setAAD(associatedData, { plaintextLength: ciphertext.length - 16 });
   decipher.setAuthTag(ciphertext.subarray(ciphertext.length - 16));
-  const plaintext = decipher.update(ciphertext.subarray(0, ciphertext.length - 16));
-  if (!verify) return plaintext;
+  return [decipher, decipher.update(ciphertext.subarray(0, ciphertext.length - 16))];
+};
+
+export const aeadDecrypt = (key, nonce, associatedData, ciphertext) => {
+  if (ciphertext.length < 16) return null;
+  const [decipher, plaintext] = decipherOf(key, nonce, associatedData, ciphertext);
   try {
     return Buffer.concat([plaintext, decipher.final()]);
   } catch {
     return null;
   }
+};
+
+export const decryptIgnoringTheTag = (key, nonce, associatedData, ciphertext) => {
+  if (ciphertext.length < 16) return null;
+  return decipherOf(key, nonce, associatedData, ciphertext)[1];
 };
 
 export const checkAgainstWycheproof = (wycheproofDir) => {

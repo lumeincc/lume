@@ -42,7 +42,7 @@ struct PrekeyX {
     std::uint32_t id = 0;
     std::uint64_t created_at = 0;
     crypto::ByteArray<x25519_key_size> key{};
-    std::optional<crypto::ByteArray<signature_size>> signature;
+    std::optional<crypto::ByteArray<signature_size>> signature = crypto::ByteArray<signature_size>{};
 
     friend bool operator==(const PrekeyX&, const PrekeyX&) = default;
 };
@@ -89,7 +89,7 @@ struct Introduction {
     crypto::ByteArray<account_id_size> account_id{};
     std::uint32_t generation = 0;
     crypto::ByteArray<token_size> token{};
-    PrekeyX seal_key{.kind = PrekeyKind::seal_key, .signature = crypto::ByteArray<signature_size>{}};
+    PrekeyX seal_key{.kind = PrekeyKind::seal_key};
     std::optional<UsernameCertificate> certificate;
 
     friend bool operator==(const Introduction&, const Introduction&) = default;

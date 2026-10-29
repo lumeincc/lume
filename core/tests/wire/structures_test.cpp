@@ -47,6 +47,7 @@ PrekeyX random_prekey_x()
     value.id = any_integer<std::uint32_t>();
     value.created_at = any_integer<std::uint64_t>();
     value.key = random_array<x25519_key_size>();
+    value.signature.reset();
     if (value.kind != PrekeyKind::one_time_prekey) {
         value.signature = random_array<signature_size>();
     }
@@ -184,14 +185,13 @@ PrekeyX one_time_prekey()
 {
     PrekeyX value;
     value.kind = PrekeyKind::one_time_prekey;
+    value.signature.reset();
     return value;
 }
 
 PrekeyX signed_prekey()
 {
-    PrekeyX value;
-    value.signature = crypto::ByteArray<signature_size>{};
-    return value;
+    return PrekeyX{};
 }
 
 Seal seal_with_box(std::size_t size)

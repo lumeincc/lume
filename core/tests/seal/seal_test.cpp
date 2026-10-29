@@ -5,6 +5,7 @@
 
 #include "lume/crypto/aead.hpp"
 #include "lume/crypto/random.hpp"
+#include "lume/handshake/handshake.hpp"
 #include "lume/handshake/prekey.hpp"
 #include "lume/identity/identity.hpp"
 #include "lume/identity/phrase.hpp"
@@ -64,13 +65,12 @@ crypto::ByteArray<Size> array_of(const Bytes& bytes)
 
 Recipient recipient_for(
     const identity::Identity& owner, std::uint32_t id, crypto::ByteView public_key, std::uint64_t created_at = now,
-    wire::PrekeyKind kind = wire::PrekeyKind::seal_key)
+    wire::PrekeyKind kind = wire::PrekeyKind::seal_key, std::uint32_t generation = identity::first_generation)
 {
-    const handshake::PrekeyFacts facts{
-        .kind = kind, .id = id, .created_at = created_at, .generation = identity::first_generation};
+    const handshake::PrekeyFacts facts{.kind = kind, .id = id, .created_at = created_at, .generation = generation};
     return Recipient{
-        .signing_key = identity::public_identity(owner).signing_key,
-        .generation = identity::first_generation,
+        .pin = handshake::Pin{.identity = identity::public_identity(owner), .generation = generation},
+        .generation = generation,
         .seal_key = must(handshake::make_prekey_x(owner, facts, public_key))};
 }
 
@@ -140,9 +140,15 @@ VectorKey vector_key(const nlohmann::json& vectors)
     if (test::to_hex(keys.public_key) != key.at("public").get<std::string>()) {
         throw std::runtime_error("the seal key of the vectors does not match its secret");
     }
+    const auto generation = key.at("generation").get<std::uint32_t>();
     const Recipient recipient{
-        .signing_key = array_of<wire::ed25519_key_size>(hex_field(key, "signer")),
-        .generation = key.at("generation").get<std::uint32_t>(),
+        .pin = handshake::Pin{
+            .identity = identity::PublicIdentity{
+                .signing_key = array_of<wire::ed25519_key_size>(hex_field(key, "signer")),
+                .exchange_key = {},
+                .binding = {}},
+            .generation = generation},
+        .generation = generation,
         .seal_key = wire::PrekeyX{
             .kind = wire::PrekeyKind::seal_key,
             .id = key.at("id").get<std::uint32_t>(),
@@ -249,12 +255,35 @@ TEST(Seal, RefusesSealKeysItCannotVerify)
 
     auto other_signer = bob.recipient;
     const auto stranger = must(identity::derive_identity(crypto::random_secret(identity::entropy_size)));
-    other_signer.signing_key = identity::public_identity(stranger).signing_key;
+    other_signer.pin.identity.signing_key = identity::public_identity(stranger).signing_key;
     EXPECT_EQ(test::error_of(seal(other_signer, inner, now)), Error::invalid_signature);
 
     auto unsigned_key = bob.recipient;
     unsigned_key.seal_key.signature.reset();
     EXPECT_EQ(test::error_of(seal(unsigned_key, inner, now)), Error::invalid_signature);
+}
+
+TEST(Seal, HoldsSealKeysToThePinnedGeneration)
+{
+    const auto bob = new_bob(7);
+    const auto inner = inner_with(100, false);
+    const auto key_of_generation = [&bob](std::uint32_t generation) {
+        return recipient_for(bob.identity, 7, bob.keys.public_key, now, wire::PrekeyKind::seal_key, generation);
+    };
+
+    auto older = key_of_generation(1);
+    older.pin.generation = 2;
+    EXPECT_EQ(test::error_of(seal(older, inner, now)), Error::generation_went_down);
+
+    auto newer = key_of_generation(2);
+    newer.pin.generation = 1;
+    EXPECT_EQ(test::error_of(seal(newer, inner, now)), Error::generation_went_up);
+
+    auto claims_newer = key_of_generation(1);
+    claims_newer.generation = 2;
+    EXPECT_EQ(test::error_of(seal(claims_newer, inner, now)), Error::invalid_signature);
+
+    EXPECT_TRUE(seal(key_of_generation(2), inner, now).has_value());
 }
 
 TEST(Seal, RefusesSealKeysOutsideTheirWindow)
@@ -289,6 +318,18 @@ TEST(Seal, RefusesASenderThatIsNotTheInitiator)
     auto inner = inner_with(100, true);
     inner.sender.front() = static_cast<std::uint8_t>(inner.sender.front() ^ 0x01U);
     EXPECT_EQ(test::error_of(seal(bob.recipient, inner, now)), Error::malformed);
+}
+
+TEST(Seal, RefusesAnInnerItCouldNotEncode)
+{
+    const auto bob = new_bob(7);
+    auto inner = inner_with(100, true);
+    auto initial = inner.initial.value_or(wire::InitialHeader{});
+    for (const auto kind : {wire::PrekeyKind::signed_prekey, wire::PrekeyKind::seal_key}) {
+        initial.pq_kind = kind;
+        inner.initial = initial;
+        EXPECT_EQ(test::error_of(seal(bob.recipient, inner, now)), Error::malformed);
+    }
 }
 
 TEST(Seal, RefusesAnInnerLargerThanTheLargestBucket)
@@ -333,6 +374,14 @@ TEST(Seal, OpensOnlyWithTheKeyItWasSealedTo)
     const auto sealed = must(seal(bob.recipient, inner_with(100, false), now));
     EXPECT_EQ(test::error_of(open(8, bob.keys, sealed)), Error::wrong_key);
     EXPECT_EQ(test::error_of(open(7, crypto::x25519_generate(), sealed)), Error::authentication_failed);
+}
+
+TEST(Seal, BlamesABrokenOwnKeyOnTheLibraryNotThePeer)
+{
+    const auto bob = new_bob(7);
+    const auto sealed = must(seal(bob.recipient, inner_with(100, false), now));
+    const crypto::X25519KeyPair broken{.public_key = bob.keys.public_key, .secret_key = SecretBytes(16)};
+    EXPECT_EQ(test::error_of(open(7, broken, sealed)), Error::library_failure);
 }
 
 TEST(Seal, RefusesBoxesTooShortToAuthenticate)
