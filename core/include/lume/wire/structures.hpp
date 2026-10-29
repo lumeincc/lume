@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace lume::wire {
 
@@ -27,6 +28,11 @@ inline constexpr std::size_t kem_public_key_size = 1184;
 inline constexpr std::size_t kem_ciphertext_size = 1088;
 inline constexpr std::size_t nonce_size = 24;
 inline constexpr std::size_t encrypted_header_size = 80;
+inline constexpr std::size_t account_id_size = 16;
+inline constexpr std::size_t content_id_size = 16;
+inline constexpr std::size_t token_size = 32;
+inline constexpr std::size_t username_bound = 32;
+inline constexpr std::size_t content_body_bound = 67000;
 inline constexpr std::size_t ratchet_body_bound = 69000;
 inline constexpr std::size_t seal_box_bound = 69648;
 inline constexpr std::uint8_t seal_version = 1;
@@ -51,6 +57,20 @@ struct PrekeyKem {
     friend bool operator==(const PrekeyKem&, const PrekeyKem&) = default;
 };
 
+struct UsernameCertificate {
+    std::uint32_t key_id = 0;
+    std::string username;
+    crypto::ByteArray<account_id_size> account_id{};
+    crypto::ByteArray<ed25519_key_size> ik_sig{};
+    crypto::ByteArray<x25519_key_size> ik_dh{};
+    std::uint32_t generation = 0;
+    std::uint64_t issued_at = 0;
+    std::uint64_t expires_at = 0;
+    crypto::ByteArray<signature_size> signature{};
+
+    friend bool operator==(const UsernameCertificate&, const UsernameCertificate&) = default;
+};
+
 struct InitialHeader {
     crypto::ByteArray<ed25519_key_size> ik_sig{};
     crypto::ByteArray<x25519_key_size> ik_dh{};
@@ -63,6 +83,25 @@ struct InitialHeader {
     std::optional<std::uint32_t> opk_id;
 
     friend bool operator==(const InitialHeader&, const InitialHeader&) = default;
+};
+
+struct Introduction {
+    crypto::ByteArray<account_id_size> account_id{};
+    std::uint32_t generation = 0;
+    crypto::ByteArray<token_size> token{};
+    PrekeyX seal_key{.kind = PrekeyKind::seal_key, .signature = crypto::ByteArray<signature_size>{}};
+    std::optional<UsernameCertificate> certificate;
+
+    friend bool operator==(const Introduction&, const Introduction&) = default;
+};
+
+struct Content {
+    crypto::ByteArray<content_id_size> id{};
+    std::uint8_t kind = 0;
+    std::optional<Introduction> introduction;
+    crypto::Bytes body;
+
+    friend bool operator==(const Content&, const Content&) = default;
 };
 
 struct RatchetHeader {
@@ -99,7 +138,10 @@ struct Seal {
 
 void write(Writer& writer, const PrekeyX& value);
 void write(Writer& writer, const PrekeyKem& value);
+void write(Writer& writer, const UsernameCertificate& value);
 void write(Writer& writer, const InitialHeader& value);
+void write(Writer& writer, const Introduction& value);
+void write(Writer& writer, const Content& value);
 void write(Writer& writer, const RatchetHeader& value);
 void write(Writer& writer, const RatchetMessage& value);
 void write(Writer& writer, const Inner& value);
@@ -107,7 +149,10 @@ void write(Writer& writer, const Seal& value);
 
 [[nodiscard]] Result<PrekeyX> read_prekey_x(Reader& reader);
 [[nodiscard]] Result<PrekeyKem> read_prekey_kem(Reader& reader);
+[[nodiscard]] Result<UsernameCertificate> read_username_certificate(Reader& reader);
 [[nodiscard]] Result<InitialHeader> read_initial_header(Reader& reader);
+[[nodiscard]] Result<Introduction> read_introduction(Reader& reader);
+[[nodiscard]] Result<Content> read_content(Reader& reader);
 [[nodiscard]] Result<RatchetHeader> read_ratchet_header(Reader& reader);
 [[nodiscard]] Result<RatchetMessage> read_ratchet_message(Reader& reader);
 [[nodiscard]] Result<Inner> read_inner(Reader& reader);

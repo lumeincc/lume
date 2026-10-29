@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace lume::wire {
 namespace {
@@ -59,6 +61,22 @@ PrekeyKem random_prekey_kem()
     return value;
 }
 
+UsernameCertificate random_username_certificate()
+{
+    UsernameCertificate value;
+    value.key_id = any_integer<std::uint32_t>();
+    const auto length = *rc::gen::inRange<std::size_t>(0, username_bound + 1);
+    value.username = *rc::gen::container<std::string>(length, rc::gen::inRange('a', static_cast<char>('z' + 1)));
+    value.account_id = random_array<account_id_size>();
+    value.ik_sig = random_array<ed25519_key_size>();
+    value.ik_dh = random_array<x25519_key_size>();
+    value.generation = any_integer<std::uint32_t>();
+    value.issued_at = any_integer<std::uint64_t>();
+    value.expires_at = any_integer<std::uint64_t>();
+    value.signature = random_array<signature_size>();
+    return value;
+}
+
 InitialHeader random_initial_header()
 {
     InitialHeader value;
@@ -73,6 +91,34 @@ InitialHeader random_initial_header()
     if (*rc::gen::arbitrary<bool>()) {
         value.opk_id = any_integer<std::uint32_t>();
     }
+    return value;
+}
+
+Introduction random_introduction()
+{
+    Introduction value;
+    value.account_id = random_array<account_id_size>();
+    value.generation = any_integer<std::uint32_t>();
+    value.token = random_array<token_size>();
+    value.seal_key.id = any_integer<std::uint32_t>();
+    value.seal_key.created_at = any_integer<std::uint64_t>();
+    value.seal_key.key = random_array<x25519_key_size>();
+    value.seal_key.signature = random_array<signature_size>();
+    if (*rc::gen::arbitrary<bool>()) {
+        value.certificate = random_username_certificate();
+    }
+    return value;
+}
+
+Content random_content()
+{
+    Content value;
+    value.id = random_array<content_id_size>();
+    value.kind = *rc::gen::arbitrary<std::uint8_t>();
+    if (*rc::gen::arbitrary<bool>()) {
+        value.introduction = random_introduction();
+    }
+    value.body = *rc::gen::container<Bytes>(rc::gen::arbitrary<std::uint8_t>());
     return value;
 }
 
@@ -152,6 +198,32 @@ RatchetMessage message_with_body(std::size_t size)
     return value;
 }
 
+Content content_with_body(std::size_t size)
+{
+    Content value;
+    value.body = Bytes(size);
+    return value;
+}
+
+UsernameCertificate certificate_named(std::string username)
+{
+    UsernameCertificate value;
+    value.username = std::move(username);
+    return value;
+}
+
+Bytes with_username_bytes(const Bytes& username)
+{
+    auto encoded = Writer{}.u32(0).u32(static_cast<std::uint32_t>(username.size())).take();
+    encoded.insert(encoded.end(), username.begin(), username.end());
+    const auto rest = encode(UsernameCertificate{});
+    const auto after_username = crypto::ByteView(rest).subspan(4 + 4);
+    encoded.insert(encoded.end(), after_username.begin(), after_username.end());
+    return encoded;
+}
+
+constexpr std::size_t introduction_seal_key_offset = account_id_size + 4 + token_size;
+
 TEST(WireStructures, FixedSizesMatchTheProtocol)
 {
     EXPECT_EQ(encode(RatchetHeader{}).size(), 40U);
@@ -161,6 +233,71 @@ TEST(WireStructures, FixedSizesMatchTheProtocol)
     EXPECT_EQ(encode(PrekeyKem{}).size(), 1U + 4 + 8 + 1184 + 64);
     EXPECT_EQ(encode(InitialHeader{}).size(), 32U + 32 + 64 + 32 + 1088 + 4 + 1 + 4 + 1);
     EXPECT_EQ(encode(seal_with_box(seal_box_bound)).size(), 1U + 4 + 32 + 24 + 4 + seal_box_bound);
+    EXPECT_EQ(encode(UsernameCertificate{}).size(), 4U + 4 + 16 + 32 + 32 + 4 + 8 + 8 + 64);
+    EXPECT_EQ(encode(Introduction{}).size(), 16U + 4 + 32 + encode(signed_prekey()).size() + 1);
+    EXPECT_EQ(encode(Content{}).size(), 16U + 1 + 1 + 4);
+}
+
+TEST(WireStructures, ContentFieldsAreInProtocolOrder)
+{
+    Content content;
+    content.id.fill(0x11);
+    content.kind = 7;
+    content.body = {0x68, 0x69};
+    EXPECT_EQ(test::to_hex(encode(content)), "11111111111111111111111111111111" "07" "00" "00000002" "6869");
+
+    Introduction introduction;
+    introduction.account_id.fill(0x22);
+    introduction.generation = 3;
+    introduction.token.fill(0x33);
+    introduction.seal_key.id = 5;
+    introduction.seal_key.created_at = 6;
+    introduction.certificate = certificate_named("ab");
+    introduction.certificate->key_id = 9;
+    content.introduction = introduction;
+    const auto encoded = encode(content);
+    const std::string expected_prefix = "11111111111111111111111111111111" "07" "01"
+                                        "22222222222222222222222222222222" "00000003"
+                                        "3333333333333333333333333333333333333333333333333333333333333333"
+                                        "04" "00000005" "0000000000000006";
+    EXPECT_EQ(test::to_hex(encoded).substr(0, expected_prefix.size()), expected_prefix);
+    const auto certificate_at = content_id_size + 1 + 1 + introduction_seal_key_offset + encode(signed_prekey()).size();
+    EXPECT_EQ(test::to_hex(crypto::ByteView(encoded).subspan(certificate_at, 1 + 4 + 4 + 2)), "01" "00000009" "00000002" "6162");
+    EXPECT_EQ(test::to_hex(crypto::ByteView(encoded).last(6)), "00000002" "6869");
+    EXPECT_EQ(decode(encoded, read_content), content);
+}
+
+TEST(WireStructures, IntroductionsCarryOnlySealKeys)
+{
+    Introduction signed_prekey_instead;
+    signed_prekey_instead.seal_key.kind = PrekeyKind::signed_prekey;
+    EXPECT_EQ(decode(encode(signed_prekey_instead), read_introduction).error(), Error::invalid_value);
+
+    Introduction one_time_prekey_instead;
+    one_time_prekey_instead.seal_key.kind = PrekeyKind::one_time_prekey;
+    one_time_prekey_instead.seal_key.signature.reset();
+    EXPECT_EQ(decode(encode(one_time_prekey_instead), read_introduction).error(), Error::invalid_value);
+
+    auto introduction = encode(Introduction{});
+    for (const int kind : {0, 2, 3, 6, 255}) {
+        introduction.at(introduction_seal_key_offset) = static_cast<std::uint8_t>(kind);
+        EXPECT_EQ(decode(introduction, read_introduction).error(), Error::invalid_value) << kind;
+    }
+    EXPECT_TRUE(decode(encode(Introduction{}), read_introduction).has_value());
+}
+
+TEST(WireStructures, UsernamesAreBoundedText)
+{
+    EXPECT_TRUE(decode(encode(certificate_named(std::string(username_bound, 'a'))), read_username_certificate).has_value());
+    EXPECT_THROW((void)encode(certificate_named(std::string(username_bound + 1, 'a'))), std::length_error);
+    EXPECT_THROW((void)encode(certificate_named(std::string("a\0b", 3))), std::invalid_argument);
+    EXPECT_EQ(
+        decode(with_username_bytes(Bytes(username_bound + 1, 'a')), read_username_certificate).error(), Error::over_bound);
+    EXPECT_EQ(decode(with_username_bytes({'a', 0x00, 'b'}), read_username_certificate).error(), Error::invalid_text);
+    EXPECT_EQ(decode(with_username_bytes({'a', 0xC3}), read_username_certificate).error(), Error::invalid_text);
+    const auto accented = decode(with_username_bytes({0xC3, 0xA9}), read_username_certificate);
+    ASSERT_TRUE(accented.has_value());
+    EXPECT_EQ(accented->username, "\xC3\xA9");
 }
 
 TEST(WireStructures, PrekeySignaturesFollowTheKind)
@@ -207,6 +344,11 @@ TEST(WireStructures, BodiesAreBounded)
     auto message = Writer{}.fixed(Bytes(encrypted_header_size)).u32(ratchet_body_bound + 1).take();
     message.resize(message.size() + ratchet_body_bound + 1);
     EXPECT_EQ(decode(message, read_ratchet_message).error(), Error::over_bound);
+    EXPECT_TRUE(decode(encode(content_with_body(content_body_bound)), read_content).has_value());
+    EXPECT_THROW((void)encode(content_with_body(content_body_bound + 1)), std::length_error);
+    auto content = Writer{}.fixed(Bytes(content_id_size)).u8(0).present(false).u32(content_body_bound + 1).take();
+    content.resize(content.size() + content_body_bound + 1);
+    EXPECT_EQ(decode(content, read_content).error(), Error::over_bound);
 }
 
 TEST(WireStructures, NonCanonicalOptionalsAreRejected)
@@ -217,6 +359,12 @@ TEST(WireStructures, NonCanonicalOptionalsAreRejected)
     auto header = encode(InitialHeader{});
     header.back() = 2;
     EXPECT_EQ(decode(header, read_initial_header).error(), Error::non_canonical);
+    auto content = encode(Content{});
+    content.at(content_id_size + 1) = 2;
+    EXPECT_EQ(decode(content, read_content).error(), Error::non_canonical);
+    auto introduction = encode(Introduction{});
+    introduction.back() = 2;
+    EXPECT_EQ(decode(introduction, read_introduction).error(), Error::non_canonical);
 }
 
 RC_GTEST_PROP(WireStructureProperties, PrekeyXRoundTrips, ())
@@ -227,6 +375,21 @@ RC_GTEST_PROP(WireStructureProperties, PrekeyXRoundTrips, ())
 RC_GTEST_PROP(WireStructureProperties, PrekeyKemRoundTrips, ())
 {
     check_round_trip(random_prekey_kem(), read_prekey_kem);
+}
+
+RC_GTEST_PROP(WireStructureProperties, UsernameCertificateRoundTrips, ())
+{
+    check_round_trip(random_username_certificate(), read_username_certificate);
+}
+
+RC_GTEST_PROP(WireStructureProperties, IntroductionRoundTrips, ())
+{
+    check_round_trip(random_introduction(), read_introduction);
+}
+
+RC_GTEST_PROP(WireStructureProperties, ContentRoundTrips, ())
+{
+    check_round_trip(random_content(), read_content);
 }
 
 RC_GTEST_PROP(WireStructureProperties, InitialHeaderRoundTrips, ())
@@ -274,6 +437,9 @@ RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncodin
     check(read_ratchet_message);
     check(read_inner);
     check(read_seal);
+    check(read_username_certificate);
+    check(read_introduction);
+    check(read_content);
 }
 
 }
