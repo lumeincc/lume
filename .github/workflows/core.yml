@@ -213,6 +213,8 @@ jobs:
           diff -u core/tests/vectors/lume/ratchet.json "$RUNNER_TEMP/ratchet.json"
           node core/tools/generate_seal_vectors.mjs core/tests/vectors/lume/identity.json core/tests/vectors/lume/handshake.json core/tests/vectors/lume/ratchet.json core/tests/vectors/wycheproof "$RUNNER_TEMP/seal.json"
           diff -u core/tests/vectors/lume/seal.json "$RUNNER_TEMP/seal.json"
+          node core/tools/generate_directory_vectors.mjs core/tests/vectors/lume/identity.json "$RUNNER_TEMP/directory.json"
+          diff -u core/tests/vectors/lume/directory.json "$RUNNER_TEMP/directory.json"
       - name: Secret scan
         run: |
           curl -fsSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz

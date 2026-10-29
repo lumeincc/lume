@@ -105,8 +105,11 @@ A list expires at most 14 days after `issued_at` and is signed again every
 week. The relay serves the newest one (`GetDirectoryKeys`, §4.2); a client
 fetches it whenever it refreshes its own certificate and at most once a day
 otherwise, keeps the list with the highest `sequence` it has verified, and
-ignores one with a lower `sequence`, so it cannot be rolled back. A certificate
-is accepted only from a key on a current list and inside that key's window.
+ignores one with a lower `sequence`, so it cannot be rolled back; one with the
+same `sequence` is accepted only if it is identical. A list in which two keys
+share a `key_id`, a key is both listed and revoked, or a key's `not_before` is
+not before its `not_after` is refused. A certificate is accepted only from a key
+on a current list whose window contains the time of the check.
 Without a current list a client shows names as unverified, with the safety
 number.
 

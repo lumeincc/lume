@@ -20,6 +20,7 @@ add_executable(lume_core_tests
     crypto/random_test.cpp
     crypto/secret_bytes_test.cpp
     crypto/x25519_test.cpp
+    directory/directory_test.cpp
     handshake/handshake_test.cpp
     handshake/prekey_test.cpp
     identity/identity_test.cpp

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace lume::wire {
 
@@ -33,6 +34,8 @@ inline constexpr std::size_t content_id_size = 16;
 inline constexpr std::size_t token_size = 32;
 inline constexpr std::size_t username_bound = 32;
 inline constexpr std::size_t content_body_bound = 67000;
+inline constexpr std::size_t directory_keys_bound = 8;
+inline constexpr std::size_t revoked_keys_bound = 16;
 inline constexpr std::size_t ratchet_body_bound = 69000;
 inline constexpr std::size_t seal_box_bound = 69648;
 inline constexpr std::uint8_t seal_version = 1;
@@ -69,6 +72,33 @@ struct UsernameCertificate {
     crypto::ByteArray<signature_size> signature{};
 
     friend bool operator==(const UsernameCertificate&, const UsernameCertificate&) = default;
+};
+
+struct DirectoryKey {
+    std::uint32_t key_id = 0;
+    crypto::ByteArray<ed25519_key_size> public_key{};
+    std::uint64_t not_before = 0;
+    std::uint64_t not_after = 0;
+
+    friend bool operator==(const DirectoryKey&, const DirectoryKey&) = default;
+};
+
+struct RevokedKey {
+    std::uint32_t key_id = 0;
+    std::uint64_t since = 0;
+
+    friend bool operator==(const RevokedKey&, const RevokedKey&) = default;
+};
+
+struct DirectoryKeys {
+    std::uint64_t sequence = 0;
+    std::uint64_t issued_at = 0;
+    std::uint64_t expires_at = 0;
+    std::vector<DirectoryKey> keys;
+    std::vector<RevokedKey> revoked;
+    crypto::ByteArray<signature_size> signature{};
+
+    friend bool operator==(const DirectoryKeys&, const DirectoryKeys&) = default;
 };
 
 struct InitialHeader {
@@ -139,6 +169,7 @@ struct Seal {
 void write(Writer& writer, const PrekeyX& value);
 void write(Writer& writer, const PrekeyKem& value);
 void write(Writer& writer, const UsernameCertificate& value);
+void write(Writer& writer, const DirectoryKeys& value);
 void write(Writer& writer, const InitialHeader& value);
 void write(Writer& writer, const Introduction& value);
 void write(Writer& writer, const Content& value);
@@ -150,6 +181,7 @@ void write(Writer& writer, const Seal& value);
 [[nodiscard]] Result<PrekeyX> read_prekey_x(Reader& reader);
 [[nodiscard]] Result<PrekeyKem> read_prekey_kem(Reader& reader);
 [[nodiscard]] Result<UsernameCertificate> read_username_certificate(Reader& reader);
+[[nodiscard]] Result<DirectoryKeys> read_directory_keys(Reader& reader);
 [[nodiscard]] Result<InitialHeader> read_initial_header(Reader& reader);
 [[nodiscard]] Result<Introduction> read_introduction(Reader& reader);
 [[nodiscard]] Result<Content> read_content(Reader& reader);
@@ -157,6 +189,9 @@ void write(Writer& writer, const Seal& value);
 [[nodiscard]] Result<RatchetMessage> read_ratchet_message(Reader& reader);
 [[nodiscard]] Result<Inner> read_inner(Reader& reader);
 [[nodiscard]] Result<Seal> read_seal(Reader& reader);
+
+[[nodiscard]] crypto::Bytes encode_unsigned(const UsernameCertificate& value);
+[[nodiscard]] crypto::Bytes encode_unsigned(const DirectoryKeys& value);
 
 template <typename T>
 [[nodiscard]] crypto::Bytes encode(const T& value)
