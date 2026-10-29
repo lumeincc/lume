@@ -389,10 +389,11 @@ plaintext, it is authenticated by the session.
 directory key (PROTOCOL §2.1). Alice fetches her own on her authenticated
 connection, which reveals nothing about Bob. Bob shows the username only if:
 the certificate's directory key is on the client's current directory key list
-(PROTOCOL §2.1) and inside that key's window; its `issued_at` is not in the
-future, it has not expired and it expires no more than 31 days from now; its
-`ik_sig` and `ik_dh` equal the session's peer identity; and its
-`account_id` equals the introduction's. Otherwise he shows "unverified contact"
+(PROTOCOL §2.1) and the key's window contains the time of the check; its
+username follows the username rule; its `issued_at` is not in the future, it
+has not expired and it expires no more than 31 days from now; its `ik_sig` and
+`ik_dh` equal the session's peer identity; and its `account_id` equals the
+introduction's. The name stays verified only until that certificate expires. Otherwise he shows "unverified contact"
 with the safety number. He makes no request to the relay to check a name, so
 checking reveals nothing either.
 

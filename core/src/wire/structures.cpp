@@ -4,6 +4,7 @@
 #include "lume/wire/structures.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <expected>
 #include <initializer_list>
 #include <stdexcept>
@@ -12,6 +13,9 @@
 
 namespace lume::wire {
 namespace {
+
+constexpr std::size_t directory_key_size = 4 + ed25519_key_size + 8 + 8;
+constexpr std::size_t revoked_key_size = 4 + 8;
 
 constexpr std::initializer_list<PrekeyKind> x25519_kinds{
     PrekeyKind::signed_prekey, PrekeyKind::seal_key, PrekeyKind::one_time_prekey};
@@ -96,6 +100,31 @@ bool read_optional(Reader& reader, std::optional<T>& target, Result<T> (*read)(R
     return true;
 }
 
+void write_unsigned(Writer& writer, const UsernameCertificate& value)
+{
+    writer.u32(value.key_id)
+        .text(value.username, username_bound)
+        .fixed(value.account_id)
+        .fixed(value.ik_sig)
+        .fixed(value.ik_dh)
+        .u32(value.generation)
+        .u64(value.issued_at)
+        .u64(value.expires_at);
+}
+
+void write_unsigned(Writer& writer, const DirectoryKeys& value)
+{
+    writer.u64(value.sequence).u64(value.issued_at).u64(value.expires_at);
+    writer.count(value.keys.size(), directory_keys_bound);
+    for (const auto& key : value.keys) {
+        writer.u32(key.key_id).fixed(key.public_key).u64(key.not_before).u64(key.not_after);
+    }
+    writer.count(value.revoked.size(), revoked_keys_bound);
+    for (const auto& revoked : value.revoked) {
+        writer.u32(revoked.key_id).u64(revoked.since);
+    }
+}
+
 template <typename T>
 void write_optional(Writer& writer, const std::optional<T>& value)
 {
@@ -132,15 +161,28 @@ void write(Writer& writer, const PrekeyKem& value)
 
 void write(Writer& writer, const UsernameCertificate& value)
 {
-    writer.u32(value.key_id)
-        .text(value.username, username_bound)
-        .fixed(value.account_id)
-        .fixed(value.ik_sig)
-        .fixed(value.ik_dh)
-        .u32(value.generation)
-        .u64(value.issued_at)
-        .u64(value.expires_at)
-        .fixed(value.signature);
+    write_unsigned(writer, value);
+    writer.fixed(value.signature);
+}
+
+void write(Writer& writer, const DirectoryKeys& value)
+{
+    write_unsigned(writer, value);
+    writer.fixed(value.signature);
+}
+
+crypto::Bytes encode_unsigned(const UsernameCertificate& value)
+{
+    Writer writer;
+    write_unsigned(writer, value);
+    return writer.take();
+}
+
+crypto::Bytes encode_unsigned(const DirectoryKeys& value)
+{
+    Writer writer;
+    write_unsigned(writer, value);
+    return writer.take();
 }
 
 void write(Writer& writer, const InitialHeader& value)
@@ -243,6 +285,45 @@ Result<UsernameCertificate> read_username_certificate(Reader& reader)
         || !reader.into(value.account_id) || !reader.into(value.ik_sig) || !reader.into(value.ik_dh)
         || !reader.into(value.generation) || !reader.into(value.issued_at) || !reader.into(value.expires_at)
         || !reader.into(value.signature)) {
+        return std::unexpected(reader.error());
+    }
+    return value;
+}
+
+Result<DirectoryKeys> read_directory_keys(Reader& reader)
+{
+    DirectoryKeys value;
+    if (!reader.into(value.sequence) || !reader.into(value.issued_at) || !reader.into(value.expires_at)) {
+        return std::unexpected(reader.error());
+    }
+    const auto keys = reader.count(directory_keys_bound);
+    if (!keys) {
+        return std::unexpected(keys.error());
+    }
+    if (reader.remaining() / directory_key_size < *keys) {
+        return std::unexpected(Error::truncated);
+    }
+    value.keys.resize(*keys);
+    for (auto& key : value.keys) {
+        if (!reader.into(key.key_id) || !reader.into(key.public_key) || !reader.into(key.not_before)
+            || !reader.into(key.not_after)) {
+            return std::unexpected(reader.error());
+        }
+    }
+    const auto revoked = reader.count(revoked_keys_bound);
+    if (!revoked) {
+        return std::unexpected(revoked.error());
+    }
+    if (reader.remaining() / revoked_key_size < *revoked) {
+        return std::unexpected(Error::truncated);
+    }
+    value.revoked.resize(*revoked);
+    for (auto& entry : value.revoked) {
+        if (!reader.into(entry.key_id) || !reader.into(entry.since)) {
+            return std::unexpected(reader.error());
+        }
+    }
+    if (!reader.into(value.signature)) {
         return std::unexpected(reader.error());
     }
     return value;

@@ -88,6 +88,28 @@ UsernameCertificate random_username_certificate()
     return value;
 }
 
+DirectoryKeys random_directory_keys()
+{
+    DirectoryKeys value;
+    value.sequence = any_integer<std::uint64_t>();
+    value.issued_at = any_integer<std::uint64_t>();
+    value.expires_at = any_integer<std::uint64_t>();
+    const auto keys = *rc::gen::inRange<std::size_t>(0, directory_keys_bound + 1);
+    for (std::size_t index = 0; index < keys; ++index) {
+        value.keys.push_back(DirectoryKey{
+            .key_id = any_integer<std::uint32_t>(),
+            .public_key = random_array<ed25519_key_size>(),
+            .not_before = any_integer<std::uint64_t>(),
+            .not_after = any_integer<std::uint64_t>()});
+    }
+    const auto revoked = *rc::gen::inRange<std::size_t>(0, revoked_keys_bound + 1);
+    for (std::size_t index = 0; index < revoked; ++index) {
+        value.revoked.push_back(RevokedKey{.key_id = any_integer<std::uint32_t>(), .since = any_integer<std::uint64_t>()});
+    }
+    value.signature = random_array<signature_size>();
+    return value;
+}
+
 InitialHeader random_initial_header()
 {
     InitialHeader value;
@@ -246,6 +268,53 @@ TEST(WireStructures, FixedSizesMatchTheProtocol)
     EXPECT_EQ(encode(UsernameCertificate{}).size(), 4U + 4 + 16 + 32 + 32 + 4 + 8 + 8 + 64);
     EXPECT_EQ(encode(Introduction{}).size(), 16U + 4 + 32 + encode(signed_prekey()).size() + 1);
     EXPECT_EQ(encode(Content{}).size(), 16U + 1 + 1 + 4);
+}
+
+TEST(WireStructures, DirectoryKeyListsAreBounded)
+{
+    EXPECT_EQ(encode(DirectoryKeys{}).size(), 8U + 8 + 8 + 2 + 2 + 64);
+    DirectoryKeys full;
+    full.keys.resize(directory_keys_bound);
+    full.revoked.resize(revoked_keys_bound);
+    EXPECT_EQ(encode(full).size(), 8U + 8 + 8 + 2 + (8 * (4 + 32 + 8 + 8)) + 2 + (16 * (4 + 8)) + 64);
+    EXPECT_TRUE(decode(encode(full), read_directory_keys).has_value());
+
+    auto too_many_keys = full;
+    too_many_keys.keys.emplace_back();
+    EXPECT_THROW((void)encode(too_many_keys), std::length_error);
+    auto too_many_revoked = full;
+    too_many_revoked.revoked.emplace_back();
+    EXPECT_THROW((void)encode(too_many_revoked), std::length_error);
+
+    auto counted_too_many = encode(DirectoryKeys{});
+    counted_too_many.at(8 + 8 + 8 + 1) = static_cast<std::uint8_t>(directory_keys_bound + 1);
+    EXPECT_EQ(test::error_of(decode(counted_too_many, read_directory_keys)), Error::over_bound);
+
+    auto counted_but_missing = encode(DirectoryKeys{});
+    counted_but_missing.at(8 + 8 + 8 + 1) = static_cast<std::uint8_t>(directory_keys_bound);
+    EXPECT_EQ(test::error_of(decode(counted_but_missing, read_directory_keys)), Error::truncated);
+    auto revoked_but_missing = encode(DirectoryKeys{});
+    revoked_but_missing.at(8 + 8 + 8 + 2 + 1) = static_cast<std::uint8_t>(revoked_keys_bound);
+    EXPECT_EQ(test::error_of(decode(revoked_but_missing, read_directory_keys)), Error::truncated);
+}
+
+TEST(WireStructures, UnsignedEncodingsLeaveOnlyTheSignatureOut)
+{
+    DirectoryKeys list;
+    list.sequence = 3;
+    list.keys.emplace_back();
+    list.signature.fill(0x5a);
+    const auto full = encode(list);
+    const auto without = encode_unsigned(list);
+    ASSERT_EQ(without.size() + signature_size, full.size());
+    EXPECT_TRUE(std::ranges::equal(without, crypto::ByteView(full).first(without.size())));
+
+    auto certificate = certificate_named("ab");
+    certificate.signature.fill(0x5a);
+    const auto signed_certificate = encode(certificate);
+    const auto unsigned_certificate = encode_unsigned(certificate);
+    ASSERT_EQ(unsigned_certificate.size() + signature_size, signed_certificate.size());
+    EXPECT_TRUE(std::ranges::equal(unsigned_certificate, crypto::ByteView(signed_certificate).first(unsigned_certificate.size())));
 }
 
 TEST(WireStructures, ContentFieldsAreInProtocolOrder)
@@ -420,6 +489,11 @@ RC_GTEST_PROP(WireStructureProperties, ContentRoundTrips, ())
     check_round_trip(random_content(), read_content);
 }
 
+RC_GTEST_PROP(WireStructureProperties, DirectoryKeysRoundTrip, ())
+{
+    check_round_trip(random_directory_keys(), read_directory_keys);
+}
+
 RC_GTEST_PROP(WireStructureProperties, InitialHeaderRoundTrips, ())
 {
     check_round_trip(random_initial_header(), read_initial_header);
@@ -468,6 +542,7 @@ RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncodin
     check(read_username_certificate);
     check(read_introduction);
     check(read_content);
+    check(read_directory_keys);
 }
 
 }
