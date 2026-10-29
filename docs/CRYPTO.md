@@ -153,14 +153,17 @@ proves it with Wycheproof's modulus-overflow vectors.
   its pages out of swap, and the system may refuse: Windows locks no more than a
   process's minimum working set, 200 KiB by default, and Android limits locked
   memory per app. At start-up the client raises the limit to 32 MiB where the
-  platform allows it: on Windows the minimum working set, elsewhere the soft
-  `RLIMIT_MEMLOCK`, up to its hard limit. Every `SecretBytes` locks at least one
-  whole page, so 32 MiB holds about 8 000 of them. The client checks every lock
-  and reports in its diagnostics how many failed and whether the limit reached
-  32 MiB. A key on a page that was not locked can reach swap or the page
-  file and outlive its wiping there; on disk it is protected only by the
-  device's disk encryption — BitLocker, FileVault or Android's file-based
-  encryption.
+  platform allows it: on Windows the minimum working set, and the maximum by
+  the same amount; elsewhere the soft `RLIMIT_MEMLOCK`, up to its hard limit.
+  Every `SecretBytes` locks at least one whole page, so 32 MiB holds about
+  8 000 of them with 4 KiB pages and fewer with larger ones. Android usually
+  sets the limit to 64 KiB, which an app cannot raise, so there most secrets
+  are not locked. The client checks every lock and reports in its diagnostics
+  how many failed and whether the limit reached 32 MiB. A key on a page that
+  was not locked can reach swap or the page file and outlive its wiping there,
+  and even a locked page is written to a hibernation file or a crash dump; on
+  disk it is protected only by the device's disk encryption — BitLocker,
+  FileVault or Android's file-based encryption.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.

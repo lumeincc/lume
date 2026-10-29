@@ -3,6 +3,7 @@
 
 #include "memory_lock.hpp"
 
+#include "backend.hpp"
 #include "lume/crypto/library.hpp"
 
 #include <sodium.h>
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <limits>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -51,9 +53,9 @@ bool reach_target() noexcept
     if (minimum >= locked_memory_target) {
         return true;
     }
-    return SetProcessWorkingSetSizeEx(process, locked_memory_target, locked_memory_target + maximum,
-               QUOTA_LIMITS_HARDWS_MIN_DISABLE | QUOTA_LIMITS_HARDWS_MAX_DISABLE)
-        != 0;
+    const SIZE_T headroom = std::numeric_limits<SIZE_T>::max() - locked_memory_target;
+    const SIZE_T wanted_maximum = maximum > headroom ? maximum : maximum + locked_memory_target;
+    return SetProcessWorkingSetSizeEx(process, locked_memory_target, wanted_maximum, flags) != 0;
 }
 #else
 bool reach_target() noexcept
@@ -77,10 +79,11 @@ bool reach_target() noexcept
 
 }
 
-MemoryLocking memory_locking() noexcept
+MemoryLocking memory_locking()
 {
+    const bool started = detail::operational_state().has_value();
     return MemoryLocking{
-        .limit_reaches_target = limit_reached().load(std::memory_order_relaxed),
+        .limit_reaches_target = started && limit_reached().load(std::memory_order_relaxed),
         .failed_locks = failed_locks().load(std::memory_order_relaxed)};
 }
 

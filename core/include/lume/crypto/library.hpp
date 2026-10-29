@@ -19,6 +19,6 @@ struct MemoryLocking {
 
 [[nodiscard]] Result<void> initialise();
 
-[[nodiscard]] MemoryLocking memory_locking() noexcept;
+[[nodiscard]] MemoryLocking memory_locking();
 
 }
