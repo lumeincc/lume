@@ -196,9 +196,15 @@ class Site(unittest.TestCase):
             self.assertIn('data-consent="reject"', text)
             footer = text[text.index('<footer class="site-footer">'):]
             self.assertIn('data-consent="open"', footer)
-        chooser = (self.output / "index.html").read_text(encoding="utf-8")
-        self.assertIn(build.SCRIPT_NAME, chooser)
-        self.assertNotIn('class="consent"', chooser)
+        root = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(build.SCRIPT_NAME, root)
+        self.assertNotIn('class="consent"', root)
+
+    def test_the_root_sends_every_visitor_to_a_language(self) -> None:
+        root = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<body class="redirect">', root)
+        self.assertIn('<noscript><meta http-equiv="refresh" content="0; url=en/"></noscript>', root)
+        self.assertNotIn('<a ', root[root.index("<main"):root.index("</main>")])
 
     def test_the_documentation_page_lists_every_guide_policy_and_specification(self) -> None:
         for language in self.config["languages"]:

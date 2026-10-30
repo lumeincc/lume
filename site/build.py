@@ -228,7 +228,7 @@ class Site:
             text = strip_leading_comment((ROOT / page.source).read_text(encoding="utf-8"))
             main = self.resolve_fragment_links(page, self.substitute(page, text))
             if page.generate == "not-found" or page.language == "":
-                kind = page.generate or "chooser"
+                kind = page.generate or "redirect"
             else:
                 kind = "home" if page.route == "" else "page"
             return Rendered(page.title, main, kind)
@@ -344,6 +344,12 @@ class Site:
             "</div></footer>"
         )
 
+    def head(self, page: Page) -> str:
+        if page.generate or page.language:
+            return ""
+        target = self.link_to_page(page, self.by_route[(self.languages[0], "")], "")
+        return f'<noscript><meta http-equiv="refresh" content="0; url={target}"></noscript>'
+
     def consent(self, page: Page) -> str:
         if page.generate == "not-found" or page.language == "":
             return ""
@@ -393,6 +399,7 @@ class Site:
             "main": rendered.main,
             "footer": self.footer(page),
             "consent": self.consent(page),
+            "head": self.head(page),
         }
 
     def images(self) -> None:

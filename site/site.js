@@ -31,17 +31,16 @@
     return { preferences: preferences === "1" };
   };
 
+  if (body.classList.contains("redirect")) {
+    const remembered = stored()?.preferences ? read(languageCookie) : null;
+    location.replace(base + (languages.includes(remembered) ? remembered : languages[0]) + "/");
+    return;
+  }
+
   const apply = (choice) => {
     if (!choice.preferences) {
       if (read(languageCookie) !== null) {
         write(languageCookie, "", 0);
-      }
-      return;
-    }
-    if (body.classList.contains("chooser")) {
-      const remembered = read(languageCookie);
-      if (languages.includes(remembered)) {
-        location.replace(base + remembered + "/");
       }
       return;
     }
@@ -100,7 +99,7 @@
 
 (() => {
   const body = document.body;
-  if (!body.classList.contains("home") && !body.classList.contains("chooser")) {
+  if (!body.classList.contains("home")) {
     return;
   }
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -109,7 +108,7 @@
 
   const glyphs = "#%&*+=?<>|01ABCDEFabcdef";
   const kept = new Set(" \n\t.,:;!?()-«»—–·");
-  const blocks = ".hero h1, .hero .btn, .chooser h1, .chooser .tagline span, .chooser .btn";
+  const blocks = ".hero h1, .hero .btn";
 
   const mix = (text, shown) => {
     let out = "";

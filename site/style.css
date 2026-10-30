@@ -154,9 +154,9 @@ td.right, th.right { text-align: right; }
 .docs-group h2 { margin: 0; font-weight: 300; font-size: clamp(26px, 2.6vw, 34px); line-height: 1.15; letter-spacing: -.03em; }
 .docs-group .index { margin-top: 18px; }
 
-.chooser main, .not-found main { position: relative; isolation: isolate; display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: 48px var(--gutter); overflow: hidden; text-align: center; }
-.chooser .hero-inner, .not-found .hero-inner { gap: 0; }
-.chooser h1, .not-found h1 { margin: 0; font-weight: 300; font-size: clamp(52px, 9vw, 120px); line-height: 1; letter-spacing: .04em; }
+.not-found main { position: relative; isolation: isolate; display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: 48px var(--gutter); overflow: hidden; text-align: center; }
+.not-found .hero-inner { gap: 0; }
+.not-found h1 { margin: 0; font-weight: 300; font-size: clamp(52px, 9vw, 120px); line-height: 1; letter-spacing: .04em; }
 .tagline { display: grid; gap: 6px; max-width: 46ch; margin: 22px auto 0; color: var(--fg-2); }
 .not-found p { color: var(--fg-2); }
 .not-found p span { display: block; }
@@ -199,7 +199,7 @@ td.right, th.right { text-align: right; }
   .section { padding-top: 88px; }
   .grid, .grid.pairs, .links .grid { grid-template-columns: minmax(0, 1fr); }
   .btn { height: 48px; padding: 0 22px; }
-  .chooser .actions .btn, .not-found .actions .btn { flex: 1 1 100%; }
+  .not-found .actions .btn { flex: 1 1 100%; }
   .consent { right: 16px; width: auto; }
   .consent .btn { flex: 1 1 auto; }
 }
