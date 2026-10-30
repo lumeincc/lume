@@ -87,6 +87,8 @@ const sealHeader = ({ masterKey, nonce, ops = floor.ops, mem = floor.mem, hwMode
   return { ...header, unsigned, check, encoded: Buffer.concat([unsigned, check]) };
 };
 const headerOutcome = (header, masterKey) => {
+  if (![1, 2, 3].includes(header.hwMode) || (header.hwMode === 2) !== Boolean(header.tpmPoint)
+    || (header.tpmPoint && header.tpmPoint[0] !== 4)) return "integrity";
   if (header.ops < 2 || header.ops > 10 || header.mem < 65536 || header.mem > 1048576) return "integrity";
   const check = hmac(hkdf(zero, masterKey, "vault/check-key"), label("vault/check"), encodeHeader(header));
   const unwrapped = aeadDecrypt(masterKey, header.wrapped.subarray(0, 24), label("vault/data-key"), header.wrapped.subarray(24));
