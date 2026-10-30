@@ -22,6 +22,12 @@ enum class PrekeyKind : std::uint8_t {
     one_time_prekey = 5,
 };
 
+enum class HardwareMode : std::uint8_t {
+    keystore = 1,
+    tpm = 2,
+    software = 3,
+};
+
 inline constexpr std::size_t x25519_key_size = 32;
 inline constexpr std::size_t ed25519_key_size = 32;
 inline constexpr std::size_t signature_size = 64;
@@ -40,6 +46,14 @@ inline constexpr std::size_t revoked_keys_bound = 16;
 inline constexpr std::size_t ratchet_body_bound = 69000;
 inline constexpr std::size_t seal_box_bound = 69648;
 inline constexpr std::uint8_t seal_version = 1;
+inline constexpr std::uint8_t vault_version = 1;
+inline constexpr std::size_t vault_salt_size = 16;
+inline constexpr std::size_t tpm_point_size = 65;
+inline constexpr std::uint8_t tpm_point_uncompressed = 0x04;
+inline constexpr std::size_t wrapped_data_key_size = nonce_size + 32 + 16;
+inline constexpr std::size_t vault_check_size = 32;
+inline constexpr std::size_t manifest_root_size = 32;
+inline constexpr std::size_t manifest_types_bound = 32;
 
 struct PrekeyX {
     PrekeyKind kind = PrekeyKind::signed_prekey;
@@ -182,6 +196,34 @@ struct Seal {
     friend bool operator==(const Seal&, const Seal&) = default;
 };
 
+struct VaultHeader {
+    crypto::ByteArray<vault_salt_size> salt{};
+    std::uint32_t ops = 0;
+    std::uint32_t mem = 0;
+    HardwareMode hw_mode = HardwareMode::software;
+    std::optional<crypto::ByteArray<tpm_point_size>> tpm_point;
+    crypto::ByteArray<wrapped_data_key_size> wrapped_data_key{};
+    std::uint64_t epoch = 0;
+    crypto::ByteArray<vault_check_size> check{};
+
+    friend bool operator==(const VaultHeader&, const VaultHeader&) = default;
+};
+
+struct ManifestEntry {
+    std::uint8_t type = 0;
+    std::uint32_t count = 0;
+    crypto::ByteArray<manifest_root_size> root{};
+
+    friend bool operator==(const ManifestEntry&, const ManifestEntry&) = default;
+};
+
+struct Manifest {
+    std::uint64_t epoch = 0;
+    std::vector<ManifestEntry> types;
+
+    friend bool operator==(const Manifest&, const Manifest&) = default;
+};
+
 void write(Writer& writer, const PrekeyX& value);
 void write(Writer& writer, const PrekeyKem& value);
 void write(Writer& writer, const UsernameCertificate& value);
@@ -194,6 +236,8 @@ void write(Writer& writer, const RatchetHeader& value);
 void write(Writer& writer, const RatchetMessage& value);
 void write(Writer& writer, const Inner& value);
 void write(Writer& writer, const Seal& value);
+void write(Writer& writer, const VaultHeader& value);
+void write(Writer& writer, const Manifest& value);
 
 [[nodiscard]] Result<PrekeyX> read_prekey_x(Reader& reader);
 [[nodiscard]] Result<PrekeyKem> read_prekey_kem(Reader& reader);
@@ -207,9 +251,14 @@ void write(Writer& writer, const Seal& value);
 [[nodiscard]] Result<RatchetMessage> read_ratchet_message(Reader& reader);
 [[nodiscard]] Result<Inner> read_inner(Reader& reader);
 [[nodiscard]] Result<Seal> read_seal(Reader& reader);
+[[nodiscard]] Result<VaultHeader> read_vault_header(Reader& reader);
+[[nodiscard]] Result<Manifest> read_manifest(Reader& reader);
 
 [[nodiscard]] crypto::Bytes encode_unsigned(const UsernameCertificate& value);
 [[nodiscard]] crypto::Bytes encode_unsigned(const DirectoryKeys& value);
+[[nodiscard]] crypto::Bytes encode_unsigned(const VaultHeader& value);
+
+[[nodiscard]] bool is_canonical(const Manifest& value);
 
 template <typename T>
 [[nodiscard]] crypto::Bytes encode(const T& value)

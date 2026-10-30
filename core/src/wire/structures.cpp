@@ -16,10 +16,29 @@ namespace {
 
 constexpr std::size_t directory_key_size = 4 + ed25519_key_size + 8 + 8;
 constexpr std::size_t revoked_key_size = 4 + 8;
+constexpr std::size_t manifest_entry_size = 1 + 4 + manifest_root_size;
 
 constexpr std::initializer_list<PrekeyKind> x25519_kinds{
     PrekeyKind::signed_prekey, PrekeyKind::seal_key, PrekeyKind::one_time_prekey};
 constexpr std::initializer_list<PrekeyKind> kem_kinds{PrekeyKind::kem_last_resort, PrekeyKind::kem_one_time};
+constexpr std::initializer_list<HardwareMode> hardware_modes{
+    HardwareMode::keystore, HardwareMode::tpm, HardwareMode::software};
+
+bool valid_tpm_point(const VaultHeader& value) noexcept
+{
+    if (value.tpm_point.has_value() != (value.hw_mode == HardwareMode::tpm)) {
+        return false;
+    }
+    return !value.tpm_point || value.tpm_point->front() == tpm_point_uncompressed;
+}
+
+bool canonical_types(const std::vector<ManifestEntry>& types)
+{
+    const auto out_of_order = std::ranges::adjacent_find(
+        types, [](const ManifestEntry& first, const ManifestEntry& second) { return first.type >= second.type; });
+    return out_of_order == types.end()
+        && std::ranges::none_of(types, [](const ManifestEntry& entry) { return entry.count == 0; });
+}
 
 void require_kind(PrekeyKind kind, std::initializer_list<PrekeyKind> allowed)
 {
@@ -125,6 +144,23 @@ void write_unsigned(Writer& writer, const DirectoryKeys& value)
     }
 }
 
+void write_unsigned(Writer& writer, const VaultHeader& value)
+{
+    if (std::ranges::find(hardware_modes, value.hw_mode) == hardware_modes.end() || !valid_tpm_point(value)) {
+        throw std::invalid_argument("a vault header whose hardware mode and TPM point disagree");
+    }
+    writer.u8(vault_version)
+        .fixed(value.salt)
+        .u32(value.ops)
+        .u32(value.mem)
+        .u8(static_cast<std::uint8_t>(value.hw_mode))
+        .present(value.tpm_point.has_value());
+    if (value.tpm_point) {
+        writer.fixed(*value.tpm_point);
+    }
+    writer.fixed(value.wrapped_data_key).u64(value.epoch);
+}
+
 template <typename T>
 void write_optional(Writer& writer, const std::optional<T>& value)
 {
@@ -183,6 +219,35 @@ crypto::Bytes encode_unsigned(const DirectoryKeys& value)
     Writer writer;
     write_unsigned(writer, value);
     return writer.take();
+}
+
+void write(Writer& writer, const VaultHeader& value)
+{
+    write_unsigned(writer, value);
+    writer.fixed(value.check);
+}
+
+crypto::Bytes encode_unsigned(const VaultHeader& value)
+{
+    Writer writer;
+    write_unsigned(writer, value);
+    return writer.take();
+}
+
+bool is_canonical(const Manifest& value)
+{
+    return value.types.size() <= manifest_types_bound && canonical_types(value.types);
+}
+
+void write(Writer& writer, const Manifest& value)
+{
+    if (!canonical_types(value.types)) {
+        throw std::invalid_argument("manifest types must be strictly ascending, each with a live record");
+    }
+    writer.u64(value.epoch).count(value.types.size(), manifest_types_bound);
+    for (const auto& entry : value.types) {
+        writer.u8(entry.type).u32(entry.count).fixed(entry.root);
+    }
 }
 
 void write(Writer& writer, const InitialHeader& value)
@@ -442,6 +507,68 @@ Result<Seal> read_seal(Reader& reader)
     if (!reader.into(value.ssk_id) || !reader.into(value.ephemeral_key) || !reader.into(value.nonce)
         || !reader.into(value.box, seal_box_bound)) {
         return std::unexpected(reader.error());
+    }
+    return value;
+}
+
+Result<VaultHeader> read_vault_header(Reader& reader)
+{
+    VaultHeader value;
+    std::uint8_t version = 0;
+    if (!reader.into(version)) {
+        return std::unexpected(reader.error());
+    }
+    if (version != vault_version) {
+        return std::unexpected(Error::unsupported_version);
+    }
+    std::uint8_t mode = 0;
+    bool has_point = false;
+    if (!reader.into(value.salt) || !reader.into(value.ops) || !reader.into(value.mem) || !reader.into(mode)
+        || !reader.into(has_point)) {
+        return std::unexpected(reader.error());
+    }
+    const auto* const match = std::ranges::find(hardware_modes, static_cast<HardwareMode>(mode));
+    if (match == hardware_modes.end()) {
+        return std::unexpected(Error::invalid_value);
+    }
+    value.hw_mode = *match;
+    if (has_point) {
+        crypto::ByteArray<tpm_point_size> point{};
+        if (!reader.into(point)) {
+            return std::unexpected(reader.error());
+        }
+        value.tpm_point = point;
+    }
+    if (!valid_tpm_point(value)) {
+        return std::unexpected(Error::invalid_value);
+    }
+    if (!reader.into(value.wrapped_data_key) || !reader.into(value.epoch) || !reader.into(value.check)) {
+        return std::unexpected(reader.error());
+    }
+    return value;
+}
+
+Result<Manifest> read_manifest(Reader& reader)
+{
+    Manifest value;
+    if (!reader.into(value.epoch)) {
+        return std::unexpected(reader.error());
+    }
+    const auto types = reader.count(manifest_types_bound);
+    if (!types) {
+        return std::unexpected(types.error());
+    }
+    if (reader.remaining() / manifest_entry_size < *types) {
+        return std::unexpected(Error::truncated);
+    }
+    value.types.resize(*types);
+    for (auto& entry : value.types) {
+        if (!reader.into(entry.type) || !reader.into(entry.count) || !reader.into(entry.root)) {
+            return std::unexpected(reader.error());
+        }
+    }
+    if (!canonical_types(value.types)) {
+        return std::unexpected(Error::non_canonical);
     }
     return value;
 }

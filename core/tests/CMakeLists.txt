@@ -18,6 +18,7 @@ add_executable(lume_core_tests
     crypto/kdf_test.cpp
     crypto/library_test.cpp
     crypto/mlkem_test.cpp
+    crypto/pwhash_test.cpp
     crypto/random_test.cpp
     crypto/secret_bytes_test.cpp
     crypto/x25519_test.cpp
@@ -30,6 +31,7 @@ add_executable(lume_core_tests
     safety/safety_number_test.cpp
     seal/padding_test.cpp
     seal/seal_test.cpp
+    vault/vault_test.cpp
     wire/codec_test.cpp
     wire/structures_test.cpp
 )
