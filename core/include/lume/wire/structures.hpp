@@ -258,6 +258,8 @@ void write(Writer& writer, const Manifest& value);
 [[nodiscard]] crypto::Bytes encode_unsigned(const DirectoryKeys& value);
 [[nodiscard]] crypto::Bytes encode_unsigned(const VaultHeader& value);
 
+[[nodiscard]] bool is_canonical(const Manifest& value);
+
 template <typename T>
 [[nodiscard]] crypto::Bytes encode(const T& value)
 {

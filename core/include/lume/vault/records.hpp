@@ -30,7 +30,7 @@ struct RecordAddress {
 [[nodiscard]] Result<crypto::SecretBytes> open_record(
     const Keys& keys, const RecordAddress& address, crypto::ByteView record);
 
-[[nodiscard]] Result<Root> root_term(const Keys& keys, const RecordAddress& address);
+[[nodiscard]] Result<Root> root_term(const Keys& keys, const RecordAddress& address, crypto::ByteView record);
 
 [[nodiscard]] Root add_term(const Root& root, const Root& term);
 

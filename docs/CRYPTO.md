@@ -163,7 +163,10 @@ proves it with Wycheproof's modulus-overflow vectors.
   was not locked can reach swap or the page file and outlive its wiping there,
   and even a locked page is written to a hibernation file or a crash dump; on
   disk it is protected only by the device's disk encryption — BitLocker,
-  FileVault or Android's file-based encryption.
+  FileVault or Android's file-based encryption. The same holds for Argon2id's
+  working memory (§10.1): `crypto_pwhash` frees it without wiping it, and its
+  last blocks determine `Kpw`, so the freed heap holds what `Kpw` is computed
+  from until the memory is reused.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.
@@ -762,8 +765,8 @@ nothing else.
 `PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
 its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
 encoding of what the user typed, normalised to NFC by the platform; at most
-1024 bytes. A new passphrase must be valid UTF-8 and hold at least 10 code
-points, or 14 in software-only mode (§10.2). `Khw` is 32 bytes on every
+1024 bytes. A new passphrase must be valid UTF-8 without NUL and hold at least
+10 code points, or 14 in software-only mode (§10.2). `Khw` is 32 bytes on every
 platform. `0^32` is 32 zero bytes.
 
 ### 10.2 Hardware binding per platform
@@ -774,9 +777,15 @@ passphrase guess has to run on the original device.
 | Platform | `HW(x)` | What a guess costs |
 |---|---|---|
 | Android, Keystore at TEE or StrongBox level | HMAC-SHA256 with a non-exportable Keystore key created with `setUnlockedDeviceRequired(true)` | a Keystore operation on this unlocked device |
-| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation is the raw 32 bytes of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, set through `NCRYPT_PCP_USAGEAUTH_PROPERTY`, and `P` is a public point stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
+| Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation is the raw 32 bytes of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, set through `NCRYPT_PCP_USAGEAUTH_PROPERTY`, and `P` is `K_tpm`'s own public key, stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
 | Anything else | **software only**: a DPAPI-protected random `Khw` on Windows, an app-private random `Khw` on Android | nothing beyond Argon2id once the secret is read |
 
+`P` must be a point whose discrete logarithm nobody knows outside the TPM;
+otherwise whoever knows it computes `ECDH(K_tpm, P)` from `K_tpm`'s public key
+without the TPM, and every guess costs only Argon2id. So `P` is `K_tpm`'s own
+public key: `ECDH(K_tpm, P)` is then `k²·G` for `K_tpm`'s scalar `k`, which only
+the TPM can compute, and no other scalar for `P` exists anywhere. Before every
+ECDH the platform checks that `P` equals the public key it exports for `K_tpm`.
 `ECDH(K_tpm, P)` is the 32-byte big-endian x-coordinate of the shared point,
 as SEC 1 defines it; a provider that returns the raw secret in another byte
 order has it reversed first. The core derives the usage authorisation and
@@ -800,7 +809,7 @@ worthless afterwards.
 
 Android reporting a `SOFTWARE` security level, and a TPM without ECC support,
 are treated as software only. Software-only mode is shown to the user, never
-entered silently, and raises the passphrase minimum from 10 to 14 characters.
+entered silently, and raises the passphrase minimum from 10 to 14 code points.
 
 **TPM lockout is its own state.** When the TPM refuses because of its
 dictionary-attack lockout, the app says so, shows when to try again, makes no
@@ -827,9 +836,11 @@ Its field layout is in [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures);
 `wrapped_data_key` is `n ‖ AEAD(KEK, n, L("vault/data-key"), VK)`, 72 bytes.
 `ops` and `mem` must lie between the floor and the ceiling; anything outside is
 an integrity error, found before `PWHash` runs. Unlocking computes `Kpw`, `Khw`
-and `KEK`, then compares `check` in constant time: a wrong passphrase fails
-`check`. A header whose `check` verifies but whose `VK` does not unwrap is an
-integrity error.
+and `KEK`, compares `check` in constant time and tries to unwrap `VK`. A wrong
+passphrase or hardware key fails both. A header that fails only one of them —
+`check` fails while `VK` unwraps, or `check` verifies while `VK` does not
+unwrap — was changed after it was written, which is an integrity error and
+never reported as a wrong passphrase.
 
 | | `ops` | `mem` |
 |---|---|---|
@@ -842,13 +853,15 @@ integrity error.
 
 ```
 record = nonce ‖ AEAD(K_rec, nonce, L("vault/record") ‖ u8(type) ‖ lp(id) ‖ u64(counter), payload)
-root   = Σ HMAC(K_root, L("vault/root") ‖ u8(type) ‖ lp(id) ‖ u64(counter))  mod 2^256, over the type's live records
+root   = Σ HMAC(K_root, L("vault/root") ‖ u8(type) ‖ lp(id) ‖ u64(counter) ‖ nonce)  mod 2^256, over the type's live records
 tag    = HMAC(K_man, L("vault/manifest") ‖ enc(Manifest { epoch, types: list<{ type, count, root }> }))
 ```
 
 `id` is at most 64 bytes, and `counter` grows by one on every write of a
-record, so an older copy of a record has another term. Terms and roots are
-256-bit big-endian integers. The manifest lists each type that has a live
+record. A record that is deleted and written again may start its counter
+again, so the term also covers the record's own nonce, which is fresh for every
+write: an older copy of a record never has the term of the current one, even at
+the same counter. Terms and roots are 256-bit big-endian integers. The manifest lists each type that has a live
 record, in ascending order, with its number of live records; `epoch` is the
 header's, and `tag` is compared in constant time. Its field layout is in
 [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures).
@@ -860,7 +873,10 @@ records. A record holds at most 128 KiB (§2.1); collections that can grow beyon
 the seen message ids, skipped message keys, a long history — are split into
 records by contact and by day. A record write and its manifest update are
 **one SQLite transaction**,
-so a crash leaves both or neither. On unlock the vault recomputes every root; a
+so a crash leaves both or neither. On unlock the vault recomputes every root
+and keeps the counter and nonce of every live record; until it locks, it reads
+a record only at the counter and nonce it verified or wrote itself, so a row
+swapped while the vault is open is caught when it is read. A
 missing, extra or older record is an **integrity error**: the vault stops
 writing for the session and says so, never treating a record as empty. The user
 can then export everything that still authenticates and start again from the
@@ -872,9 +888,11 @@ The vault **epoch** increases on every unlock. On Android the epoch is part of
 the Keystore key alias: unlock creates the key for epoch `e + 1`, re-wraps `VK`
 under it and commits the header, and only then deletes the key for epoch `e`. An
 older copy of the vault file then finds no key for its epoch while a newer one
-exists, which is reported as rollback. Restoring a full device image —
-Keystore included — defeats this. On Windows rollback is not detected in this
-version.
+exists, which is reported as rollback. Detection works at the granularity of an
+unlock: the manifest is bound to the vault only through the epoch, so a copy
+taken since the last unlock carries the current epoch and is not detected at
+the next one. Restoring a full device image — Keystore included — defeats this
+as well. On Windows rollback is not detected in this version.
 
 A vault belongs to one identity. Creating or recovering a different identity
 opens a new vault with a new salt and never reads another's records.
@@ -1034,9 +1052,10 @@ X25519, Ed25519, HMAC-SHA256, HKDF-SHA256, XChaCha20-Poly1305 and ML-KEM-768
 (key generation from a seed, encapsulation including keys that fail the modulus
 check, and decapsulation) suites, the RFC 8032 and RFC 7748 examples, the
 FIPS 180-4 SHA-2 examples, and the BIP39 English entropy-to-mnemonic vectors.
-Argon2id is tested with libsodium's own `crypto_pwhash` vectors and single-lane
-reference vectors, because `crypto_pwhash` has one lane and no secret or
-associated-data inputs.
+Argon2id is tested with single-lane vectors from an implementation of its own,
+`core/tools/argon2id.mjs`, which is first checked against RFC 9106 §5.3 (four
+lanes, with a secret and associated data); `crypto_pwhash` has one lane and no
+secret or associated-data inputs, so it cannot run that example itself.
 
 LUME publishes its own vectors for every construction above — identity and
 device derivation, prekey signatures, PQXDH, ratchet transcripts including

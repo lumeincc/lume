@@ -57,11 +57,15 @@ const rootKey = hkdf(zero, dataKey, "vault/root-key");
 
 const tpmKey = createECDH("prime256v1");
 tpmKey.setPrivateKey(seedOf("tpm key"));
-const tpmPointOwner = createECDH("prime256v1");
-tpmPointOwner.setPrivateKey(seedOf("tpm point"));
-const tpmPoint = tpmPointOwner.getPublicKey();
+const tpmPoint = tpmKey.getPublicKey();
 const tpmSharedSecret = tpmKey.computeSecret(tpmPoint);
-if (!tpmSharedSecret.equals(tpmPointOwner.computeSecret(tpmKey.getPublicKey()))) throw new Error("P-256 ECDH does not agree");
+const squared = createECDH("prime256v1");
+const order = BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
+const scalar = BigInt(`0x${hex(seedOf("tpm key"))}`);
+squared.setPrivateKey(Buffer.from(((scalar * scalar) % order).toString(16).padStart(64, "0"), "hex"));
+if (!tpmSharedSecret.equals(squared.getPublicKey().subarray(1, 33))) {
+  throw new Error("ECDH of K_tpm with its own public key must be the x-coordinate of k^2 G");
+}
 const tpmAuthorisation = hkdf(zero, passphraseKey, "vault/tpm-pin");
 const tpmHardwareKey = sha256(label("vault/tpm"), tpmSharedSecret);
 
@@ -82,16 +86,25 @@ const sealHeader = ({ masterKey, nonce, ops = floor.ops, mem = floor.mem, hwMode
   const check = hmac(hkdf(zero, masterKey, "vault/check-key"), label("vault/check"), unsigned);
   return { ...header, unsigned, check, encoded: Buffer.concat([unsigned, check]) };
 };
+const headerOutcome = (header, masterKey) => {
+  if (header.ops < 2 || header.ops > 10 || header.mem < 65536 || header.mem > 1048576) return "integrity";
+  const check = hmac(hkdf(zero, masterKey, "vault/check-key"), label("vault/check"), encodeHeader(header));
+  const unwrapped = aeadDecrypt(masterKey, header.wrapped.subarray(0, 24), label("vault/data-key"), header.wrapped.subarray(24));
+  const unwraps = Boolean(unwrapped) && unwrapped.length === 32;
+  if (!check.equals(header.check)) return unwraps ? "integrity" : "wrong_passphrase";
+  return unwraps ? null : "integrity";
+};
 
 const keystoreMaster = masterKeyOf(keystoreHardwareKey);
 const tpmMaster = masterKeyOf(tpmHardwareKey);
 const headers = [
   ["keystore", "an Android vault at epoch 7", { masterKey: keystoreMaster, nonce: seedOf("keystore nonce").subarray(0, 24), hwMode: 1, epoch: 7 }],
-  ["tpm", "a Windows vault bound to a TPM key, with the point P in its header", { masterKey: tpmMaster, nonce: seedOf("tpm nonce").subarray(0, 24), hwMode: 2, tpmPoint, epoch: 1 }],
+  ["tpm", "a Windows vault bound to a TPM key, whose own public key is the point P in its header", { masterKey: tpmMaster, nonce: seedOf("tpm nonce").subarray(0, 24), hwMode: 2, tpmPoint, epoch: 1 }],
 ].map(([name, description, input]) => {
   const header = sealHeader(input);
   const unwrapped = aeadDecrypt(input.masterKey, header.wrapped.subarray(0, 24), label("vault/data-key"), header.wrapped.subarray(24));
   if (!unwrapped || !unwrapped.equals(dataKey)) throw new Error("the wrapped data key does not unwrap");
+  if (headerOutcome(header, input.masterKey) !== null) throw new Error(`the ${name} header must open`);
   return {
     name, description, master_key: hex(input.masterKey), hw_mode: input.hwMode, epoch: input.epoch,
     tpm_point: input.tpmPoint ? hex(input.tpmPoint) : null, nonce: hex(input.nonce),
@@ -100,26 +113,30 @@ const headers = [
 });
 
 const keystoreHeader = sealHeader({ masterKey: keystoreMaster, nonce: seedOf("keystore nonce").subarray(0, 24), hwMode: 1, epoch: 7 });
-const tamperedEpoch = Buffer.concat([encodeHeader({ ...keystoreHeader, epoch: 8 }), keystoreHeader.check]);
 const garbageWrapped = Buffer.concat([seedOf("garbage nonce").subarray(0, 24), seedOf("garbage a"), seedOf("garbage b").subarray(0, 16)]);
 if (aeadDecrypt(keystoreMaster, garbageWrapped.subarray(0, 24), label("vault/data-key"), garbageWrapped.subarray(24))) {
   throw new Error("the garbage data key must not unwrap");
 }
 const headerRefusals = [
-  ["another_hardware_key", "the right passphrase key with another hardware key", keystoreHeader.encoded, masterKeyOf(seedOf("another hardware key")), "wrong_passphrase"],
+  ["another_hardware_key", "the right passphrase key with another hardware key", keystoreHeader, masterKeyOf(seedOf("another hardware key")), "wrong_passphrase"],
   ["another_passphrase", "another passphrase key with the right hardware key",
-    keystoreHeader.encoded, hkdf(keystoreHardwareKey, seedOf("another passphrase key"), "vault/master"), "wrong_passphrase"],
-  ["tampered_epoch", "the epoch was changed after the check was computed", tamperedEpoch, keystoreMaster, "wrong_passphrase"],
+    keystoreHeader, hkdf(keystoreHardwareKey, seedOf("another passphrase key"), "vault/master"), "wrong_passphrase"],
+  ["tampered_epoch", "the epoch was changed after the check was computed: the master key is right and the data key unwraps",
+    { ...keystoreHeader, epoch: 8 }, keystoreMaster, "integrity"],
   ["ops_below_floor", "one pass, with a check that verifies",
-    sealHeader({ masterKey: keystoreMaster, nonce: seedOf("ops nonce").subarray(0, 24), ops: 1, hwMode: 1, epoch: 7 }).encoded, keystoreMaster, "integrity"],
+    sealHeader({ masterKey: keystoreMaster, nonce: seedOf("ops nonce").subarray(0, 24), ops: 1, hwMode: 1, epoch: 7 }), keystoreMaster, "integrity"],
   ["mem_above_ceiling", "1 GiB and 1 KiB, with a check that verifies",
-    sealHeader({ masterKey: keystoreMaster, nonce: seedOf("mem nonce").subarray(0, 24), mem: 1048577, hwMode: 1, epoch: 7 }).encoded, keystoreMaster, "integrity"],
+    sealHeader({ masterKey: keystoreMaster, nonce: seedOf("mem nonce").subarray(0, 24), mem: 1048577, hwMode: 1, epoch: 7 }), keystoreMaster, "integrity"],
   ["data_key_does_not_unwrap", "a check that verifies over a wrapped data key that does not authenticate",
-    sealHeader({ masterKey: keystoreMaster, hwMode: 1, epoch: 7, wrapped: garbageWrapped }).encoded, keystoreMaster, "integrity"],
-].map(([name, description, encoded, masterKey, error]) => ({ name, description, encoded: hex(encoded), master_key: hex(masterKey), error }));
+    sealHeader({ masterKey: keystoreMaster, hwMode: 1, epoch: 7, wrapped: garbageWrapped }), keystoreMaster, "integrity"],
+].map(([name, description, header, masterKey, error]) => {
+  if (headerOutcome(header, masterKey) !== error) throw new Error(`${name} must be refused as ${error}`);
+  const encoded = Buffer.concat([encodeHeader(header), header.check]);
+  return { name, description, encoded: hex(encoded), master_key: hex(masterKey), error };
+});
 
 const recordAd = (type, id, counter) => Buffer.concat([label("vault/record"), u8(type), lengthPrefixed(id), u64(counter)]);
-const rootTermOf = (type, id, counter) => hmac(rootKey, label("vault/root"), u8(type), lengthPrefixed(id), u64(counter));
+const rootTermOf = (type, id, counter, nonce) => hmac(rootKey, label("vault/root"), u8(type), lengthPrefixed(id), u64(counter), nonce);
 const recordInputs = [
   ["short", "a short record of type 1", 1, Buffer.from("contact 1", "ascii"), 1n, Buffer.from("hello, vault", "utf8")],
   ["day", "a day of history of type 2", 2, seedOf("contact 2").subarray(0, 20), 7n, Buffer.alloc(1000, 0x5a)],
@@ -131,10 +148,19 @@ const records = recordInputs.map(([name, description, type, id, counter, payload
   const sealed = Buffer.concat([nonce, aeadEncrypt(recordKey, nonce, recordAd(type, id, counter), payload)]);
   return {
     name, description, type, id: hex(id), counter: counter.toString(), payload: hex(payload), nonce: hex(nonce),
-    record: hex(sealed), root_term: hex(rootTermOf(type, id, counter)),
+    record: hex(sealed), root_term: hex(rootTermOf(type, id, counter, nonce)),
   };
 });
 const short = recordInputs[0];
+const earlierNonce = seedOf("record nonce short earlier").subarray(0, 24);
+const earlierPayload = Buffer.from("an earlier write at the same counter", "utf8");
+const earlierRecord = Buffer.concat([earlierNonce, aeadEncrypt(recordKey, earlierNonce, recordAd(short[2], short[3], short[4]), earlierPayload)]);
+const earlierTerm = rootTermOf(short[2], short[3], short[4], earlierNonce);
+if (earlierTerm.equals(Buffer.from(records[0].root_term, "hex"))) throw new Error("an earlier write must have another term");
+const earlierWrite = {
+  description: "the record \"short\" as written before a deletion, at the same type, id and counter: it still opens at that address, but its term differs from the current one, so the root of type 1 does not match it",
+  record: hex(earlierRecord), payload: hex(earlierPayload), root_term: hex(earlierTerm),
+};
 const recordRefusals = [
   ["another_type", "the record read as another type", { type: 2 }],
   ["another_id", "the record read under another id", { id: Buffer.from("contact 2", "ascii") }],
@@ -159,7 +185,7 @@ const sumOf = (terms) => asBytes(terms.reduce((sum, term) => (sum + asNumber(ter
 const typeTwo = records.filter((record) => record.type === 2).map((record) => Buffer.from(record.root_term, "hex"));
 const typeOne = [Buffer.from(records[0].root_term, "hex")];
 if (typeTwo.reduce((sum, term) => sum + asNumber(term), 0n) < modulus) throw new Error("the type 2 terms must wrap around 2^256");
-const rewritten = rootTermOf(2, recordInputs[1][3], 8n);
+const rewritten = rootTermOf(2, recordInputs[1][3], 8n, seedOf("record nonce day rewritten").subarray(0, 24));
 const updated = asBytes((asNumber(sumOf(typeTwo)) - asNumber(typeTwo[0]) + asNumber(rewritten) + modulus) % modulus);
 if (!updated.equals(sumOf([rewritten, typeTwo[1], typeTwo[2]]))) throw new Error("an incremental update must equal the recomputed root");
 const roots = {
@@ -196,7 +222,7 @@ const manifest = {
 };
 
 const document = {
-  description: "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3: Argon2id with one lane and a 32-byte output, the key schedule of section 10.1 including the TPM binding with a real P-256 ECDH, headers that open under their master key, records, roots and a manifest; seeds are SHA-256(\"LUME vault vector \" || name); a header refusal must be refused with the error it names when opened under its master key, a record refusal when opened at its address, a manifest refusal when checked at its epoch",
+  description: "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3: Argon2id with one lane and a 32-byte output, the key schedule of section 10.1 including the TPM binding with a real P-256 ECDH of K_tpm with its own public key, headers that open under their master key, records, roots with each record's nonce in its term, an earlier write at the same address, and a manifest; seeds are SHA-256(\"LUME vault vector \" || name); a header refusal must be refused with the error it names when opened under its master key, a record refusal when opened at its address, a manifest refusal when checked at its epoch",
   generator: "core/tools/generate_vault_vectors.mjs",
   argon2id: argon2Cases,
   keys: {
@@ -221,6 +247,7 @@ const document = {
   header_refusals: headerRefusals,
   records,
   record_refusals: recordRefusals,
+  earlier_write: earlierWrite,
   roots,
   manifest,
 };

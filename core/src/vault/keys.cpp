@@ -175,11 +175,12 @@ Result<Keys> open_header(const SecretBytes& master_key, const wire::VaultHeader&
     if (!check) {
         return std::unexpected(check.error());
     }
-    if (!check->equals(header.check)) {
-        return std::unexpected(Error::wrong_passphrase);
-    }
     auto data_key = crypto::aead_open(master_key, crypto::label("vault/data-key"), header.wrapped_data_key);
-    if (!data_key || data_key->size() != key_size) {
+    const bool unwraps = data_key.has_value() && data_key->size() == key_size;
+    if (!check->equals(header.check)) {
+        return std::unexpected(unwraps ? Error::integrity : Error::wrong_passphrase);
+    }
+    if (!unwraps) {
         return std::unexpected(Error::integrity);
     }
     return keys_of(std::move(*data_key));

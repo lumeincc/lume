@@ -207,12 +207,23 @@ TEST(VaultRecords, MatchTheLumeVectors)
         const auto opened = open_record(keys, address, hex_field(vector, "record"));
         ASSERT_TRUE(opened.has_value()) << name;
         EXPECT_TRUE(opened->equals(payload)) << name;
-        const auto term = root_term(keys, address);
+        const auto term = root_term(keys, address, hex_field(vector, "record"));
         ASSERT_TRUE(term.has_value()) << name;
         EXPECT_EQ(test::to_hex(*term), vector.at("root_term").get<std::string>()) << name;
         ++checked;
     }
     EXPECT_EQ(checked, 4);
+
+    const auto& earlier = vectors().at("earlier_write");
+    const auto& current = vectors().at("records").at(0);
+    const auto address = address_of(current);
+    const auto earlier_payload = open_record(keys, address, hex_field(earlier, "record"));
+    ASSERT_TRUE(earlier_payload.has_value());
+    EXPECT_TRUE(earlier_payload->equals(hex_field(earlier, "payload")));
+    const auto earlier_term = root_term(keys, address, hex_field(earlier, "record"));
+    ASSERT_TRUE(earlier_term.has_value());
+    EXPECT_EQ(test::to_hex(*earlier_term), earlier.at("root_term").get<std::string>());
+    EXPECT_NE(test::to_hex(*earlier_term), current.at("root_term").get<std::string>());
 
     int refused = 0;
     for (const auto& refusal : vectors().at("record_refusals")) {
@@ -293,6 +304,17 @@ TEST(VaultKeys, RefuseCostsOutsideTheirBounds)
         Error::invalid_passphrase);
 }
 
+TEST(VaultKeys, RefuseAHostileCostBeforeArgon2idRuns)
+{
+    const Salt salt{};
+    for (const auto cost : {Cost{.ops = 0xffffffffU, .mem = cost_floor.mem}, Cost{.ops = cost_floor.ops, .mem = 0xffffffffU}}) {
+        EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost)), Error::integrity);
+    }
+    const auto longest = derive_passphrase_key(std::string(passphrase_bound, 'a'), salt, cost_floor);
+    ASSERT_TRUE(longest.has_value());
+    EXPECT_EQ(longest->size(), key_size);
+}
+
 TEST(VaultKeys, CheckNewPassphrases)
 {
     using wire::HardwareMode;
@@ -354,10 +376,17 @@ TEST(VaultHeader, OpensOnlyUnderItsMasterKeyInEveryMode)
         EXPECT_EQ(test::error_of(open_header(crypto::random_secret(key_size), *decoded)), Error::wrong_passphrase);
         auto flipped = *decoded;
         flipped.check.front() = static_cast<std::uint8_t>(flipped.check.front() ^ 0x01U);
-        EXPECT_EQ(test::error_of(open_header(master, flipped)), Error::wrong_passphrase);
+        EXPECT_EQ(test::error_of(open_header(master, flipped)), Error::integrity);
+        EXPECT_EQ(test::error_of(open_header(crypto::random_secret(key_size), flipped)), Error::wrong_passphrase);
         auto later = *decoded;
         later.epoch += 1;
-        EXPECT_EQ(test::error_of(open_header(master, later)), Error::wrong_passphrase);
+        EXPECT_EQ(test::error_of(open_header(master, later)), Error::integrity);
+        auto other_salt = *decoded;
+        other_salt.salt.front() = static_cast<std::uint8_t>(other_salt.salt.front() ^ 0x01U);
+        EXPECT_EQ(test::error_of(open_header(master, other_salt)), Error::integrity);
+        auto broken_key = *decoded;
+        broken_key.wrapped_data_key.back() = static_cast<std::uint8_t>(broken_key.wrapped_data_key.back() ^ 0x01U);
+        EXPECT_EQ(test::error_of(open_header(master, broken_key)), Error::wrong_passphrase);
         auto cheaper = *decoded;
         cheaper.ops = cost_floor.ops - 1;
         EXPECT_EQ(test::error_of(open_header(master, cheaper)), Error::integrity);
@@ -424,14 +453,22 @@ TEST(VaultRecords, HoldWhatFitsAndOpenOnlyAtTheirAddress)
     long_id.id.push_back(0);
     EXPECT_EQ(test::error_of(seal_record(keys, long_id, Bytes{1})), Error::invalid_parameters);
     EXPECT_EQ(test::error_of(open_record(keys, long_id, *record)), Error::integrity);
-    EXPECT_EQ(test::error_of(root_term(keys, long_id)), Error::invalid_parameters);
+    EXPECT_EQ(test::error_of(root_term(keys, long_id, *record)), Error::integrity);
+    EXPECT_EQ(test::error_of(root_term(keys, address, crypto::ByteView(*record).first(crypto::aead_overhead - 1))),
+        Error::integrity);
+    EXPECT_TRUE(root_term(keys, address, crypto::ByteView(*record).first(crypto::aead_overhead)).has_value());
     EXPECT_EQ(test::error_of(seal_record(Keys{}, address, Bytes{1})), Error::invalid_parameters);
     EXPECT_EQ(test::error_of(open_record(Keys{}, address, *record)), Error::invalid_parameters);
-    EXPECT_EQ(test::error_of(root_term(Keys{}, address)), Error::invalid_parameters);
+    EXPECT_EQ(test::error_of(root_term(Keys{}, address, *record)), Error::invalid_parameters);
 
-    const auto term = must(root_term(keys, address));
-    EXPECT_NE(term, must(root_term(keys, newer)));
-    EXPECT_NE(term, must(root_term(must(fresh_keys()), address)));
+    const auto term = must(root_term(keys, address, *record));
+    EXPECT_NE(term, must(root_term(keys, newer, *record)));
+    EXPECT_NE(term, must(root_term(must(fresh_keys()), address, *record)));
+    const auto rewritten = must(seal_record(keys, address, largest));
+    EXPECT_NE(term, must(root_term(keys, address, rewritten)));
+    auto other_payload = *record;
+    other_payload.at(crypto::aead_nonce_size) = static_cast<std::uint8_t>(other_payload.at(crypto::aead_nonce_size) ^ 0x01U);
+    EXPECT_EQ(term, must(root_term(keys, address, other_payload)));
 }
 
 TEST(VaultRecords, NeedEveryKey)
@@ -446,7 +483,7 @@ TEST(VaultRecords, NeedEveryKey)
     without_root.root = SecretBytes{};
     for (const Keys* keys : {&without_record, &without_manifest, &without_root}) {
         EXPECT_EQ(test::error_of(seal_record(*keys, address, Bytes{1})), Error::invalid_parameters);
-        EXPECT_EQ(test::error_of(root_term(*keys, address)), Error::invalid_parameters);
+        EXPECT_EQ(test::error_of(root_term(*keys, address, Bytes(crypto::aead_overhead))), Error::invalid_parameters);
         EXPECT_EQ(test::error_of(manifest_tag(*keys, manifest)), Error::invalid_parameters);
     }
 }
@@ -468,7 +505,18 @@ TEST(VaultManifest, RefusesAnythingElse)
     EXPECT_EQ(test::error_of(check_manifest(Keys{}, manifest, tag, 5)), Error::invalid_parameters);
     auto unordered = manifest;
     unordered.types.push_back(wire::ManifestEntry{.type = 0, .count = 1, .root = Root{}});
-    EXPECT_THROW(EXPECT_FALSE(manifest_tag(keys, unordered).has_value()), std::invalid_argument);
+    auto empty_type = manifest;
+    empty_type.types.at(0).count = 0;
+    wire::Manifest too_many{.epoch = 5, .types = {}};
+    for (std::size_t type = 0; type <= wire::manifest_types_bound; ++type) {
+        too_many.types.push_back(wire::ManifestEntry{.type = static_cast<std::uint8_t>(type), .count = 1, .root = Root{}});
+    }
+    for (const auto* refused : {&unordered, &empty_type, &too_many}) {
+        EXPECT_FALSE(wire::is_canonical(*refused));
+        EXPECT_EQ(test::error_of(manifest_tag(keys, *refused)), Error::invalid_parameters);
+        EXPECT_EQ(test::error_of(check_manifest(keys, *refused, tag, 5)), Error::integrity);
+    }
+    EXPECT_TRUE(wire::is_canonical(manifest));
 }
 
 Root random_root()

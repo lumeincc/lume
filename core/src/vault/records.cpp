@@ -60,12 +60,16 @@ Result<crypto::SecretBytes> open_record(const Keys& keys, const RecordAddress& a
     return std::move(*payload);
 }
 
-Result<Root> root_term(const Keys& keys, const RecordAddress& address)
+Result<Root> root_term(const Keys& keys, const RecordAddress& address, crypto::ByteView record)
 {
-    if (!usable(keys) || address.id.size() > record_id_bound) {
+    if (!usable(keys)) {
         return std::unexpected(Error::invalid_parameters);
     }
-    const auto term = crypto::hmac_sha256(keys.root.view(), address_of("vault/root", address));
+    if (address.id.size() > record_id_bound || record.size() < crypto::aead_overhead) {
+        return std::unexpected(Error::integrity);
+    }
+    const auto term = crypto::hmac_sha256(keys.root.view(),
+        crypto::Encoder{}.raw(address_of("vault/root", address)).raw(record.first(crypto::aead_nonce_size)).take());
     Root value{};
     std::ranges::copy(term.view(), value.begin());
     return value;
@@ -97,7 +101,7 @@ Root remove_term(const Root& root, const Root& term)
 
 Result<Tag> manifest_tag(const Keys& keys, const wire::Manifest& manifest)
 {
-    if (!usable(keys)) {
+    if (!usable(keys) || !wire::is_canonical(manifest)) {
         return std::unexpected(Error::invalid_parameters);
     }
     Tag value{};
@@ -110,7 +114,7 @@ Result<void> check_manifest(const Keys& keys, const wire::Manifest& manifest, cr
     if (!usable(keys)) {
         return std::unexpected(Error::invalid_parameters);
     }
-    if (!tag_of(keys, manifest).equals(tag) || manifest.epoch != epoch) {
+    if (!wire::is_canonical(manifest) || !tag_of(keys, manifest).equals(tag) || manifest.epoch != epoch) {
         return std::unexpected(Error::integrity);
     }
     return {};

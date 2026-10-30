@@ -1,5 +1,5 @@
 {
-  "description": "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3: Argon2id with one lane and a 32-byte output, the key schedule of section 10.1 including the TPM binding with a real P-256 ECDH, headers that open under their master key, records, roots and a manifest; seeds are SHA-256(\"LUME vault vector \" || name); a header refusal must be refused with the error it names when opened under its master key, a record refusal when opened at its address, a manifest refusal when checked at its epoch",
+  "description": "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3: Argon2id with one lane and a 32-byte output, the key schedule of section 10.1 including the TPM binding with a real P-256 ECDH of K_tpm with its own public key, headers that open under their master key, records, roots with each record's nonce in its term, an earlier write at the same address, and a manifest; seeds are SHA-256(\"LUME vault vector \" || name); a header refusal must be refused with the error it names when opened under its master key, a record refusal when opened at its address, a manifest refusal when checked at its epoch",
   "generator": "core/tools/generate_vault_vectors.mjs",
   "argon2id": [
     {
@@ -46,10 +46,10 @@
     },
     "tpm": {
       "authorisation": "3a4222e8eb5c45da8870711aa7e4427e3ef04bd0fd4b1166850540829d964956",
-      "point": "04b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d6464",
-      "shared_secret": "c0e0c217937f486260714d90d9396c4c39112980c470261d249171a862ce4fac",
-      "hardware_key": "f25bd4d4f18281c8a07d152a16e8166fabbe0898e955c44173a3bc763c824daa",
-      "master_key": "77c8cf131d8c98f503a68c62d1f538fc1a522c4d43b637820bf75bf118962de6"
+      "point": "04eadb709a9d2c21d8f65b5a978c267eaa20d70744b96d176a27243500bfc0f381197c7511028ad89420a968382f7edb0b7a38f393278e48a04563ff55253141a5",
+      "shared_secret": "1c0ac61168b1a4591563f5cd809ad8e2681937db903d760a851639e11b81a421",
+      "hardware_key": "088449d2c2e793bff20596e490aa250c03725272cc3e2d78b6c4c11341e3e042",
+      "master_key": "2a6bbe61193312e93e4637417ddb2cb5e5c78f280d7f5215fdddb41e1fa7b9c3"
     }
   },
   "headers": [
@@ -67,15 +67,15 @@
     },
     {
       "name": "tpm",
-      "description": "a Windows vault bound to a TPM key, with the point P in its header",
-      "master_key": "77c8cf131d8c98f503a68c62d1f538fc1a522c4d43b637820bf75bf118962de6",
+      "description": "a Windows vault bound to a TPM key, whose own public key is the point P in its header",
+      "master_key": "2a6bbe61193312e93e4637417ddb2cb5e5c78f280d7f5215fdddb41e1fa7b9c3",
       "hw_mode": 2,
       "epoch": 1,
-      "tpm_point": "04b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d6464",
+      "tpm_point": "04eadb709a9d2c21d8f65b5a978c267eaa20d70744b96d176a27243500bfc0f381197c7511028ad89420a968382f7edb0b7a38f393278e48a04563ff55253141a5",
       "nonce": "5935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e",
-      "wrapped_data_key": "5935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e13ea4557b872ffeeafc5101c293ad5a3807e68bad40ea4ce4a3869e23dfe0b1e40fb07d27ba1d78f72fa0806bfacbbc6",
-      "check": "6fa2096a90e41de013094e05915e4a4339a634e95d0d3a839f5b3f37de2f18d6",
-      "encoded": "01826fc589fd0f83f37283dab8742d07cd0000000200010000020104b80bca6a733393aafe73adfbcc5a32cc812f79923bd00d20215ccfbfc33a3a1f606f7d54d3107637040b6a89b791df6567037cfdb7822e369b5b0630643d64645935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e13ea4557b872ffeeafc5101c293ad5a3807e68bad40ea4ce4a3869e23dfe0b1e40fb07d27ba1d78f72fa0806bfacbbc600000000000000016fa2096a90e41de013094e05915e4a4339a634e95d0d3a839f5b3f37de2f18d6"
+      "wrapped_data_key": "5935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e2ec995a6e95dff00edae5e0e431aca8a08d87ec33245b3d4fe18effbf19d3e9ac4f3f0300c01b3abb6bde3ba58c8882d",
+      "check": "0788d9d477a05d3b603a9889e062e25adc850f67a0bf31f1d237e8357e7fe336",
+      "encoded": "01826fc589fd0f83f37283dab8742d07cd0000000200010000020104eadb709a9d2c21d8f65b5a978c267eaa20d70744b96d176a27243500bfc0f381197c7511028ad89420a968382f7edb0b7a38f393278e48a04563ff55253141a55935f3566c11c9ef46b819f831beccb1a1e550f91d252d4e2ec995a6e95dff00edae5e0e431aca8a08d87ec33245b3d4fe18effbf19d3e9ac4f3f0300c01b3abb6bde3ba58c8882d00000000000000010788d9d477a05d3b603a9889e062e25adc850f67a0bf31f1d237e8357e7fe336"
     }
   ],
   "header_refusals": [
@@ -95,10 +95,10 @@
     },
     {
       "name": "tampered_epoch",
-      "description": "the epoch was changed after the check was computed",
+      "description": "the epoch was changed after the check was computed: the master key is right and the data key unwraps",
       "encoded": "01826fc589fd0f83f37283dab8742d07cd000000020001000001009401064e1b2c4abdcf39653170b430fc861ae8be02c8426637649f76b07dd0b19fe4bb69d72701c0d45a012338b466ad7dedaa001b54f66f0466e781b0ef1928077711237f5386cf0000000000000008173e7270c2343805c55fe230b283a24c79c565444e01749ffc413e4ee7361e9c",
       "master_key": "2ff21820b16cf693d003645bb2bc7c102816a729bd9154694d38aa9488f26612",
-      "error": "wrong_passphrase"
+      "error": "integrity"
     },
     {
       "name": "ops_below_floor",
@@ -132,7 +132,7 @@
       "payload": "68656c6c6f2c207661756c74",
       "nonce": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce",
       "record": "042969c66943dec747e0abefbbf89b3a10d49e87cc0bd5ce07fde1bf6f3eaeaa6226e3f75294f97f5203491ebf12c565f3efb287",
-      "root_term": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2"
+      "root_term": "fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e"
     },
     {
       "name": "day",
@@ -143,7 +143,7 @@
       "payload": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
       "nonce": "024a6738814913e1f1c4f6606836fdb081d607c05d915558",
       "record": "024a6738814913e1f1c4f6606836fdb081d607c05d91555868f70afba0ab64911660cba02e4e0dfcbcaad24cc5934dfba2ae91e76af26aade9b5cf0b82a09864e92df1f1888d5cf29d3b485850974db687e6a4951f05aceeadf093d479093dab6a4a3fe27bf6f393daa5d294befa0ab7bf62f12bc65b8dcc91cdfe351f21048128876d1f61de3f7644de71f2361f3b739a9cf6f3d022c4e98df67465cf3991cb01578141bf927c0ae0925ad77d86303cdb5ac8c57919e13c55e12652aa358b817494d875a2428baec5b8c88f6dc4bf093b2ddf80f115093906d8f61f0541e4d770ca7da04cb798f9ac0dd5de37b46d5cd644dd86908d9a6290d52a30ff6f961da09a098d0e6623add8f9e236c2d5651488b4b6d79c91529de1956ab014a59add39639ed2dbe92ecc9262d9f26f6f63e096c761b5e6da61b2eea554a6a84aadfd8242106a50ed9a2b738482b31e318a5b5bfcd3e9ad348ebface7452ebe89e313bc7cf940c65e9e1bf8cd1860c5054de74fc0aba73c4bfa6346a6dc3aa39f7e1884ba7974f18e3042f4d0783635023ee4e85c631b751b76bfaf3eaf90e5c7e58de66ddd20d806db2fe53f697ecf297a51832adfe801ad5916ab77633207089cc80b0a6f6bef2c14b627d7e6c018f3ac2142cb2905cba4837011b00c47dc6f8789bc46cd4f8400f3f9b6dd7f4ea58964850ffb27990222961fff9ebc212bf9f5667ecf4629f183edca470a8dff334596a999bd43194ea700673e006c16914fea52d0a979769fa1f768d82eb42006e4b84a1d583ea7376917f81afa1bae20ae6428fd4344ef27b9adebe14db07719f8f217dcde8eba9ad767bb7d5314b254e0312195c1e38ababb1f843c9327530f7d05465a293d32680abb58485661303c4ced82304bb48af34e25eeff6c8285df72256791ec92fc821ac9fd5b9cafab30264617e68257ba99a2936547448581e200491a51e3c80a377c35f1cc1685132a3dc7c3383c56818eadd094d4fc5caa3101c7109834200345fbde23e3d9cc6bf91fedf1d5f5f37744f91216dc403613c6914c9f8820535b12818a54d1e198db6bd74f33d7989f5fd52849bdbfdefeed1c3e062366e9d1001ccac3542d47b34a5d4120e395c8e2c731acc741d0cf4377f6126d41c519d6fcc4753f6921efb72a7f9f6ade1dc9bc46d62176720dc8e85d721e985b50f1464f4a3c9c88052bc292ccb3a71223d2abcfc595f68d653a1489fa4fcc207cd5d0057d361ddca935363d9a9f5d05a67927ff88f3d774ca2a5416610864f225cf13f8f82303ff4eb3897ddd7e55d5fb8f531cd8af2ccfac70a4491dd8c2cf8d3a4353267bdf15d2a4afb6254e6eda074fef274fd9825b0a8e888b9c516eadf7df9de35857c87fe719c853a7353bbfef493b048b981c7bb99e0913f87d1023065337cf82b1f29baad6e5cecec77011a365c4464924b38a44c246a7f26ef70b",
-      "root_term": "530fa52c1fb5f81e35fd20c10eda6ffc9b6a3dbf9820736d3fde6abfa6598eb0"
+      "root_term": "a5d6e125a41a4a57eb114ddc2f5b642f4f250a04dbfd8bf7c55fade25f441503"
     },
     {
       "name": "empty",
@@ -154,7 +154,7 @@
       "payload": "",
       "nonce": "30f4c9707544f540d5455359b7778fbf48b4ffade81920eb",
       "record": "30f4c9707544f540d5455359b7778fbf48b4ffade81920ebf341eb04e34fe85dd93477945a8774bf",
-      "root_term": "fac114396e6d1b3d8507a850a0023b4717149ec90ce749bae7f2ce8274ad5d8c"
+      "root_term": "ad5e2c12eb3a1a0277302032b1105294d9241cbd760631419cab7d6d30459ad2"
     },
     {
       "name": "largest_id",
@@ -165,7 +165,7 @@
       "payload": "59dd8df55d6f6cd6d9734b39b502c4bd363c2d88d0220c42814ebeb8e70496bc",
       "nonce": "b7b16ab6d8047c8633169b87c10542fddeea348a9d95841c",
       "record": "b7b16ab6d8047c8633169b87c10542fddeea348a9d95841cb142fca44a8c57147ab158fc8df12a88eb77d22f652fd3576a74f0f8f240df612eb2ce5249792add2397125954fc5c30",
-      "root_term": "a8441f91927c8c405918b55642c62836f1f3903b9e4eca4d6d26a24b94c35ada"
+      "root_term": "ddd837305a29ced93aa5f85c88f44b5efe4c71e1795b2c20750468898284bdfa"
     }
   ],
   "record_refusals": [
@@ -206,20 +206,26 @@
       "error": "integrity"
     }
   ],
+  "earlier_write": {
+    "description": "the record \"short\" as written before a deletion, at the same type, id and counter: it still opens at that address, but its term differs from the current one, so the root of type 1 does not match it",
+    "record": "06bd7b033836ce5695dd5a1dc8520f60dc563ed42cda5fdeb6e5bc6a1194d48ad7cf52a873a01d51dd54fc592c52031837ddc67d98bcfb7a20a869cc9b7e27a5607103cb46677ef9ee28888d",
+    "payload": "616e206561726c696572207772697465206174207468652073616d6520636f756e746572",
+    "root_term": "83cb797a9857e51bdf5a2141b742f7f3616d66db4a40fff0a6ef1c50d256c722"
+  },
   "roots": {
-    "type_1": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2",
-    "type_2": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+    "type_1": "fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e",
+    "type_2": "310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf",
     "update": {
       "description": "the type 2 record \"day\" is written again with counter 8: subtract its old term, add the new one",
-      "before": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
-      "removed_term": "530fa52c1fb5f81e35fd20c10eda6ffc9b6a3dbf9820736d3fde6abfa6598eb0",
-      "added_term": "5cdc2f1c81cb21a715c6b3d361c4ae19f1717cf551edc3db4b5421a1552e6596",
-      "after": "ffe162e782b4c924f3e7117a448d1197fa79abf9fd23d7e3a06d926f5e9f1dfc"
+      "before": "310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf",
+      "removed_term": "a5d6e125a41a4a57eb114ddc2f5b642f4f250a04dbfd8bf7c55fade25f441503",
+      "added_term": "0394a4ef52d6494c911bb73624e988b0197e7690d869ea13ccb1b3fd8a7991ff",
+      "after": "8ecb0832983a322842f1cfc55eee26a3f0ef052fc7cb4775de6199f43d43eacb"
     },
     "from_zero": {
       "description": "removing a term from the empty root wraps around 2^256",
-      "term": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2",
-      "after": "e4c2ec8c44808a88f5b015065aa86f0800095b560505db4b800cbb265044e91e"
+      "term": "fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e",
+      "after": "0168bcbd67dd9ee4286fadf9bc96d6e390052616bba122e4f8e1fba686846cc2"
     }
   },
   "manifest": {
@@ -228,28 +234,28 @@
       {
         "type": 1,
         "count": 1,
-        "root": "1b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e2"
+        "root": "fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e"
       },
       {
         "type": 2,
         "count": 3,
-        "root": "f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716"
+        "root": "310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf"
       }
     ],
-    "encoded": "0000000000000007000201000000011b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
-    "tag": "81036bdb085dabb5c515b1f0f35ef05d4f4b534e0768031cc58173a7694981e1",
+    "encoded": "000000000000000700020100000001fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e0200000003310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf",
+    "tag": "6f97c1ab6d3aaa785f52a6d76112e5874d32389e6eb729a98f690f9dedb504b1",
     "refusals": [
       {
         "name": "another_epoch",
         "description": "the manifest checked against the header of the next epoch",
-        "encoded": "0000000000000007000201000000011b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+        "encoded": "000000000000000700020100000001fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e0200000003310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf",
         "epoch": 8,
         "error": "integrity"
       },
       {
         "name": "tampered_count",
         "description": "the count of type 1 changed after the tag was computed",
-        "encoded": "0000000000000007000201000000021b3d1373bb7f75770a4feaf9a55790f7fff6a4a9fafa24b47ff344d9afbb16e20200000003f614d8f7209f9f9c141d7e67f1a2d37aa4726cc44356877594f7db8dafca4716",
+        "encoded": "000000000000000700020100000002fe9743429822611bd79052064369291c6ffad9e9445edd1b071e0459797b933e0200000003310d4468e97e33339ce7666b69600223269598a3cb5ee959d70f93d9120e6dcf",
         "epoch": 7,
         "error": "integrity"
       }

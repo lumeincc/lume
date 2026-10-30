@@ -15,7 +15,7 @@
 
 namespace lume::vault {
 
-inline constexpr std::uint32_t mebibyte = 1024;
+inline constexpr std::uint32_t kib_per_mib = 1024;
 inline constexpr std::size_t key_size = 32;
 inline constexpr std::size_t passphrase_bound = 1024;
 inline constexpr std::size_t passphrase_minimum = 10;
@@ -26,10 +26,10 @@ struct Cost {
     std::uint32_t mem = 0;
 };
 
-inline constexpr Cost android_cost{.ops = 3, .mem = 64 * mebibyte};
-inline constexpr Cost desktop_cost{.ops = 3, .mem = 256 * mebibyte};
-inline constexpr Cost cost_floor{.ops = 2, .mem = 64 * mebibyte};
-inline constexpr Cost cost_ceiling{.ops = 10, .mem = 1024 * mebibyte};
+inline constexpr Cost android_cost{.ops = 3, .mem = 64 * kib_per_mib};
+inline constexpr Cost desktop_cost{.ops = 3, .mem = 256 * kib_per_mib};
+inline constexpr Cost cost_floor{.ops = 2, .mem = 64 * kib_per_mib};
+inline constexpr Cost cost_ceiling{.ops = 10, .mem = 1024 * kib_per_mib};
 
 enum class Error : std::uint8_t {
     wrong_passphrase,

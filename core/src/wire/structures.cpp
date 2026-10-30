@@ -234,6 +234,11 @@ crypto::Bytes encode_unsigned(const VaultHeader& value)
     return writer.take();
 }
 
+bool is_canonical(const Manifest& value)
+{
+    return value.types.size() <= manifest_types_bound && canonical_types(value.types);
+}
+
 void write(Writer& writer, const Manifest& value)
 {
     if (!canonical_types(value.types)) {

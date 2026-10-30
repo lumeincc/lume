@@ -632,13 +632,17 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     }
     EXPECT_EQ(encode(full).size(), 8U + 2 + (manifest_types_bound * (1 + 4 + 32)));
     EXPECT_TRUE(decode(encode(full), read_manifest).has_value());
+    EXPECT_TRUE(is_canonical(full));
+    EXPECT_TRUE(is_canonical(Manifest{}));
     auto too_many = full;
     too_many.types.push_back(entry(200, 1));
+    EXPECT_FALSE(is_canonical(too_many));
     EXPECT_THROW((void)encode(too_many), std::length_error);
 
     for (const auto& types : std::vector<std::vector<ManifestEntry>>{
              {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}}) {
         const Manifest wrong{.epoch = 1, .types = types};
+        EXPECT_FALSE(is_canonical(wrong));
         EXPECT_THROW((void)encode(wrong), std::invalid_argument);
         auto bytes = Writer{}.u64(1).count(types.size(), manifest_types_bound).take();
         for (const auto& item : types) {
