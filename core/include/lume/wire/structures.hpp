@@ -54,6 +54,8 @@ inline constexpr std::size_t wrapped_data_key_size = nonce_size + 32 + 16;
 inline constexpr std::size_t vault_check_size = 32;
 inline constexpr std::size_t manifest_root_size = 32;
 inline constexpr std::size_t manifest_types_bound = 32;
+inline constexpr std::size_t vault_record_id_bound = 64;
+inline constexpr std::size_t vault_address_size = 1 + 1 + vault_record_id_bound + 8 + nonce_size;
 
 struct PrekeyX {
     PrekeyKind kind = PrekeyKind::signed_prekey;
@@ -224,6 +226,16 @@ struct Manifest {
     friend bool operator==(const Manifest&, const Manifest&) = default;
 };
 
+struct VaultAddress {
+    std::uint8_t type = 0;
+    std::uint8_t id_length = 0;
+    crypto::ByteArray<vault_record_id_bound> id{};
+    std::uint64_t counter = 0;
+    crypto::ByteArray<nonce_size> nonce{};
+
+    friend bool operator==(const VaultAddress&, const VaultAddress&) = default;
+};
+
 void write(Writer& writer, const PrekeyX& value);
 void write(Writer& writer, const PrekeyKem& value);
 void write(Writer& writer, const UsernameCertificate& value);
@@ -238,6 +250,7 @@ void write(Writer& writer, const Inner& value);
 void write(Writer& writer, const Seal& value);
 void write(Writer& writer, const VaultHeader& value);
 void write(Writer& writer, const Manifest& value);
+void write(Writer& writer, const VaultAddress& value);
 
 [[nodiscard]] Result<PrekeyX> read_prekey_x(Reader& reader);
 [[nodiscard]] Result<PrekeyKem> read_prekey_kem(Reader& reader);
@@ -253,6 +266,7 @@ void write(Writer& writer, const Manifest& value);
 [[nodiscard]] Result<Seal> read_seal(Reader& reader);
 [[nodiscard]] Result<VaultHeader> read_vault_header(Reader& reader);
 [[nodiscard]] Result<Manifest> read_manifest(Reader& reader);
+[[nodiscard]] Result<VaultAddress> read_vault_address(Reader& reader);
 
 [[nodiscard]] crypto::Bytes encode_unsigned(const UsernameCertificate& value);
 [[nodiscard]] crypto::Bytes encode_unsigned(const DirectoryKeys& value);

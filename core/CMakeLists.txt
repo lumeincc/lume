@@ -15,6 +15,7 @@ add_library(lume_core STATIC
     src/crypto/library.cpp
     src/crypto/memory_lock.cpp
     src/crypto/mlkem.cpp
+    src/crypto/padding.cpp
     src/crypto/pwhash.cpp
     src/crypto/random.cpp
     src/crypto/secret_bytes.cpp

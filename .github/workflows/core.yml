@@ -197,6 +197,8 @@ jobs:
           "$RUNNER_TEMP/reuse/bin/reuse" lint
       - name: No comments in code
         run: python3 tools/check_comments.py
+      - name: Internal headers stay internal
+        run: python3 tools/check_includes.py
       - name: Generated files match their generators
         run: |
           node core/tools/generate_known_answers.mjs core/tests/vectors/wycheproof "$RUNNER_TEMP/known_answers.hpp"

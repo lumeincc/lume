@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 LUME Inc.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-#include "lume/vault/keys.hpp"
+#include "vault/keys.hpp"
 
 #include "crypto/aead_internal.hpp"
 #include "lume/crypto/aead.hpp"
@@ -11,9 +11,12 @@
 #include "lume/crypto/pwhash.hpp"
 #include "lume/crypto/random.hpp"
 #include "lume/wire/codec.hpp"
+#include "vault/key_access.hpp"
 #include "vault/vault_internal.hpp"
 
 #include <algorithm>
+#include <limits>
+#include <optional>
 #include <span>
 #include <utility>
 
@@ -21,10 +24,12 @@ namespace lume::vault {
 namespace {
 
 using crypto::SecretBytes;
+using detail::KeyAccess;
 
 constexpr crypto::ByteArray<key_size> zero_salt{};
 constexpr std::uint8_t continuation_mask = 0xc0;
 constexpr std::uint8_t continuation_bits = 0x80;
+constexpr std::uint64_t last_epoch = std::numeric_limits<std::uint64_t>::max();
 
 Result<SecretBytes> expand(crypto::ByteView salt, const SecretBytes& input, std::string_view name)
 {
@@ -49,12 +54,44 @@ bool known_mode(wire::HardwareMode mode) noexcept
     return false;
 }
 
-bool consistent(wire::HardwareMode mode, const std::optional<TpmPoint>& tpm_point) noexcept
+bool point_matches_mode(wire::HardwareMode mode, const std::optional<TpmPoint>& point) noexcept
 {
-    if (!known_mode(mode) || tpm_point.has_value() != (mode == wire::HardwareMode::tpm)) {
+    if (point.has_value() != (mode == wire::HardwareMode::tpm)) {
         return false;
     }
-    return !tpm_point || tpm_point->front() == wire::tpm_point_uncompressed;
+    return !point || point->front() == wire::tpm_point_uncompressed;
+}
+
+bool well_formed_name(const KeyName& name) noexcept
+{
+    return known_mode(name.mode) && name.epoch >= first_epoch && point_matches_mode(name.mode, name.point);
+}
+
+bool valid_ceiling(Cost ceiling) noexcept
+{
+    return ceiling.ops >= cost_floor.ops && ceiling.ops <= cost_ceiling.ops && ceiling.mem >= cost_floor.mem
+        && ceiling.mem <= cost_ceiling.mem;
+}
+
+Cost cost_of(const wire::VaultHeader& header) noexcept
+{
+    return Cost{.ops = header.ops, .mem = header.mem};
+}
+
+Result<Keys> keys_of(SecretBytes data_key)
+{
+    if (data_key.size() != key_size) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    auto record = expand(zero_salt, data_key, "vault/record-key");
+    auto address = expand(zero_salt, data_key, "vault/address-key");
+    auto manifest = expand(zero_salt, data_key, "vault/manifest-key");
+    auto root = expand(zero_salt, data_key, "vault/root-key");
+    if (!record || !address || !manifest || !root) {
+        return std::unexpected(Error::library_failure);
+    }
+    return KeyAccess::keys(
+        std::move(data_key), std::move(*record), std::move(*address), std::move(*manifest), std::move(*root));
 }
 
 Result<SecretBytes> check_of(const SecretBytes& master_key, const wire::VaultHeader& header)
@@ -67,12 +104,210 @@ Result<SecretBytes> check_of(const SecretBytes& master_key, const wire::VaultHea
         check_key->view(), crypto::Encoder{}.label("vault/check").raw(wire::encode_unsigned(header)).take());
 }
 
+struct Unwrapped {
+    bool check_matches = false;
+    std::optional<SecretBytes> data_key;
+};
+
+Result<Unwrapped> unwrap(const SecretBytes& master_key, const wire::VaultHeader& header)
+{
+    const auto check = check_of(master_key, header);
+    if (!check) {
+        return std::unexpected(check.error());
+    }
+    Unwrapped result;
+    result.check_matches = check->equals(header.check);
+    auto data_key = crypto::aead_open(master_key, crypto::label("vault/data-key"), header.wrapped_data_key);
+    if (data_key.has_value() && data_key->size() == key_size) {
+        result.data_key = std::move(*data_key);
+    }
+    return result;
 }
 
-bool within_bounds(Cost cost) noexcept
+bool bound_to(const MasterKey& master_key, const wire::VaultHeader& header) noexcept
 {
-    return cost.ops >= cost_floor.ops && cost.ops <= cost_ceiling.ops && cost.mem >= cost_floor.mem
-        && cost.mem <= cost_ceiling.mem;
+    return master_key.salt() == header.salt && master_key.cost() == cost_of(header)
+        && names(header, master_key.hardware());
+}
+
+Result<wire::VaultHeader> seal(const SecretBytes& master_key, const SecretBytes& data_key, const Salt& salt, Cost cost,
+    const KeyName& hardware, std::uint64_t epoch, const detail::Nonce& nonce)
+{
+    if (master_key.size() != key_size || data_key.size() != key_size || !within_bounds(cost, cost_ceiling)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    wire::VaultHeader header{
+        .salt = salt,
+        .ops = cost.ops,
+        .mem = cost.mem,
+        .hw_mode = hardware.mode,
+        .tpm_point = hardware.point,
+        .wrapped_data_key = {},
+        .epoch = epoch,
+        .check = {}};
+    if (!well_formed(header)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    const auto wrapped = crypto::detail::aead_encrypt(master_key, nonce, crypto::label("vault/data-key"), data_key.view());
+    if (!wrapped || nonce.size() + wrapped->size() != wire::wrapped_data_key_size) {
+        return std::unexpected(Error::library_failure);
+    }
+    const std::span wrapped_data_key(header.wrapped_data_key);
+    std::ranges::copy(nonce, wrapped_data_key.begin());
+    std::ranges::copy(*wrapped, wrapped_data_key.subspan(nonce.size()).begin());
+    const auto check = check_of(master_key, header);
+    if (!check) {
+        return std::unexpected(check.error());
+    }
+    std::ranges::copy(check->view(), header.check.begin());
+    return header;
+}
+
+Result<OpenedHeader> opened(Result<wire::VaultHeader> header, const SecretBytes& data_key, const SecretBytes& passphrase,
+    const KeyName& hardware)
+{
+    if (!header) {
+        return std::unexpected(header.error());
+    }
+    auto keys = keys_of(data_key.clone());
+    if (!keys) {
+        return std::unexpected(keys.error());
+    }
+    return KeyAccess::opened_header(*header, std::move(*keys), passphrase.clone(), hardware);
+}
+
+}
+
+const Salt& PassphraseKey::salt() const noexcept
+{
+    return salt_;
+}
+
+Cost PassphraseKey::cost() const noexcept
+{
+    return cost_;
+}
+
+PassphraseKey::PassphraseKey(SecretBytes key, const Salt& salt, Cost cost) noexcept
+    : key_(std::move(key))
+    , salt_(salt)
+    , cost_(cost)
+{
+}
+
+const KeyName& HardwareKey::name() const noexcept
+{
+    return name_;
+}
+
+HardwareKey::HardwareKey(SecretBytes key, const KeyName& name) noexcept
+    : key_(std::move(key))
+    , name_(name)
+{
+}
+
+const Salt& MasterKey::salt() const noexcept
+{
+    return salt_;
+}
+
+Cost MasterKey::cost() const noexcept
+{
+    return cost_;
+}
+
+const KeyName& MasterKey::hardware() const noexcept
+{
+    return hardware_;
+}
+
+MasterKey::MasterKey(SecretBytes key, SecretBytes passphrase, const Salt& salt, Cost cost, const KeyName& hardware) noexcept
+    : key_(std::move(key))
+    , passphrase_(std::move(passphrase))
+    , salt_(salt)
+    , cost_(cost)
+    , hardware_(hardware)
+{
+}
+
+Keys::Keys(SecretBytes data, SecretBytes record, SecretBytes address, SecretBytes manifest, SecretBytes root) noexcept
+    : data_(std::move(data))
+    , record_(std::move(record))
+    , address_(std::move(address))
+    , manifest_(std::move(manifest))
+    , root_(std::move(root))
+{
+}
+
+const wire::VaultHeader& OpenedHeader::header() const noexcept
+{
+    return header_;
+}
+
+const Keys& OpenedHeader::keys() const noexcept
+{
+    return keys_;
+}
+
+const KeyName& OpenedHeader::hardware() const noexcept
+{
+    return hardware_;
+}
+
+OpenedHeader::OpenedHeader(const wire::VaultHeader& header, Keys keys, SecretBytes passphrase, const KeyName& hardware) noexcept
+    : header_(header)
+    , keys_(std::move(keys))
+    , passphrase_(std::move(passphrase))
+    , hardware_(hardware)
+{
+}
+
+const Check& Confirmed::check() const noexcept
+{
+    return check_;
+}
+
+Confirmed::Confirmed(const Check& check) noexcept
+    : check_(check)
+{
+}
+
+std::optional<Limits> limits_of(Platform platform) noexcept
+{
+    switch (platform) {
+    case Platform::android:
+        return android_limits;
+    case Platform::desktop:
+        return desktop_limits;
+    }
+    return std::nullopt;
+}
+
+bool within_bounds(Cost cost, Cost ceiling) noexcept
+{
+    return valid_ceiling(ceiling) && cost.ops >= cost_floor.ops && cost.ops <= ceiling.ops && cost.mem >= cost_floor.mem
+        && cost.mem <= ceiling.mem;
+}
+
+bool rotates(wire::HardwareMode mode) noexcept
+{
+    return mode == wire::HardwareMode::keystore || mode == wire::HardwareMode::software;
+}
+
+bool well_formed(const wire::VaultHeader& header) noexcept
+{
+    return known_mode(header.hw_mode) && point_matches_mode(header.hw_mode, header.tpm_point) && header.epoch >= first_epoch;
+}
+
+bool names(const wire::VaultHeader& header, const KeyName& key) noexcept
+{
+    if (key.mode != header.hw_mode) {
+        return false;
+    }
+    if (rotates(header.hw_mode)) {
+        return key.epoch == header.epoch;
+    }
+    return key.point.has_value() && key.point == header.tpm_point;
 }
 
 Result<void> check_new_passphrase(std::string_view passphrase, wire::HardwareMode mode)
@@ -102,9 +337,12 @@ Salt fresh_salt()
     return crypto::random_public_bytes<wire::vault_salt_size>();
 }
 
-Result<SecretBytes> derive_passphrase_key(std::string_view passphrase, const Salt& salt, Cost cost)
+Result<PassphraseKey> derive_passphrase_key(std::string_view passphrase, const Salt& salt, Cost cost, Cost ceiling)
 {
-    if (!within_bounds(cost)) {
+    if (!valid_ceiling(ceiling)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    if (!within_bounds(cost, ceiling)) {
         return std::unexpected(Error::integrity);
     }
     if (passphrase.size() > passphrase_bound) {
@@ -114,109 +352,176 @@ Result<SecretBytes> derive_passphrase_key(std::string_view passphrase, const Sal
     if (!key) {
         return std::unexpected(Error::library_failure);
     }
-    return std::move(*key);
+    return KeyAccess::passphrase_key(std::move(*key), salt, cost);
 }
 
-Result<SecretBytes> derive_tpm_authorisation(const SecretBytes& passphrase_key)
+Result<SecretBytes> hardware_input(const PassphraseKey& passphrase_key, wire::HardwareMode mode)
 {
-    return expand(zero_salt, passphrase_key, "vault/tpm-pin");
+    switch (mode) {
+    case wire::HardwareMode::keystore:
+        return expand(zero_salt, KeyAccess::secret(passphrase_key), "vault/keystore");
+    case wire::HardwareMode::tpm:
+        return expand(zero_salt, KeyAccess::secret(passphrase_key), "vault/tpm-pin");
+    case wire::HardwareMode::software:
+        return SecretBytes{};
+    }
+    return std::unexpected(Error::invalid_parameters);
 }
 
-Result<SecretBytes> derive_tpm_hardware_key(const SecretBytes& shared_secret)
+Result<HardwareKey> hardware_key(const KeyName& name, crypto::ByteView output)
 {
-    if (shared_secret.size() != key_size) {
+    if (!well_formed_name(name)) {
         return std::unexpected(Error::invalid_parameters);
     }
-    return crypto::sha256_secret({crypto::label("vault/tpm"), shared_secret.view()});
-}
-
-Result<SecretBytes> derive_master_key(const SecretBytes& passphrase_key, const SecretBytes& hardware_key)
-{
-    if (hardware_key.size() != key_size) {
-        return std::unexpected(Error::invalid_parameters);
+    if (output.size() != hardware_secret_size || std::ranges::all_of(output, [](std::uint8_t byte) { return byte == 0; })) {
+        return std::unexpected(Error::hardware_failure);
     }
-    return expand(hardware_key.view(), passphrase_key, "vault/master");
+    auto key = name.mode == wire::HardwareMode::tpm ? crypto::sha256_secret({crypto::label("vault/tpm"), output})
+                                                    : SecretBytes::copy_of(output);
+    return KeyAccess::hardware_key(std::move(key), name);
 }
 
-Result<Keys> keys_of(SecretBytes data_key)
+Result<MasterKey> derive_master_key(const PassphraseKey& passphrase_key, const HardwareKey& hardware_key)
 {
-    if (data_key.size() != key_size) {
-        return std::unexpected(Error::invalid_parameters);
+    auto key = expand(KeyAccess::secret(hardware_key).view(), KeyAccess::secret(passphrase_key), "vault/master");
+    if (!key) {
+        return std::unexpected(key.error());
     }
-    auto record = expand(zero_salt, data_key, "vault/record-key");
-    auto manifest = expand(zero_salt, data_key, "vault/manifest-key");
-    auto root = expand(zero_salt, data_key, "vault/root-key");
-    if (!record || !manifest || !root) {
-        return std::unexpected(Error::library_failure);
-    }
-    return Keys{
-        .data = std::move(data_key),
-        .record = std::move(*record),
-        .manifest = std::move(*manifest),
-        .root = std::move(*root)};
+    return KeyAccess::master_key(std::move(*key), KeyAccess::secret(passphrase_key).clone(), passphrase_key.salt(),
+        passphrase_key.cost(), hardware_key.name());
 }
 
-Result<Keys> fresh_keys()
+Result<OpenedHeader> first_header(const MasterKey& master_key)
 {
-    return keys_of(crypto::random_secret(key_size));
+    return detail::first_header(
+        master_key, crypto::random_secret(key_size), crypto::random_public_bytes<crypto::aead_nonce_size>());
 }
 
-Result<wire::VaultHeader> seal_header(const SecretBytes& master_key, const Keys& keys, const Protection& protection)
+Result<OpenedHeader> open_header(const MasterKey& master_key, const wire::VaultHeader& header)
 {
-    return detail::seal_header(master_key, keys, protection, crypto::random_public_bytes<crypto::aead_nonce_size>());
-}
-
-Result<Keys> open_header(const SecretBytes& master_key, const wire::VaultHeader& header)
-{
-    if (!within_bounds(Cost{.ops = header.ops, .mem = header.mem}) || !consistent(header.hw_mode, header.tpm_point)) {
+    if (!well_formed(header) || !within_bounds(cost_of(header), cost_ceiling)) {
         return std::unexpected(Error::integrity);
     }
-    const auto check = check_of(master_key, header);
-    if (!check) {
-        return std::unexpected(check.error());
+    if (!bound_to(master_key, header)) {
+        return std::unexpected(Error::invalid_parameters);
     }
-    auto data_key = crypto::aead_open(master_key, crypto::label("vault/data-key"), header.wrapped_data_key);
-    const bool unwraps = data_key.has_value() && data_key->size() == key_size;
-    if (!check->equals(header.check)) {
-        return std::unexpected(unwraps ? Error::integrity : Error::wrong_passphrase);
+    auto unwrapped = unwrap(KeyAccess::secret(master_key), header);
+    if (!unwrapped) {
+        return std::unexpected(unwrapped.error());
     }
-    if (!unwraps) {
+    if (!unwrapped->check_matches) {
+        return std::unexpected(unwrapped->data_key ? Error::integrity : Error::wrong_passphrase);
+    }
+    if (!unwrapped->data_key) {
         return std::unexpected(Error::integrity);
     }
-    return keys_of(std::move(*data_key));
+    auto keys = keys_of(std::move(*unwrapped->data_key));
+    if (!keys) {
+        return std::unexpected(keys.error());
+    }
+    return KeyAccess::opened_header(
+        header, std::move(*keys), KeyAccess::passphrase(master_key).clone(), master_key.hardware());
+}
+
+Result<Keys> salvage_keys(const MasterKey& master_key, const wire::VaultHeader& header)
+{
+    if (!well_formed(header) || !within_bounds(cost_of(header), cost_ceiling)) {
+        return std::unexpected(Error::integrity);
+    }
+    if (!bound_to(master_key, header)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    auto unwrapped = unwrap(KeyAccess::secret(master_key), header);
+    if (!unwrapped) {
+        return std::unexpected(unwrapped.error());
+    }
+    if (!unwrapped->data_key) {
+        return std::unexpected(unwrapped->check_matches ? Error::integrity : Error::wrong_passphrase);
+    }
+    if (unwrapped->check_matches) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    return keys_of(std::move(*unwrapped->data_key));
+}
+
+Result<Confirmed> confirm(const MasterKey& master_key, const OpenedHeader& current)
+{
+    const auto opened_again = open_header(master_key, current.header());
+    if (!opened_again) {
+        return std::unexpected(opened_again.error());
+    }
+    if (!KeyAccess::data(opened_again->keys()).equals(KeyAccess::data(current.keys()).view())) {
+        return std::unexpected(Error::integrity);
+    }
+    return KeyAccess::confirmed(current.header().check);
+}
+
+Result<OpenedHeader> next_header(const HardwareKey& hardware_key, const OpenedHeader& current)
+{
+    return detail::next_header(hardware_key, current, crypto::random_public_bytes<crypto::aead_nonce_size>());
+}
+
+Result<OpenedHeader> rekeyed_header(const MasterKey& master_key, const OpenedHeader& current, const Confirmed& confirmed)
+{
+    return detail::rekeyed_header(
+        master_key, current, confirmed, crypto::random_public_bytes<crypto::aead_nonce_size>());
 }
 
 namespace detail {
 
-Result<wire::VaultHeader> seal_header(
-    const SecretBytes& master_key, const Keys& keys, const Protection& protection, const Nonce& nonce)
+Result<OpenedHeader> first_header(const MasterKey& master_key, const SecretBytes& data_key, const Nonce& nonce)
 {
-    if (master_key.size() != key_size || keys.data.size() != key_size || !within_bounds(protection.cost)
-        || !consistent(protection.hw_mode, protection.tpm_point)) {
+    const auto& hardware = master_key.hardware();
+    if (hardware.epoch != first_epoch || data_key.size() != key_size) {
         return std::unexpected(Error::invalid_parameters);
     }
-    const auto wrapped = crypto::detail::aead_encrypt(master_key, nonce, crypto::label("vault/data-key"), keys.data.view());
-    if (!wrapped || nonce.size() + wrapped->size() != wire::wrapped_data_key_size) {
-        return std::unexpected(Error::library_failure);
+    return opened(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), hardware, first_epoch, nonce),
+        data_key, KeyAccess::passphrase(master_key), hardware);
+}
+
+Result<OpenedHeader> next_header(const HardwareKey& hardware_key, const OpenedHeader& current, const Nonce& nonce)
+{
+    const auto& header = current.header();
+    const auto& name = hardware_key.name();
+    if (name.mode != header.hw_mode) {
+        return std::unexpected(Error::invalid_parameters);
     }
-    wire::VaultHeader header{
-        .salt = protection.salt,
-        .ops = protection.cost.ops,
-        .mem = protection.cost.mem,
-        .hw_mode = protection.hw_mode,
-        .tpm_point = protection.tpm_point,
-        .wrapped_data_key = {},
-        .epoch = protection.epoch,
-        .check = {}};
-    const std::span wrapped_data_key(header.wrapped_data_key);
-    std::ranges::copy(nonce, wrapped_data_key.begin());
-    std::ranges::copy(*wrapped, wrapped_data_key.subspan(nonce.size()).begin());
-    const auto check = check_of(master_key, header);
-    if (!check) {
-        return std::unexpected(check.error());
+    if (header.epoch == last_epoch) {
+        return std::unexpected(Error::integrity);
     }
-    std::ranges::copy(check->view(), header.check.begin());
-    return header;
+    const bool follows = rotates(header.hw_mode) ? name.epoch == header.epoch + 1
+                                                 : name.point.has_value() && name.point == header.tpm_point;
+    if (!follows) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    const auto& passphrase = KeyAccess::passphrase(current);
+    const auto master_key = expand(KeyAccess::secret(hardware_key).view(), passphrase, "vault/master");
+    if (!master_key) {
+        return std::unexpected(master_key.error());
+    }
+    const auto& data_key = KeyAccess::data(current.keys());
+    return opened(seal(*master_key, data_key, header.salt, cost_of(header), name, header.epoch + 1, nonce), data_key,
+        passphrase, name);
+}
+
+Result<OpenedHeader> rekeyed_header(
+    const MasterKey& master_key, const OpenedHeader& current, const Confirmed& confirmed, const Nonce& nonce)
+{
+    const auto& header = current.header();
+    const auto& name = master_key.hardware();
+    if (confirmed.check() != header.check || master_key.salt() == header.salt || name.mode != header.hw_mode) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    if (header.epoch == last_epoch) {
+        return std::unexpected(Error::integrity);
+    }
+    if (name.epoch != header.epoch + 1 || (name.mode == wire::HardwareMode::tpm && name.point == header.tpm_point)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    const auto& data_key = KeyAccess::data(current.keys());
+    return opened(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), name,
+                      header.epoch + 1, nonce),
+        data_key, KeyAccess::passphrase(master_key), name);
 }
 
 }
