@@ -3,10 +3,6 @@ SPDX-FileCopyrightText: 2026 LUME Inc.
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-<div align="center">
-
-<img src="brand/banner.png" alt="LUME" width="100%">
-
 # LUME
 
 [Website](https://lumeincc.github.io/lume/) ·
