@@ -35,17 +35,18 @@ HmacKey HmacKey::of(ByteView key)
     return HmacKey(std::move(stored));
 }
 
-void HmacKey::tag(ByteView message, std::span<std::uint8_t, hmac_sha256_size> out) const noexcept
+bool HmacKey::tag(ByteView message, std::span<std::uint8_t, hmac_sha256_size> out) const noexcept
 {
     crypto_auth_hmacsha256_state state;
     if (state_.size() != sizeof state) {
         std::ranges::fill(out, std::uint8_t{0});
-        return;
+        return false;
     }
     std::memcpy(&state, state_.view().data(), sizeof state);
     crypto_auth_hmacsha256_update(&state, pointer_to(message), message.size());
     crypto_auth_hmacsha256_final(&state, out.data());
     sodium_memzero(&state, sizeof state);
+    return true;
 }
 
 }

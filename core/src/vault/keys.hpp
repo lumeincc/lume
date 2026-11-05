@@ -146,6 +146,7 @@ public:
     [[nodiscard]] const wire::VaultHeader& header() const noexcept;
     [[nodiscard]] const Keys& keys() const noexcept;
     [[nodiscard]] const KeyName& hardware() const noexcept;
+    void forget_passphrase() noexcept;
 
 private:
     friend struct detail::KeyAccess;
@@ -169,8 +170,9 @@ private:
 };
 
 [[nodiscard]] Result<PassphraseKey> derive_passphrase_key(
-    std::string_view passphrase, const Salt& salt, Cost cost, Cost ceiling);
+    std::string_view passphrase, const Salt& salt, Cost cost, Platform platform);
 [[nodiscard]] Result<crypto::SecretBytes> hardware_input(const PassphraseKey& passphrase_key, wire::HardwareMode mode);
+[[nodiscard]] Result<crypto::SecretBytes> hardware_input(const OpenedHeader& opened);
 [[nodiscard]] Result<HardwareKey> hardware_key(const KeyName& name, crypto::ByteView output);
 [[nodiscard]] Result<MasterKey> derive_master_key(const PassphraseKey& passphrase_key, const HardwareKey& hardware_key);
 [[nodiscard]] Result<OpenedHeader> first_header(const MasterKey& master_key);

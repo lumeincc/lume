@@ -4,6 +4,7 @@
 #include "vault/records.hpp"
 
 #include "crypto/aead_internal.hpp"
+#include "crypto/backend.hpp"
 #include "crypto/padding.hpp"
 #include "lume/crypto/aead.hpp"
 #include "lume/crypto/encoding.hpp"
@@ -149,7 +150,9 @@ Result<Root> TermHasher::term(const RecordAddress& address, const Nonce& nonce) 
         return std::unexpected(Error::invalid_parameters);
     }
     Root term{};
-    key_.tag(message.view(), term);
+    if (!key_.tag(message.view(), term)) {
+        return std::unexpected(Error::invalid_parameters);
+    }
     return term;
 }
 
@@ -226,7 +229,7 @@ Result<Located> open_address(const Keys& keys, std::uint64_t slot, crypto::ByteV
     if (!crypto::detail::aead_open_into(key.view(), address_data(slot), sealed, scratch.writable())) {
         return std::unexpected(Error::integrity);
     }
-    const auto decoded = wire::decode(scratch.view(), wire::read_vault_address);
+    auto decoded = wire::decode(scratch.view(), wire::read_vault_address);
     if (!decoded) {
         return std::unexpected(Error::integrity);
     }
@@ -235,6 +238,8 @@ Result<Located> open_address(const Keys& keys, std::uint64_t slot, crypto::ByteV
     located.address.id.assign(decoded->id.begin(), std::next(decoded->id.begin(), decoded->id_length));
     located.address.counter = decoded->counter;
     located.nonce = decoded->nonce;
+    crypto::detail::wipe(decoded->id);
+    crypto::detail::wipe(decoded->nonce);
     return located;
 }
 
@@ -340,7 +345,11 @@ Result<crypto::Bytes> seal_address(const Keys& keys, std::uint64_t slot, const L
     std::ranges::copy(located.address.id, address.id.begin());
     address.counter = located.address.counter;
     address.nonce = located.nonce;
-    const auto encoded = SecretBytes::copy_of(wire::encode(address));
+    auto plain = wire::encode(address);
+    const auto encoded = SecretBytes::copy_of(plain);
+    crypto::detail::wipe(plain);
+    crypto::detail::wipe(address.id);
+    crypto::detail::wipe(address.nonce);
     const auto sealed = crypto::detail::aead_encrypt(key, nonce, address_data(slot), encoded.view());
     if (!sealed) {
         return std::unexpected(Error::library_failure);

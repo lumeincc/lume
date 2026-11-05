@@ -16,7 +16,7 @@ class HmacKey {
 public:
     [[nodiscard]] static HmacKey of(ByteView key);
 
-    void tag(ByteView message, std::span<std::uint8_t, hmac_sha256_size> out) const noexcept;
+    [[nodiscard]] bool tag(ByteView message, std::span<std::uint8_t, hmac_sha256_size> out) const noexcept;
 
 private:
     explicit HmacKey(SecretBytes state) noexcept;

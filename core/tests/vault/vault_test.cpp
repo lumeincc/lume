@@ -134,7 +134,7 @@ const PassphraseKey& passphrase_key(std::string_view name)
     const auto& vector = named(vectors().at("argon2id"), name);
     auto key = must(derive_passphrase_key(text_of(hex_field(vector, "passphrase")),
         array_of<wire::vault_salt_size>(hex_field(vector, "salt")),
-        Cost{.ops = vector.at("ops").get<std::uint32_t>(), .mem = vector.at("mem").get<std::uint32_t>()}, cost_ceiling));
+        Cost{.ops = vector.at("ops").get<std::uint32_t>(), .mem = vector.at("mem").get<std::uint32_t>()}, Platform::desktop));
     return derived.emplace(std::string(name), std::move(key)).first->second;
 }
 
@@ -271,6 +271,16 @@ wire::VaultHeader sealed_by_hand(std::string_view passphrase, ByteView hardware_
     return header;
 }
 
+Root independent_term(const RecordAddress& address, const Nonce& nonce)
+{
+    static const auto root_key = must(crypto::hkdf_sha256(
+        Bytes(key_size, 0), secret_field(vectors().at("keys"), "data_key").view(), crypto::label("vault/root-key"), key_size));
+    const auto message =
+        crypto::Encoder{}.label("vault/root").u8(address.type).prefixed(address.id).u64(address.counter).raw(nonce).take();
+    const auto tag = crypto::hmac_sha256(root_key.view(), message);
+    return array_of<wire::manifest_root_size>(Bytes(tag.view().begin(), tag.view().end()));
+}
+
 std::vector<wire::ManifestEntry> types_of(const nlohmann::json& list)
 {
     std::vector<wire::ManifestEntry> types;
@@ -369,7 +379,7 @@ TEST(VaultHeader, RefusesTheLumeVectors)
             << refusal.at("name").get<std::string>();
         ++refused;
     }
-    EXPECT_EQ(refused, 9);
+    EXPECT_EQ(refused, 10);
 }
 
 TEST(VaultHeader, SalvagesKeysOnlyWhenTheCheckAloneFails)
@@ -400,7 +410,7 @@ TEST(VaultHeader, IsBoundToTheCostAndTheTpmKeyOfItsMasterKey)
     const auto& first = header_vector("keystore_first");
     const auto& argon = named(vectors().at("argon2id"), "floor");
     const auto dearer = must(derive_passphrase_key(text_of(hex_field(argon, "passphrase")),
-        array_of<wire::vault_salt_size>(hex_field(argon, "salt")), Cost{.ops = 3, .mem = cost_floor.mem}, cost_ceiling));
+        array_of<wire::vault_salt_size>(hex_field(argon, "salt")), Cost{.ops = 3, .mem = cost_floor.mem}, Platform::desktop));
     const auto master = must(derive_master_key(dearer, hardware_of(first.at("hardware"))));
     EXPECT_EQ(test::error_of(open_header(master, header_of(first))), Error::invalid_parameters);
 
@@ -538,6 +548,47 @@ TEST(VaultHeader, ChangesThePassphraseOnlyWhenConfirmed)
         Error::invalid_parameters);
 }
 
+TEST(VaultHeader, GivesTheHardwareInputOfItsOwnPassphraseKeyUntilItForgetsIt)
+{
+    const auto& floor = passphrase_key("floor");
+    auto current = vector_header("keystore_first");
+    const auto keystore = hardware_input(current);
+    ASSERT_TRUE(keystore.has_value());
+    EXPECT_TRUE(keystore->equals(must(hardware_input(floor, HardwareMode::keystore)).view()));
+    const auto tpm = hardware_input(vector_header("tpm_first"));
+    ASSERT_TRUE(tpm.has_value());
+    EXPECT_TRUE(tpm->equals(must(hardware_input(floor, HardwareMode::tpm)).view()));
+    const auto software = hardware_input(vector_header("software_first"));
+    ASSERT_TRUE(software.has_value());
+    EXPECT_EQ(software->size(), 0U);
+
+    const auto& first_vector = header_vector("keystore_first");
+    const auto next = next_header(hardware_of(header_vector("keystore_next").at("hardware")), current);
+    ASSERT_TRUE(next.has_value());
+    EXPECT_TRUE(must(hardware_input(*next)).equals(keystore->view()));
+
+    current.forget_passphrase();
+    EXPECT_EQ(test::error_of(hardware_input(current)), Error::invalid_parameters);
+    EXPECT_EQ(test::error_of(next_header(hardware_of(header_vector("keystore_next").at("hardware")), current)),
+        Error::invalid_parameters);
+    auto forgotten_software = vector_header("software_first");
+    forgotten_software.forget_passphrase();
+    EXPECT_EQ(test::error_of(hardware_input(forgotten_software)), Error::invalid_parameters);
+    EXPECT_EQ(test::error_of(next_header(must(hardware_key(KeyName{.mode = HardwareMode::software, .epoch = 2, .point = {}},
+                                                   random_output())),
+                  forgotten_software)),
+        Error::invalid_parameters);
+
+    const auto manifest = seal_manifest(current, types_up_to(1));
+    ASSERT_TRUE(manifest.has_value());
+    EXPECT_TRUE(open_manifest(current, *manifest).has_value());
+    const auto confirmed = confirm(master_of(first_vector), current);
+    ASSERT_TRUE(confirmed.has_value());
+    const auto rekeyed = rekeyed_header(master_from("changed", keystore_name(2), random_output()), current, *confirmed);
+    ASSERT_TRUE(rekeyed.has_value());
+    EXPECT_TRUE(must(hardware_input(*rekeyed)).equals(must(hardware_input(passphrase_key("changed"), HardwareMode::keystore)).view()));
+}
+
 TEST(VaultKeys, NameHardwareKeysExactly)
 {
     const auto output = random_output();
@@ -594,17 +645,20 @@ TEST(VaultKeys, KeepCostsWithinTheirCeiling)
              Cost{.ops = cost_floor.ops, .mem = cost_ceiling.mem + 1}, Cost{.ops = 0xffffffffU, .mem = cost_floor.mem},
              Cost{.ops = cost_floor.ops, .mem = 0xffffffffU}}) {
         EXPECT_FALSE(within_bounds(cost, cost_ceiling));
-        EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost, cost_ceiling)), Error::integrity);
+        for (const auto platform : {Platform::android, Platform::desktop}) {
+            EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost, platform)), Error::integrity);
+        }
     }
-    EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, Cost{.ops = 5, .mem = cost_floor.mem}, android)),
-        Error::integrity);
-    EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost_floor, Cost{.ops = 1, .mem = cost_floor.mem})),
-        Error::invalid_parameters);
-    EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost_floor, Cost{.ops = 11, .mem = cost_floor.mem})),
-        Error::invalid_parameters);
-    EXPECT_EQ(test::error_of(derive_passphrase_key(std::string(passphrase_bound + 1, 'a'), salt, cost_floor, cost_ceiling)),
+    for (const auto cost : {Cost{.ops = android.ops + 1, .mem = cost_floor.mem}, Cost{.ops = cost_floor.ops, .mem = android.mem + 1},
+             cost_ceiling}) {
+        EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost, Platform::android)), Error::integrity);
+    }
+    for (const auto platform : {outside_of<Platform>(0), outside_of<Platform>(3)}) {
+        EXPECT_EQ(test::error_of(derive_passphrase_key("passphrase", salt, cost_floor, platform)), Error::invalid_parameters);
+    }
+    EXPECT_EQ(test::error_of(derive_passphrase_key(std::string(passphrase_bound + 1, 'a'), salt, cost_floor, Platform::android)),
         Error::invalid_passphrase);
-    const auto longest = derive_passphrase_key(std::string(passphrase_bound, 'a'), salt, cost_floor, cost_ceiling);
+    const auto longest = derive_passphrase_key(std::string(passphrase_bound, 'a'), salt, cost_floor, Platform::android);
     ASSERT_TRUE(longest.has_value());
     EXPECT_EQ(longest->salt(), salt);
     EXPECT_EQ(longest->cost(), cost_floor);
@@ -690,6 +744,7 @@ TEST(VaultRecords, MatchTheLumeVectors)
         ASSERT_TRUE(term.has_value()) << name;
         EXPECT_EQ(test::to_hex(*term), vector.at("root_term").get<std::string>()) << name;
         EXPECT_EQ(hasher.term(address, nonce), term) << name;
+        EXPECT_EQ(independent_term(address, nonce), *term) << name;
         ++checked;
     }
     EXPECT_EQ(checked, 6);
@@ -705,7 +760,7 @@ TEST(VaultRecords, RefuseTheLumeVectors)
             << refusal.at("name").get<std::string>();
         ++refused;
     }
-    EXPECT_EQ(refused, 10);
+    EXPECT_EQ(refused, 11);
 
     SecretBytes scratch;
     for (const auto& refusal : vectors().at("address_refusals")) {
@@ -714,7 +769,7 @@ TEST(VaultRecords, RefuseTheLumeVectors)
             << refusal.at("name").get<std::string>();
         ++refused;
     }
-    EXPECT_EQ(refused, 15);
+    EXPECT_EQ(refused, 18);
 }
 
 TEST(VaultRecords, OpenAnEarlierWriteOnlyWhereItsOwnNonceIsExpected)
@@ -810,8 +865,9 @@ TEST(VaultRecords, TermsCoverEveryPartOfTheAddressAndTheNonce)
     ASSERT_TRUE(other.has_value());
     EXPECT_NE(term, must(root_term(other->keys(), address, nonce)));
     const auto hasher = must(TermHasher::of(keys));
-    EXPECT_EQ(must(hasher.term(RecordAddress{.type = 1, .id = Bytes(record_id_bound, 0xff), .counter = std::numeric_limits<std::uint64_t>::max()}, nonce)),
-        must(root_term(keys, RecordAddress{.type = 1, .id = Bytes(record_id_bound, 0xff), .counter = std::numeric_limits<std::uint64_t>::max()}, nonce)));
+    const RecordAddress longest{.type = 0xff, .id = Bytes(record_id_bound, 0xff), .counter = std::numeric_limits<std::uint64_t>::max()};
+    EXPECT_EQ(must(hasher.term(longest, nonce)), independent_term(longest, nonce));
+    EXPECT_EQ(must(root_term(keys, longest, nonce)), independent_term(longest, nonce));
     EXPECT_EQ(test::error_of(hasher.term(RecordAddress{.type = 1, .id = Bytes(record_id_bound + 1, 0), .counter = 0}, nonce)),
         Error::invalid_parameters);
     EXPECT_EQ(test::error_of(hasher.term(RecordAddress{.type = 0, .id = Bytes{}, .counter = 0}, nonce)), Error::invalid_parameters);
@@ -918,7 +974,7 @@ TEST(VaultManifest, MatchesTheLumeVectors)
             << refusal.at("name").get<std::string>();
         ++refused;
     }
-    EXPECT_EQ(refused, 4);
+    EXPECT_EQ(refused, 5);
 }
 
 TEST(VaultManifest, SealsOnlyCanonicalTypesAtOneSize)
@@ -996,13 +1052,14 @@ RC_GTEST_PROP(VaultRootProperties, OrderDoesNotMatter, ())
     RC_ASSERT(remove_term(root, root) == Root{});
 }
 
-RC_GTEST_PROP(VaultRecordProperties, TheTermHasherMatchesRootTerm, ())
+RC_GTEST_PROP(VaultRecordProperties, TermsMatchAnIndependentHmac, ())
 {
     const auto& keys = vector_keys();
     const auto address = random_address();
     const auto nonce = random_nonce();
-    const auto hasher = must(TermHasher::of(keys));
-    RC_ASSERT(must(hasher.term(address, nonce)) == must(root_term(keys, address, nonce)));
+    const auto expected = independent_term(address, nonce);
+    RC_ASSERT(must(root_term(keys, address, nonce)) == expected);
+    RC_ASSERT(must(must(TermHasher::of(keys)).term(address, nonce)) == expected);
 }
 
 RC_GTEST_PROP(VaultRecordProperties, RecordsRoundTripAndRefuseAnyFlippedBit, ())

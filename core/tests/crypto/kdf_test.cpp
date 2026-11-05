@@ -33,7 +33,9 @@ TEST(HmacSha256, MatchesWycheproof)
 ByteArray<hmac_sha256_size> tag_of(const detail::HmacKey& key, ByteView message)
 {
     ByteArray<hmac_sha256_size> tag{};
-    key.tag(message, tag);
+    if (!key.tag(message, tag)) {
+        ADD_FAILURE() << "a prepared key refused to tag";
+    }
     return tag;
 }
 

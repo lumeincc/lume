@@ -228,7 +228,7 @@ Manifest random_manifest()
 {
     Manifest value;
     value.epoch = any_integer<std::uint64_t>();
-    auto types = *rc::gen::container<std::vector<std::uint8_t>>(rc::gen::arbitrary<std::uint8_t>());
+    auto types = *rc::gen::container<std::vector<std::uint8_t>>(rc::gen::inRange<std::uint8_t>(1, 0xff));
     std::ranges::sort(types);
     const auto [first, last] = std::ranges::unique(types);
     types.erase(first, last);
@@ -639,7 +639,7 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     };
     EXPECT_EQ(encode(Manifest{}).size(), 8U + 2);
     Manifest full;
-    for (std::size_t type = 0; type < manifest_types_bound; ++type) {
+    for (std::size_t type = 1; type <= manifest_types_bound; ++type) {
         full.types.push_back(entry(static_cast<std::uint8_t>(type), 1));
     }
     EXPECT_EQ(encode(full).size(), 8U + 2 + (manifest_types_bound * (1 + 4 + 32)));
@@ -652,7 +652,8 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     EXPECT_THROW((void)encode(too_many), std::length_error);
 
     for (const auto& types : std::vector<std::vector<ManifestEntry>>{
-             {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}}) {
+             {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}, {entry(0, 1)},
+             {entry(0, 1), entry(1, 1)}}) {
         const Manifest wrong{.epoch = 1, .types = types};
         EXPECT_FALSE(is_canonical(wrong));
         EXPECT_THROW((void)encode(wrong), std::invalid_argument);

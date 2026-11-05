@@ -47,7 +47,7 @@ bool canonical_types(const std::vector<ManifestEntry>& types)
     const auto out_of_order = std::ranges::adjacent_find(
         types, [](const ManifestEntry& first, const ManifestEntry& second) { return first.type >= second.type; });
     return out_of_order == types.end()
-        && std::ranges::none_of(types, [](const ManifestEntry& entry) { return entry.count == 0; });
+        && std::ranges::none_of(types, [](const ManifestEntry& entry) { return entry.type == 0 || entry.count == 0; });
 }
 
 void require_kind(PrekeyKind kind, std::initializer_list<PrekeyKind> allowed)
@@ -252,7 +252,7 @@ bool is_canonical(const Manifest& value)
 void write(Writer& writer, const Manifest& value)
 {
     if (!canonical_types(value.types)) {
-        throw std::invalid_argument("manifest types must be strictly ascending, each with a live record");
+        throw std::invalid_argument("manifest types must be strictly ascending from 1, each with a live record");
     }
     writer.u64(value.epoch).count(value.types.size(), manifest_types_bound);
     for (const auto& entry : value.types) {

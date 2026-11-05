@@ -4,6 +4,7 @@
 #include "vault/keys.hpp"
 
 #include "crypto/aead_internal.hpp"
+#include "crypto/backend.hpp"
 #include "lume/crypto/aead.hpp"
 #include "lume/crypto/encoding.hpp"
 #include "lume/crypto/hash.hpp"
@@ -41,6 +42,30 @@ Result<SecretBytes> expand(crypto::ByteView salt, const SecretBytes& input, std:
         return std::unexpected(Error::library_failure);
     }
     return std::move(*key);
+}
+
+Result<SecretBytes> input_for(const SecretBytes& passphrase_key, wire::HardwareMode mode)
+{
+    if (passphrase_key.size() != key_size) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    switch (mode) {
+    case wire::HardwareMode::keystore:
+        return expand(zero_salt, passphrase_key, "vault/keystore");
+    case wire::HardwareMode::tpm:
+        return expand(zero_salt, passphrase_key, "vault/tpm-pin");
+    case wire::HardwareMode::software:
+        return SecretBytes{};
+    }
+    return std::unexpected(Error::invalid_parameters);
+}
+
+Result<SecretBytes> master_of(const SecretBytes& hardware_secret, const SecretBytes& passphrase_key)
+{
+    if (hardware_secret.size() != hardware_secret_size) {
+        return std::unexpected(Error::invalid_parameters);
+    }
+    return expand(hardware_secret.view(), passphrase_key, "vault/master");
 }
 
 bool known_mode(wire::HardwareMode mode) noexcept
@@ -254,6 +279,11 @@ const KeyName& OpenedHeader::hardware() const noexcept
     return hardware_;
 }
 
+void OpenedHeader::forget_passphrase() noexcept
+{
+    passphrase_ = SecretBytes{};
+}
+
 OpenedHeader::OpenedHeader(const wire::VaultHeader& header, Keys keys, SecretBytes passphrase, const KeyName& hardware) noexcept
     : header_(header)
     , keys_(std::move(keys))
@@ -337,12 +367,13 @@ Salt fresh_salt()
     return crypto::random_public_bytes<wire::vault_salt_size>();
 }
 
-Result<PassphraseKey> derive_passphrase_key(std::string_view passphrase, const Salt& salt, Cost cost, Cost ceiling)
+Result<PassphraseKey> derive_passphrase_key(std::string_view passphrase, const Salt& salt, Cost cost, Platform platform)
 {
-    if (!valid_ceiling(ceiling)) {
+    const auto limits = limits_of(platform);
+    if (!limits) {
         return std::unexpected(Error::invalid_parameters);
     }
-    if (!within_bounds(cost, ceiling)) {
+    if (!within_bounds(cost, limits->ceiling)) {
         return std::unexpected(Error::integrity);
     }
     if (passphrase.size() > passphrase_bound) {
@@ -357,15 +388,12 @@ Result<PassphraseKey> derive_passphrase_key(std::string_view passphrase, const S
 
 Result<SecretBytes> hardware_input(const PassphraseKey& passphrase_key, wire::HardwareMode mode)
 {
-    switch (mode) {
-    case wire::HardwareMode::keystore:
-        return expand(zero_salt, KeyAccess::secret(passphrase_key), "vault/keystore");
-    case wire::HardwareMode::tpm:
-        return expand(zero_salt, KeyAccess::secret(passphrase_key), "vault/tpm-pin");
-    case wire::HardwareMode::software:
-        return SecretBytes{};
-    }
-    return std::unexpected(Error::invalid_parameters);
+    return input_for(KeyAccess::secret(passphrase_key), mode);
+}
+
+Result<SecretBytes> hardware_input(const OpenedHeader& opened)
+{
+    return input_for(KeyAccess::passphrase(opened), opened.header().hw_mode);
 }
 
 Result<HardwareKey> hardware_key(const KeyName& name, crypto::ByteView output)
@@ -373,7 +401,7 @@ Result<HardwareKey> hardware_key(const KeyName& name, crypto::ByteView output)
     if (!well_formed_name(name)) {
         return std::unexpected(Error::invalid_parameters);
     }
-    if (output.size() != hardware_secret_size || std::ranges::all_of(output, [](std::uint8_t byte) { return byte == 0; })) {
+    if (output.size() != hardware_secret_size || crypto::detail::is_zero(output)) {
         return std::unexpected(Error::hardware_failure);
     }
     auto key = name.mode == wire::HardwareMode::tpm ? crypto::sha256_secret({crypto::label("vault/tpm"), output})
@@ -383,7 +411,7 @@ Result<HardwareKey> hardware_key(const KeyName& name, crypto::ByteView output)
 
 Result<MasterKey> derive_master_key(const PassphraseKey& passphrase_key, const HardwareKey& hardware_key)
 {
-    auto key = expand(KeyAccess::secret(hardware_key).view(), KeyAccess::secret(passphrase_key), "vault/master");
+    auto key = master_of(KeyAccess::secret(hardware_key), KeyAccess::secret(passphrase_key));
     if (!key) {
         return std::unexpected(key.error());
     }
@@ -495,7 +523,7 @@ Result<OpenedHeader> next_header(const HardwareKey& hardware_key, const OpenedHe
         return std::unexpected(Error::invalid_parameters);
     }
     const auto& passphrase = KeyAccess::passphrase(current);
-    const auto master_key = expand(KeyAccess::secret(hardware_key).view(), passphrase, "vault/master");
+    const auto master_key = master_of(KeyAccess::secret(hardware_key), passphrase);
     if (!master_key) {
         return std::unexpected(master_key.error());
     }

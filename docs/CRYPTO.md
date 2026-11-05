@@ -763,7 +763,10 @@ Each derived key has one job. Records are encrypted under keys derived from
 `VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
 nothing else. `Kpw`, `KEK`, `VK` and the keys derived from them never leave the
 core. The platform's key store (§10.2) receives only a value derived from `Kpw`
-for that purpose, or a secret the core drew for it.
+for that purpose, or a secret the core drew for it. The core keeps `Kpw` only
+until the flow that needs it has committed, whether that is an unlock's move to
+the next epoch or a passphrase change, and then wipes it; the open vault holds
+`VK` and the keys derived from it, never `Kpw`.
 
 `PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
 its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
@@ -845,10 +848,12 @@ Its field layout is in [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures);
 `ops` and `mem` must lie between the floor and the platform's ceiling, which is
 never above the general ceiling. A header outside them is an integrity error,
 found before `PWHash` runs. A cost outside them, given to create a vault or to
-change its passphrase, is a programmer error. `epoch` is at least 1. The core
-derives every key for a header from that header's own `salt`, `ops`, `mem`,
-`hw_mode`, `tpm_point` and `epoch`, and refuses to open one with keys derived
-for another. Unlocking computes `Kpw`, `Khw`
+change its passphrase, is a programmer error. `epoch` is at least 1. A master
+key is bound to the `salt`, `ops` and `mem` it was derived with and to the
+hardware key it used, which is named by the header's `epoch` in Keystore and
+software mode and by `tpm_point` in TPM mode; a TPM header's epoch is bound only
+through `check`. The core refuses to open a header with a master key bound to
+another. Unlocking computes `Kpw`, `Khw`
 and `KEK`, compares `check` in constant time and tries to unwrap `VK`. A wrong
 passphrase or hardware key fails both, and so does a header changed in a field
 the keys depend on — `salt`, `ops`, `mem`, `hw_mode`, `tpm_point` — or in

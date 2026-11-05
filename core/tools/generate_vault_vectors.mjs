@@ -183,8 +183,16 @@ const headerRefusals = [
     "invalid_parameters"],
   ["another_mode", "a software key offered for a Keystore header", keystoreFirst, floor, hardwareOf(3, 1, softwareOutput),
     "invalid_parameters"],
+  ["tpm_epoch_zero", "a TPM header at epoch 0 whose check verifies and whose data key unwraps: a TPM key is named by its point, so only the epoch rule refuses it",
+    sealHeader({ master: masterOf(floor, hardwareOf(2, 1, tpmSharedSecret)), nonce: nonceOf("tpm epoch zero nonce"), epoch: 0 }), floor,
+    hardwareOf(2, 1, tpmSharedSecret), "integrity"],
 ].map(([name, description, header, passphrase, hardware, error]) => {
   if (headerOutcome(header, masterOf(passphrase, hardware)) !== error) fail(`${name} must be refused as ${error}`);
+  if (name === "tpm_epoch_zero") {
+    const master = masterOf(passphrase, hardware);
+    const unwrapped = aeadDecrypt(master.key, header.wrapped.subarray(0, 24), label("vault/data-key"), header.wrapped.subarray(24));
+    if (!checkOf(master.key, header).equals(header.check) || !unwrapped) fail("only the epoch rule may refuse tpm_epoch_zero");
+  }
   return {
     name, description, encoded: hex(encodedHeader(header)), passphrase: passphrase.name, hardware: hardwareJson(hardware), error,
   };
@@ -281,9 +289,21 @@ const noMarker = (() => {
 })();
 const notABucket = sealedPlain("not a bucket", pad(Buffer.from("short", "ascii"), [300]));
 const tooLargeABucket = sealedPlain("too large a bucket", pad(Buffer.from("fits in 256", "ascii"), [512]));
+const longId = Buffer.alloc(65, 0x41);
+const sealedOutside = (name, type, id) => {
+  const nonce = nonceOf(`record nonce ${name}`);
+  const record = sealRecord(type, id, shortCounter, Buffer.from("outside the address rules", "ascii"), nonce);
+  if (!aeadDecrypt(keys.record, nonce, recordAd(type, id, shortCounter), record.subarray(24))) fail(`${name} must authenticate`);
+  return record;
+};
+const typeZeroRecord = sealedOutside("type zero", 0, shortId);
+const longIdRecord = sealedOutside("id too long", shortType, longId);
 const recordRefusals = [
   ["another_type", "the record read as another type", { type: 2 }],
-  ["type_zero", "the record read as type 0, which no record has", { type: 0 }],
+  ["type_zero", "a record sealed under type 0, which no record may have: only the address rule refuses it", {
+    type: 0, record: typeZeroRecord, expected: typeZeroRecord.subarray(0, 24) }],
+  ["id_too_long", "a record sealed under a 65-byte id: only the address rule refuses it", {
+    id: longId, record: longIdRecord, expected: longIdRecord.subarray(0, 24) }],
   ["another_id", "the record read under another id", { id: Buffer.from("contact 2", "ascii") }],
   ["older_counter", "the record read with the counter of an older write", { counter: 0n }],
   ["flipped_byte", "one byte of the ciphertext flipped", { record: flipped }],
@@ -310,7 +330,16 @@ const shortAddress = Buffer.from(records[0].address, "hex");
 const flippedAddress = Buffer.from(shortAddress);
 flippedAddress[40] ^= 0x01;
 const badAddress = (name, address) => sealAddress(shortSlot, address, nonceOf(`address nonce ${name}`));
+const outsideSlot = (name, slot) => {
+  const box = sealAddress(slot, { type: shortType, id: shortId, counter: shortCounter, nonce: shortNonce }, nonceOf(`address nonce ${name}`));
+  if (!aeadDecrypt(keys.address, box.subarray(0, 24), addressAd(slot), box.subarray(24))) fail(`${name} must authenticate`);
+  return box;
+};
 const addressRefusals = [
+  ["slot_zero", "a valid address sealed under slot 0, which no record has: only the slot rule refuses it", 0n,
+    outsideSlot("slot zero", 0n)],
+  ["slot_above_bound", "a valid address sealed under slot 2^63, above the bound: only the slot rule refuses it", 1n << 63n,
+    outsideSlot("slot above bound", 1n << 63n)],
   ["another_slot", "the address opened under another slot", shortSlot + 1n, shortAddress],
   ["flipped_byte", "one byte of the box flipped", shortSlot, flippedAddress],
   ["type_zero", "an address of type 0", shortSlot,
@@ -374,7 +403,7 @@ const decodeManifest = (encoded) => {
     const at = 10 + 37 * index;
     return { type: encoded[at], count: encoded.readUInt32BE(at + 1) };
   });
-  if (types.some((entry, index) => entry.count === 0 || (index > 0 && types[index - 1].type >= entry.type))) return null;
+  if (types.some((entry, index) => entry.type === 0 || entry.count === 0 || (index > 0 && types[index - 1].type >= entry.type))) return null;
   return { epoch: encoded.readBigUInt64BE(0), types };
 };
 const openManifest = (sealed, epoch) => {
@@ -400,6 +429,8 @@ const manifestRefusals = [
     sealManifest(nonceOf("unpadded manifest nonce"), Buffer.alloc(manifestBuckets[0], 0))],
   ["out_of_order", "types 2 and then 1, which a canonical manifest never holds", "keystore_first",
     sealManifest(nonceOf("unordered manifest nonce"), pad(encodeManifest(1, [manifestTypes[1], manifestTypes[0]]), manifestBuckets))],
+  ["type_zero", "an entry of type 0 before type 1, in order and counted, which no record may have", "keystore_first",
+    sealManifest(nonceOf("type zero manifest nonce"), pad(encodeManifest(1, [{ type: 0, count: 1, root: zero }, manifestTypes[0]]), manifestBuckets))],
 ].map(([name, description, header, sealed]) => {
   if (openManifest(sealed, headerByName.get(header).epoch) !== "integrity") fail(`manifest ${name} must be refused`);
   return { name, description, header, sealed: hex(sealed), error: "integrity" };
