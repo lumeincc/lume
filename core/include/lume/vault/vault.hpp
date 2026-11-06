@@ -13,7 +13,7 @@ inline constexpr std::size_t passphrase_bound = 1024;
 inline constexpr std::size_t passphrase_minimum = 10;
 inline constexpr std::size_t software_passphrase_minimum = 14;
 inline constexpr std::size_t record_id_bound = 64;
-inline constexpr std::size_t payload_bound = std::size_t{128} * 1024 - 1;
+inline constexpr std::size_t payload_bound = (std::size_t{128} * 1024) - 1;
 
 enum class Error : std::uint8_t {
     wrong_passphrase = 1,

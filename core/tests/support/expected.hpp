@@ -5,7 +5,10 @@
 
 #include <gtest/gtest.h>
 
+#include <bit>
 #include <expected>
+#include <limits>
+#include <type_traits>
 
 namespace lume::test {
 
@@ -14,7 +17,7 @@ template <typename T, typename E>
 {
     if (result.has_value()) {
         ADD_FAILURE() << "expected a refusal, got a value";
-        return E{};
+        return std::bit_cast<E>(std::numeric_limits<std::underlying_type_t<E>>::max());
     }
     return result.error();
 }
