@@ -5,9 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # LUME
 
-[Website](https://lumeincc.github.io/lume/) ·
-[How it works](https://lumeincc.github.io/lume/how-it-works/) ·
-[Documentation](https://lumeincc.github.io/lume/docs/)
+[Website](https://lumeincc.github.io/lume/en/) ·
+[How it works](https://lumeincc.github.io/lume/en/spec/crypto/) ·
+[Documentation](https://lumeincc.github.io/lume/en/docs/)
 
 </div>
 
