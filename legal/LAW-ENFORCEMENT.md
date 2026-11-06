@@ -6,8 +6,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 # LUME Law Enforcement Policy
 
 **Status: draft.** Takes effect with the first public release.
-Русская версия: [LAW-ENFORCEMENT.ru.md](LAW-ENFORCEMENT.ru.md).
-Қазақша нұсқа: [LAW-ENFORCEMENT.kk.md](LAW-ENFORCEMENT.kk.md).
 
 This page explains to public authorities and to users what LUME Inc. can and
 cannot provide, and how.

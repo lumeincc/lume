@@ -7,8 +7,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Status: draft.** The contact addresses will be published here before the
 first public release.
-Русская версия: [CONTACT.ru.md](CONTACT.ru.md).
-Қазақша нұсқа: [CONTACT.kk.md](CONTACT.kk.md).
 
 ## 1. The company
 

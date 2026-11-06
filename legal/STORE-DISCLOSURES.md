@@ -8,8 +8,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 LUME's answers to each store's data and content forms. They are derived from
 the [Privacy Policy](PRIVACY.md) and the [permissions](PERMISSIONS.md); if
 either changes, this page changes in the same commit.
-Русская версия: [STORE-DISCLOSURES.ru.md](STORE-DISCLOSURES.ru.md).
-Қазақша нұсқа: [STORE-DISCLOSURES.kk.md](STORE-DISCLOSURES.kk.md).
 
 ## Google Play — Data safety
 

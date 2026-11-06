@@ -7,8 +7,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Status: draft.** This text is shown in the LUME app when an account is
 created; it takes effect with the first public release.
-Русская версия: [CONSENT.ru.md](CONSENT.ru.md).
-Қазақша нұсқа: [CONSENT.kk.md](CONSENT.kk.md).
 
 By creating a LUME account and pressing *I accept*, I freely, of my own will
 and in my own interest give consent to the collection and processing of my

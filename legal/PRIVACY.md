@@ -7,8 +7,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 **Status: draft.** Takes effect on the day the first public LUME build is
 released; this line will then be replaced by that date.
-Русская версия: [PRIVACY.ru.md](PRIVACY.ru.md).
-Қазақша нұсқа: [PRIVACY.kk.md](PRIVACY.kk.md).
 
 This document sets out LUME Inc.'s policy on the collection, processing and
 protection of personal data within the meaning of article 25(2) sub-paragraph

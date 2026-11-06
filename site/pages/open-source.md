@@ -53,7 +53,7 @@ format.
 
 - One command configures, builds and runs every test and writes a report:
   `pwsh tools/test.ps1` on Windows or `sh tools/test.sh` on Linux. What it
-  needs is in [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+  needs is in [CONTRIBUTING.md](../../CONTRIBUTING.md).
 - `lume-lab`, built next to the tests, walks through accounts, recovery, the
   post-quantum handshake, attacks and safety numbers on the real core, and marks
   every check `[ ok ]` or `[FAIL]`.
@@ -63,14 +63,14 @@ format.
 ## Contributing
 
 Contributions arrive as pull requests, signed off under the contributor licence
-agreement in [CONTRIBUTING.md](../../../CONTRIBUTING.md). Security bugs are
+agreement in [CONTRIBUTING.md](../../CONTRIBUTING.md). Security bugs are
 reported privately — see [Security](/security/).
 
 ## This website
 
-The website is built from the same repository: [`site/`](../../../site) holds a
+The website is built from the same repository: [`site/`](../../site) holds a
 small generator that uses only Python's standard library, and the policies are
-rendered straight from [`legal/`](../../../legal), so the website and the
+rendered straight from [`legal/`](../../legal), so the website and the
 repository cannot disagree. It runs one small script, for the cookie window
 and the home page's headline, sets cookies only with your consent and loads
 nothing from other servers; see [The website and cookies](/legal/website/).

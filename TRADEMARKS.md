@@ -10,8 +10,6 @@ License v3.0. **The LUME name and logo are not.** They are the designations
 LUME Inc. uses to identify its products; the logo is also a work whose
 exclusive rights belong to LUME Inc. They are covered by
 [`LICENSES/LicenseRef-LUME-Brand.txt`](LICENSES/LicenseRef-LUME-Brand.txt).
-Русская версия: [TRADEMARKS.ru.md](TRADEMARKS.ru.md).
-Қазақша нұсқа: [TRADEMARKS.kk.md](TRADEMARKS.kk.md).
 
 > [!IMPORTANT]
 > **To be filled in before release:** the number of the application or

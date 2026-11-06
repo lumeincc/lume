@@ -6,8 +6,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 # Deleting your LUME account
 
 **Status: draft.** Takes effect with the first public release.
-Русская версия: [ACCOUNT-DELETION.ru.md](ACCOUNT-DELETION.ru.md).
-Қазақша нұсқа: [ACCOUNT-DELETION.kk.md](ACCOUNT-DELETION.kk.md).
 
 ## 1. From the app
 

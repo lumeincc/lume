@@ -3,150 +3,140 @@
 
 repository = "https://github.com/lumeincc/lume"
 reference = "main"
-languages = ["en", "ru", "kk"]
-switcher = ["kk", "ru", "en"]
+language = "en"
+moved = ["en", "ru", "kk"]
 
 [[pages]]
 route = ""
-neutral = "site/pages/index.html"
-title = "LUME"
+source = "site/pages/index.html"
+title = "LUME — an end-to-end encrypted messenger"
 
 [[pages]]
 route = "404"
-neutral = "site/pages/404.html"
+source = "site/pages/404.html"
 generate = "not-found"
 title = "404 — LUME"
 
 [[pages]]
-route = ""
-source = { en = "site/pages/en/index.html", ru = "site/pages/ru/index.html", kk = "site/pages/kk/index.html" }
-title = { en = "LUME — an end-to-end encrypted messenger", ru = "LUME — мессенджер со сквозным шифрованием", kk = "LUME — ұштан-ұшқа шифрланған мессенджер" }
-
-[[pages]]
 route = "how-it-works"
 group = "guide"
-source = { en = "site/pages/en/how-it-works.md", ru = "site/pages/ru/how-it-works.md", kk = "site/pages/kk/how-it-works.md" }
-summary = { en = "How LUME protects your messages and what it does not protect.", ru = "Как LUME защищает переписку и от чего не защищает.", kk = "LUME хат алмасуды қалай қорғайды және неден қорғамайды." }
+source = "site/pages/how-it-works.md"
+summary = "How LUME protects your messages and what it does not protect."
 
 [[pages]]
 route = "safety-number"
 group = "guide"
-source = { en = "site/pages/en/safety-number.md", ru = "site/pages/ru/safety-number.md", kk = "site/pages/kk/safety-number.md" }
-summary = { en = "How to check that you are talking to the right person, using the safety number.", ru = "Как убедиться, что вы переписываетесь с тем, с кем думаете, — по номеру безопасности.", kk = "Қауіпсіздік нөмірі арқылы дұрыс адаммен сөйлесіп отырғаныңызды қалай тексеруге болады." }
+source = "site/pages/safety-number.md"
+summary = "How to check that you are talking to the right person, using the safety number."
 
 [[pages]]
 route = "security"
 group = "guide"
-source = { en = "SECURITY.md", ru = "SECURITY.ru.md", kk = "SECURITY.kk.md" }
-summary = { en = "How to report a vulnerability in LUME privately.", ru = "Как конфиденциально сообщить об уязвимости в LUME.", kk = "LUME-дегі осалдық туралы жабық түрде қалай хабарлауға болады." }
+source = "SECURITY.md"
+summary = "How to report a vulnerability in LUME privately."
 
 [[pages]]
 route = "open-source"
 group = "open-source"
-source = { en = "site/pages/en/open-source.md", ru = "site/pages/ru/open-source.md", kk = "site/pages/kk/open-source.md" }
-summary = { en = "Where the LUME source code is, its licence, and how to build and check it yourself.", ru = "Где исходный код LUME, под какой он лицензией и как собрать и проверить его самому.", kk = "LUME бастапқы коды қайда, оның лицензиясы қандай және оны өзіңіз қалай құрастырып, тексере аласыз." }
+source = "site/pages/open-source.md"
+summary = "Where the LUME source code is, its licence, and how to build and check it yourself."
 
 [[pages]]
 route = "trademarks"
 group = "open-source"
-source = { en = "TRADEMARKS.md", ru = "TRADEMARKS.ru.md", kk = "TRADEMARKS.kk.md" }
-summary = { en = "What you may and may not do with the LUME name and logo.", ru = "Что можно и чего нельзя делать с названием и логотипом LUME.", kk = "LUME атауы мен логотипімен не істеуге болады және не істеуге болмайды." }
+source = "TRADEMARKS.md"
+summary = "What you may and may not do with the LUME name and logo."
 
 [[pages]]
 route = "licence"
 group = "open-source"
-languages = ["en"]
-source = { en = "LICENSE" }
-title = { en = "GNU Affero General Public License v3.0" }
-summary = { en = "The full text of the licence of the LUME source code." }
+source = "LICENSE"
+title = "GNU Affero General Public License v3.0"
+summary = "The full text of the licence of the LUME source code."
 
 [[pages]]
 route = "legal"
 generate = "legal"
-languages = ["en", "ru", "kk"]
-title = { en = "Legal", ru = "Документы", kk = "Құжаттар" }
-summary = { en = "The privacy policy, terms of use and every other policy of LUME.", ru = "Политика конфиденциальности, пользовательское соглашение и остальные документы LUME.", kk = "Құпиялылық саясаты, пайдаланушы келісімі және LUME-нің басқа құжаттары." }
+title = "Legal"
+summary = "The privacy policy, terms of use and every other policy of LUME."
 
 [[pages]]
 route = "docs"
 generate = "docs"
-languages = ["en", "ru", "kk"]
-title = { en = "Documentation", ru = "Документация", kk = "Құжаттама" }
-summary = { en = "Every guide, policy and specification of LUME in one place.", ru = "Все руководства, документы и спецификация LUME в одном месте.", kk = "LUME-нің барлық нұсқаулықтары, құжаттары мен спецификациясы бір жерде." }
+title = "Documentation"
+summary = "Every guide, policy and specification of LUME in one place."
 
 [[pages]]
 route = "legal/privacy"
 group = "legal"
-source = { en = "legal/PRIVACY.md", ru = "legal/PRIVACY.ru.md", kk = "legal/PRIVACY.kk.md" }
-summary = { en = "What our server holds about you, for how long, and what it never has.", ru = "Что сервер хранит о вас, сколько времени и чего у него нет никогда.", kk = "Сервер сіз туралы не сақтайды, қанша уақыт және онда ешқашан не болмайды." }
+source = "legal/PRIVACY.md"
+summary = "What our server holds about you, for how long, and what it never has."
 
 [[pages]]
 route = "legal/consent"
 group = "legal"
-source = { en = "legal/CONSENT.md", ru = "legal/CONSENT.ru.md", kk = "legal/CONSENT.kk.md" }
-summary = { en = "The consent to the processing of personal data you give in the app when you create an account.", ru = "Согласие на обработку персональных данных, которое вы даёте в приложении при создании аккаунта.", kk = "Аккаунт жасаған кезде қосымшада беретін дербес деректерді өңдеуге келісім." }
+source = "legal/CONSENT.md"
+summary = "The consent to the processing of personal data you give in the app when you create an account."
 
 [[pages]]
 route = "legal/terms"
 group = "legal"
-source = { en = "legal/TERMS.md", ru = "legal/TERMS.ru.md", kk = "legal/TERMS.kk.md" }
-summary = { en = "The agreement for using LUME, including the end-user licence, price and refunds.", ru = "Условия использования LUME, включая лицензию для конечного пользователя, цену и возвраты.", kk = "LUME-ді пайдалану шарттары, соның ішінде соңғы пайдаланушы лицензиясы, баға және қайтарымдар." }
+source = "legal/TERMS.md"
+summary = "The agreement for using LUME, including the end-user licence, price and refunds."
 
 [[pages]]
 route = "legal/website"
 group = "legal"
-source = { en = "legal/WEBSITE.md", ru = "legal/WEBSITE.ru.md", kk = "legal/WEBSITE.kk.md" }
-summary = { en = "Which cookies this website sets, how to change your choice, and what its host receives.", ru = "Какие cookie ставит сайт, как изменить выбор и что получает хостинг.", kk = "Сайт қандай cookie қояды, таңдауды қалай өзгертуге болады және хостинг не алады." }
+source = "legal/WEBSITE.md"
+summary = "What this website stores on your device, which is nothing, and what its host receives."
 
 [[pages]]
 route = "legal/account-deletion"
 group = "legal"
-source = { en = "legal/ACCOUNT-DELETION.md", ru = "legal/ACCOUNT-DELETION.ru.md", kk = "legal/ACCOUNT-DELETION.kk.md" }
-summary = { en = "How to delete your account and what is deleted with it.", ru = "Как удалить аккаунт и что удаляется вместе с ним.", kk = "Аккаунтты қалай жоюға болады және онымен бірге не жойылады." }
+source = "legal/ACCOUNT-DELETION.md"
+summary = "How to delete your account and what is deleted with it."
 
 [[pages]]
 route = "legal/child-safety"
 group = "legal"
-source = { en = "legal/CHILD-SAFETY.md", ru = "legal/CHILD-SAFETY.ru.md", kk = "legal/CHILD-SAFETY.kk.md" }
-summary = { en = "Zero tolerance for child sexual abuse and exploitation, and how to report it.", ru = "Нулевая терпимость к сексуальному насилию над детьми и их эксплуатации и как об этом сообщить.", kk = "Балаларға қатысты жыныстық зорлық-зомбылық пен қанауға мүлдем төзбеушілік және бұл туралы қалай хабарлау керек." }
+source = "legal/CHILD-SAFETY.md"
+summary = "Zero tolerance for child sexual abuse and exploitation, and how to report it."
 
 [[pages]]
 route = "legal/law-enforcement"
 group = "legal"
-source = { en = "legal/LAW-ENFORCEMENT.md", ru = "legal/LAW-ENFORCEMENT.ru.md", kk = "legal/LAW-ENFORCEMENT.kk.md" }
-summary = { en = "What LUME Inc. can and cannot give to authorities, and how it responds.", ru = "Что ТОО «LUME Inc.» может и не может передать властям и как отвечает на запросы.", kk = "«LUME Inc.» ЖШС мемлекеттік органдарға не бере алады, не бере алмайды және сұрау салуларға қалай жауап береді." }
+source = "legal/LAW-ENFORCEMENT.md"
+summary = "What LUME Inc. can and cannot give to authorities, and how it responds."
 
 [[pages]]
 route = "legal/permissions"
 group = "legal"
-source = { en = "legal/PERMISSIONS.md", ru = "legal/PERMISSIONS.ru.md", kk = "legal/PERMISSIONS.kk.md" }
-summary = { en = "Every permission the apps ask for, and why.", ru = "Все разрешения, которые запрашивают приложения, и зачем.", kk = "Қосымшалар сұрайтын барлық рұқсаттар және не үшін." }
+source = "legal/PERMISSIONS.md"
+summary = "Every permission the apps ask for, and why."
 
 [[pages]]
 route = "legal/store-disclosures"
 group = "legal"
-source = { en = "legal/STORE-DISCLOSURES.md", ru = "legal/STORE-DISCLOSURES.ru.md", kk = "legal/STORE-DISCLOSURES.kk.md" }
-summary = { en = "The answers LUME gives in the app stores' data and content forms.", ru = "Ответы LUME в формах магазинов приложений о данных и содержании.", kk = "Қосымшалар дүкендерінің деректер мен мазмұн туралы формаларына LUME берген жауаптар." }
+source = "legal/STORE-DISCLOSURES.md"
+summary = "The answers LUME gives in the app stores' data and content forms."
 
 [[pages]]
 route = "legal/contact"
 group = "legal"
-source = { en = "legal/CONTACT.md", ru = "legal/CONTACT.ru.md", kk = "legal/CONTACT.kk.md" }
-summary = { en = "The company behind LUME and how to reach it.", ru = "Компания, которая стоит за LUME, и как с ней связаться.", kk = "LUME-ді жасайтын компания және онымен қалай байланысуға болады." }
+source = "legal/CONTACT.md"
+summary = "The company behind LUME and how to reach it."
 
 [[pages]]
 route = "spec/crypto"
 group = "spec"
-languages = ["en"]
-source = { en = "docs/CRYPTO.md" }
-summary = { en = "The LUME cryptography specification: every key, derivation and construction." }
+source = "docs/CRYPTO.md"
+summary = "The LUME cryptography specification: every key, derivation and construction."
 
 [[pages]]
 route = "spec/protocol"
 group = "spec"
-languages = ["en"]
-source = { en = "docs/PROTOCOL.md" }
-summary = { en = "The LUME relay protocol specification." }
+source = "docs/PROTOCOL.md"
+summary = "The LUME relay protocol specification."
 
 [[images]]
 source = "brand/logo 2.png"
@@ -158,142 +148,27 @@ source = "brand/lume-favicon.png"
 margin = 0
 outputs = [["favicon.png", 32]]
 
-
-[strings.en]
-language-name = "English"
-language-short = "Eng"
-language-label = "Language"
+[strings]
 site-title = "LUME"
 description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. No phone number, no e-mail, no trackers."
 skip = "Skip to content"
 footer-docs = "Documentation"
 footer-privacy = "Privacy"
-english = "In English."
 imprint = "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421."
 contents = "On this page"
 source = "Source:"
 history = "history of changes"
+moved = "This page has moved."
 legal-intro = [
-    "Every document here exists in Russian, Kazakh and English. The Kazakh and Russian texts have equal force; if they differ, the Russian text applies, and the English text is a translation. They describe what the software does; if the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
+    "These documents describe what the software does. If the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
     "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the name of the data centre in Kazakhstan that hosts the server.",
 ]
 
-[strings.en.consent]
-title = "Cookie settings"
-text = "This site uses cookies: one that is needed to remember your choice and, if you allow it, one more to remember your language. No analytics, no ads."
-intro = "The necessary cookie lets the site remember your choice. The others are set only if you turn them on. You can change your choice at any time with the Cookie settings link at the bottom of every page."
-more = "Details"
-accept = "Accept all"
-reject = "Necessary only"
-settings = "Settings"
-save = "Save choice"
-close = "Close"
-footer = "Cookie settings"
-policy = "legal/website#2-cookies"
-necessary = "Necessary"
-necessary-text = "Remember your choice in this window, so that the site does not ask every time. Always on."
-preferences = "Preferences"
-preferences-text = "Remember the language you read the site in and open it straight away next time."
-analytics = "Analytics"
-analytics-text = "Not used. If that changes, the site will ask you again."
-
-[strings.en.groups]
+[strings.groups]
 guide = "Guide"
 open-source = "Open source"
 legal = "Legal"
 spec = "Specification"
 
-[strings.en.notes]
+[strings.notes]
 spec = "The technical specification, draft revision {{spec-revision}}, written for cryptographers and implementers. It changes as LUME is built."
-
-[strings.ru]
-language-name = "Русский"
-language-short = "Рус"
-language-label = "Язык"
-site-title = "LUME"
-description = "LUME — мессенджер со сквозным шифрованием и постквантовой защитой. Без номера телефона, почты и трекеров. Сейчас в разработке."
-skip = "Перейти к содержанию"
-footer-docs = "Документация"
-footer-privacy = "Конфиденциальность"
-english = "На английском."
-imprint = "© 2026 ТОО «LUME Inc.», Республика Казахстан, БИН 260740032421."
-contents = "Содержание"
-source = "Исходный текст:"
-history = "история изменений"
-legal-intro = [
-    "Все документы есть на русском, казахском и английском. Казахский и русский тексты имеют одинаковую силу, при расхождении действует русский; английский — перевод. Документы описывают то, что на самом деле делает программа. Если код и документ расходятся, это ошибка, и её исправляют.",
-    "<strong>Пока это проекты.</strong> Они вступят в силу с первым публичным выпуском LUME. Пометка <em>Заполнить до выпуска</em> означает, что факт ещё не определён: например, адреса для связи или название центра обработки данных в Казахстане, где будет работать сервер.",
-]
-
-[strings.ru.consent]
-title = "Настройки cookie"
-text = "Сайт использует две cookie: обязательную — чтобы запомнить ваш выбор, и, если разрешите, вторую — чтобы запомнить язык. Аналитики и рекламы нет."
-intro = "Обязательная cookie нужна, чтобы сайт помнил ваш выбор. Остальные появятся, только если вы их включите. Передумать можно в любой момент: ссылка «Настройки cookie» есть внизу каждой страницы."
-more = "Подробнее"
-accept = "Принять все"
-reject = "Только обязательные"
-settings = "Настроить"
-save = "Сохранить выбор"
-close = "Закрыть"
-footer = "Настройки cookie"
-policy = "legal/website#2-cookie"
-necessary = "Обязательные"
-necessary-text = "Запоминают ваш выбор, чтобы сайт не спрашивал каждый раз. Включены всегда."
-preferences = "Настройки"
-preferences-text = "Запоминают язык сайта, чтобы в следующий раз сразу открыть его."
-analytics = "Аналитика"
-analytics-text = "Не используется. Если появится, сайт спросит вас заново."
-
-[strings.ru.groups]
-guide = "Руководство"
-open-source = "Открытый код"
-legal = "Документы"
-spec = "Спецификация"
-
-[strings.ru.notes]
-
-[strings.kk]
-language-name = "Қазақша"
-language-short = "Қаз"
-language-label = "Тіл"
-site-title = "LUME"
-description = "LUME — постквантты кілт алмасуы бар, ұштан-ұшқа шифрланған мессенджер, әзірлену үстінде. Телефон нөмірі, электрондық пошта және трекерлер жоқ."
-skip = "Мазмұнға өту"
-footer-docs = "Құжаттама"
-footer-privacy = "Құпиялылық"
-english = "Ағылшын тілінде."
-imprint = "© 2026 «LUME Inc.» ЖШС, Қазақстан Республикасы, БСН 260740032421."
-contents = "Мазмұны"
-source = "Бастапқы мәтін:"
-history = "өзгерістер тарихы"
-legal-intro = [
-    "Мұндағы әр құжат орыс, қазақ және ағылшын тілдерінде бар. Қазақ және орыс тілдеріндегі мәтіндердің күші бірдей; алшақтық болса, орыс тіліндегі мәтін қолданылады, ағылшын тіліндегісі — аударма. Құжаттар бағдарламаның не істейтінін сипаттайды; егер код пен құжат сәйкес келмесе, бұл түзетілетін қате, сол күйінде қалдырылатын мәтін емес.",
-    "<strong>Барлық құжаттар — жоба.</strong> Олар LUME-нің алғашқы жария шығарылымымен бірге күшіне енеді. Оған дейін <em>Шығарылымға дейін толтыру керек</em> деп белгіленген жерлер — әлі шешілмеген деректер: байланыс мекенжайлары, сервер жұмыс істейтін Қазақстандағы деректерді өңдеу орталығының атауы және басқалары.",
-]
-
-[strings.kk.consent]
-title = "Cookie баптаулары"
-text = "Сайт cookie пайдаланады: таңдауыңызды есте сақтау үшін бір міндетті cookie және, егер рұқсат етсеңіз, тілді есте сақтау үшін тағы біреуі. Аналитика мен жарнама жоқ."
-intro = "Міндетті cookie сайтқа таңдауыңызды есте сақтауға мүмкіндік береді. Қалғандары тек сіз қосқанда ғана қойылады. Таңдауды кез келген уақытта әр беттің төменгі жағындағы «Cookie баптаулары» сілтемесі арқылы өзгертуге болады."
-more = "Толығырақ"
-accept = "Барлығын қабылдау"
-reject = "Тек міндеттілері"
-settings = "Баптау"
-save = "Таңдауды сақтау"
-close = "Жабу"
-footer = "Cookie баптаулары"
-policy = "legal/website#2-cookie"
-necessary = "Міндетті"
-necessary-text = "Осы терезедегі таңдауыңызды есте сақтайды, сонда сайт әр жолы сұрамайды. Әрқашан қосулы."
-preferences = "Баптаулар"
-preferences-text = "Сайтты қай тілде оқитыныңызды есте сақтап, келесі жолы бірден сол тілде ашады."
-analytics = "Аналитика"
-analytics-text = "Қазір пайдаланылмайды. Егер пайда болса, сайт сізден қайта сұрайды."
-
-[strings.kk.groups]
-guide = "Нұсқаулық"
-open-source = "Ашық код"
-legal = "Құжаттар"
-spec = "Спецификация"
-
-[strings.kk.notes]
