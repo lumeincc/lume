@@ -32,7 +32,7 @@ TEST(Argon2id, MatchesTheLumeVectors)
         EXPECT_EQ(test::to_hex(key->view()), vector.at("key").get<std::string>()) << name;
         ++checked;
     }
-    EXPECT_EQ(checked, 3);
+    EXPECT_EQ(checked, 5);
 }
 
 TEST(Argon2id, RefusesWhatLibsodiumCannotRun)

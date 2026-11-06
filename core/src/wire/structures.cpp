@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <expected>
 #include <initializer_list>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -32,12 +33,21 @@ bool valid_tpm_point(const VaultHeader& value) noexcept
     return !value.tpm_point || value.tpm_point->front() == tpm_point_uncompressed;
 }
 
+bool valid_address(const VaultAddress& value) noexcept
+{
+    if (value.type == 0 || value.id_length > vault_record_id_bound) {
+        return false;
+    }
+    const auto unused = std::span(value.id).subspan(value.id_length);
+    return std::ranges::all_of(unused, [](std::uint8_t byte) { return byte == 0; });
+}
+
 bool canonical_types(const std::vector<ManifestEntry>& types)
 {
     const auto out_of_order = std::ranges::adjacent_find(
         types, [](const ManifestEntry& first, const ManifestEntry& second) { return first.type >= second.type; });
     return out_of_order == types.end()
-        && std::ranges::none_of(types, [](const ManifestEntry& entry) { return entry.count == 0; });
+        && std::ranges::none_of(types, [](const ManifestEntry& entry) { return entry.type == 0 || entry.count == 0; });
 }
 
 void require_kind(PrekeyKind kind, std::initializer_list<PrekeyKind> allowed)
@@ -242,12 +252,20 @@ bool is_canonical(const Manifest& value)
 void write(Writer& writer, const Manifest& value)
 {
     if (!canonical_types(value.types)) {
-        throw std::invalid_argument("manifest types must be strictly ascending, each with a live record");
+        throw std::invalid_argument("manifest types must be at least 1 and strictly ascending, each with a live record");
     }
     writer.u64(value.epoch).count(value.types.size(), manifest_types_bound);
     for (const auto& entry : value.types) {
         writer.u8(entry.type).u32(entry.count).fixed(entry.root);
     }
+}
+
+void write(Writer& writer, const VaultAddress& value)
+{
+    if (!valid_address(value)) {
+        throw std::invalid_argument("a vault address needs a type, an id of at most 64 bytes and zeros after it");
+    }
+    writer.u8(value.type).u8(value.id_length).fixed(value.id).u64(value.counter).fixed(value.nonce);
 }
 
 void write(Writer& writer, const InitialHeader& value)
@@ -569,6 +587,19 @@ Result<Manifest> read_manifest(Reader& reader)
     }
     if (!canonical_types(value.types)) {
         return std::unexpected(Error::non_canonical);
+    }
+    return value;
+}
+
+Result<VaultAddress> read_vault_address(Reader& reader)
+{
+    VaultAddress value;
+    if (!reader.into(value.type) || !reader.into(value.id_length) || !reader.into(value.id)
+        || !reader.into(value.counter) || !reader.into(value.nonce)) {
+        return std::unexpected(reader.error());
+    }
+    if (!valid_address(value)) {
+        return std::unexpected(Error::invalid_value);
     }
     return value;
 }

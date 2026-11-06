@@ -228,7 +228,8 @@ Manifest random_manifest()
 {
     Manifest value;
     value.epoch = any_integer<std::uint64_t>();
-    auto types = *rc::gen::container<std::vector<std::uint8_t>>(rc::gen::arbitrary<std::uint8_t>());
+    auto types = *rc::gen::container<std::vector<std::uint8_t>>(
+        rc::gen::map(rc::gen::inRange<int>(1, 256), [](int type) { return static_cast<std::uint8_t>(type); }));
     std::ranges::sort(types);
     const auto [first, last] = std::ranges::unique(types);
     types.erase(first, last);
@@ -241,6 +242,18 @@ Manifest random_manifest()
             .count = *rc::gen::inRange<std::uint32_t>(1, std::numeric_limits<std::uint32_t>::max()),
             .root = random_array<manifest_root_size>()});
     }
+    return value;
+}
+
+VaultAddress random_vault_address()
+{
+    VaultAddress value;
+    value.type = static_cast<std::uint8_t>(*rc::gen::inRange<int>(1, 256));
+    value.id_length = *rc::gen::inRange<std::uint8_t>(0, static_cast<std::uint8_t>(vault_record_id_bound + 1));
+    const auto id = test::random_bytes_of(value.id_length);
+    std::ranges::copy(id, value.id.begin());
+    value.counter = any_integer<std::uint64_t>();
+    value.nonce = random_array<nonce_size>();
     return value;
 }
 
@@ -627,7 +640,7 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     };
     EXPECT_EQ(encode(Manifest{}).size(), 8U + 2);
     Manifest full;
-    for (std::size_t type = 0; type < manifest_types_bound; ++type) {
+    for (std::size_t type = 1; type <= manifest_types_bound; ++type) {
         full.types.push_back(entry(static_cast<std::uint8_t>(type), 1));
     }
     EXPECT_EQ(encode(full).size(), 8U + 2 + (manifest_types_bound * (1 + 4 + 32)));
@@ -640,7 +653,8 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     EXPECT_THROW((void)encode(too_many), std::length_error);
 
     for (const auto& types : std::vector<std::vector<ManifestEntry>>{
-             {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}}) {
+             {entry(2, 1), entry(1, 1)}, {entry(3, 1), entry(3, 2)}, {entry(1, 0)}, {entry(1, 1), entry(2, 0)}, {entry(0, 1)},
+             {entry(0, 1), entry(1, 1)}}) {
         const Manifest wrong{.epoch = 1, .types = types};
         EXPECT_FALSE(is_canonical(wrong));
         EXPECT_THROW((void)encode(wrong), std::invalid_argument);
@@ -658,6 +672,49 @@ TEST(WireStructures, ManifestsListEachTypeOnceInOrder)
     auto counted_but_missing = encode(Manifest{});
     counted_but_missing.back() = static_cast<std::uint8_t>(manifest_types_bound);
     EXPECT_EQ(test::error_of(decode(counted_but_missing, read_manifest)), Error::truncated);
+}
+
+constexpr std::size_t address_id_offset = 2;
+
+TEST(WireStructures, VaultAddressesNameOneRecordExactly)
+{
+    EXPECT_EQ(vault_address_size, 1U + 1 + 64 + 8 + 24);
+    VaultAddress longest{.type = 0xff, .id_length = static_cast<std::uint8_t>(vault_record_id_bound), .id = {}, .counter = 1, .nonce = {}};
+    std::ranges::fill(longest.id, std::uint8_t{0xab});
+    const auto encoded = encode(longest);
+    EXPECT_EQ(encoded.size(), vault_address_size);
+    const auto decoded = decode(encoded, read_vault_address);
+    ASSERT_TRUE(decoded.has_value());
+    EXPECT_EQ(*decoded, longest);
+    const VaultAddress empty_id{.type = 1, .id_length = 0, .id = {}, .counter = 0, .nonce = {}};
+    EXPECT_TRUE(decode(encode(empty_id), read_vault_address).has_value());
+
+    auto type_zero = encode(empty_id);
+    type_zero.at(0) = 0;
+    EXPECT_EQ(test::error_of(decode(type_zero, read_vault_address)), Error::invalid_value);
+    for (const std::size_t length : {vault_record_id_bound + 1, std::size_t{0xff}}) {
+        auto too_long = encode(longest);
+        too_long.at(1) = static_cast<std::uint8_t>(length);
+        EXPECT_EQ(test::error_of(decode(too_long, read_vault_address)), Error::invalid_value) << length;
+    }
+    for (const std::size_t length : {std::size_t{0}, std::size_t{3}, std::size_t{vault_record_id_bound - 1}}) {
+        VaultAddress address{.type = 1, .id_length = static_cast<std::uint8_t>(length), .id = {}, .counter = 0, .nonce = {}};
+        EXPECT_TRUE(decode(encode(address), read_vault_address).has_value()) << length;
+        auto tail = encode(address);
+        tail.at(address_id_offset + vault_record_id_bound - 1) = 1;
+        EXPECT_EQ(test::error_of(decode(tail, read_vault_address)), Error::invalid_value) << length;
+        address.id.at(vault_record_id_bound - 1) = 1;
+        EXPECT_THROW((void)encode(address), std::invalid_argument) << length;
+    }
+    EXPECT_EQ(test::error_of(decode(crypto::ByteView(encoded).first(vault_address_size - 1), read_vault_address)),
+        Error::truncated);
+
+    auto unnamed = empty_id;
+    unnamed.type = 0;
+    EXPECT_THROW((void)encode(unnamed), std::invalid_argument);
+    auto overlong = longest;
+    overlong.id_length = static_cast<std::uint8_t>(vault_record_id_bound + 1);
+    EXPECT_THROW((void)encode(overlong), std::invalid_argument);
 }
 
 RC_GTEST_PROP(WireStructureProperties, PrekeyXRoundTrips, ())
@@ -735,6 +792,11 @@ RC_GTEST_PROP(WireStructureProperties, ManifestRoundTrips, ())
     check_round_trip(random_manifest(), read_manifest);
 }
 
+RC_GTEST_PROP(WireStructureProperties, VaultAddressRoundTrips, ())
+{
+    check_round_trip(random_vault_address(), read_vault_address);
+}
+
 RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncoding, (const Bytes& input))
 {
     const auto check = [&input](auto read) {
@@ -757,6 +819,7 @@ RC_GTEST_PROP(WireStructureProperties, ArbitraryBytesDecodeOnlyToTheirOwnEncodin
     check(read_card);
     check(read_vault_header);
     check(read_manifest);
+    check(read_vault_address);
 }
 
 }

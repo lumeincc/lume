@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <exception>
 #include <expected>
+#include <span>
 #include <stdexcept>
 
 namespace lume::crypto::detail {
@@ -79,6 +80,18 @@ void throw_unless_operational(const Result<void>& state)
             state.error() == Error::self_test_failed ? "the cryptographic self-test failed"
                                                      : "the cryptographic libraries could not be started");
     }
+}
+
+void wipe(std::span<std::uint8_t> bytes) noexcept
+{
+    if (!bytes.empty()) {
+        sodium_memzero(bytes.data(), bytes.size());
+    }
+}
+
+bool is_zero(ByteView bytes) noexcept
+{
+    return sodium_is_zero(pointer_to(bytes), bytes.size()) == 1;
 }
 
 }

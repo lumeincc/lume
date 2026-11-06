@@ -18,6 +18,7 @@ add_executable(lume_core_tests
     crypto/kdf_test.cpp
     crypto/library_test.cpp
     crypto/mlkem_test.cpp
+    crypto/padding_test.cpp
     crypto/pwhash_test.cpp
     crypto/random_test.cpp
     crypto/secret_bytes_test.cpp

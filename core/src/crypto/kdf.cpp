@@ -4,15 +4,52 @@
 #include "lume/crypto/kdf.hpp"
 
 #include "backend.hpp"
+#include "crypto/hmac_internal.hpp"
 
 #include <sodium.h>
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <expected>
 #include <string>
+#include <utility>
 
 namespace lume::crypto {
+
+namespace detail {
+
+HmacKey::HmacKey(SecretBytes state) noexcept
+    : state_(std::move(state))
+{
+}
+
+HmacKey HmacKey::of(ByteView key)
+{
+    require_operational();
+    crypto_auth_hmacsha256_state state;
+    crypto_auth_hmacsha256_init(&state, pointer_to(key), key.size());
+    SecretBytes stored(sizeof state);
+    std::memcpy(stored.writable().data(), &state, sizeof state);
+    sodium_memzero(&state, sizeof state);
+    return HmacKey(std::move(stored));
+}
+
+bool HmacKey::tag(ByteView message, std::span<std::uint8_t, hmac_sha256_size> out) const noexcept
+{
+    crypto_auth_hmacsha256_state state;
+    if (state_.size() != sizeof state) {
+        std::ranges::fill(out, std::uint8_t{0});
+        return false;
+    }
+    std::memcpy(&state, state_.view().data(), sizeof state);
+    crypto_auth_hmacsha256_update(&state, pointer_to(message), message.size());
+    crypto_auth_hmacsha256_final(&state, out.data());
+    sodium_memzero(&state, sizeof state);
+    return true;
+}
+
+}
 
 SecretBytes hmac_sha256(ByteView key, ByteView message)
 {

@@ -747,12 +747,13 @@ token still mapped.
 ### 10.1 Keys
 
 ```
-salt    = Random(16), fresh for every vault
+salt    = Random(16), fresh for every vault and every passphrase change
 Kpw     = PWHash(passphrase, salt, ops, mem)
 Khw     = HW(Kpw)                                                  §10.2
 KEK     = HKDF(salt = Khw, ikm = Kpw, info = L("vault/master"), 32)
 VK      = Random(32), the vault key, stored only as AEAD(KEK, nonce, L("vault/data-key"), VK)
 K_rec   = HKDF(0^32, VK, L("vault/record-key"), 32)
+K_addr  = HKDF(0^32, VK, L("vault/address-key"), 32)
 K_check = HKDF(0^32, KEK, L("vault/check-key"), 32)
 K_man   = HKDF(0^32, VK, L("vault/manifest-key"), 32)
 K_root  = HKDF(0^32, VK, L("vault/root-key"), 32)
@@ -760,7 +761,13 @@ K_root  = HKDF(0^32, VK, L("vault/root-key"), 32)
 
 Each derived key has one job. Records are encrypted under keys derived from
 `VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
-nothing else.
+nothing else. `Kpw`, `KEK`, `VK` and the keys derived from them never leave the
+core. The platform's key store (§10.2) receives only a value derived from `Kpw`
+for that purpose, or a secret the core drew for it. Only a header opened at
+unlock keeps `Kpw`, so that the vault can move to the next epoch; a header the
+core writes, at creation, at the next epoch or after a passphrase change, keeps
+none. The unlock wipes `Kpw` once the next epoch has committed, so the open vault
+holds `VK` and the keys derived from it, never `Kpw`.
 
 `PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
 its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
@@ -776,9 +783,9 @@ passphrase guess has to run on the original device.
 
 | Platform | `HW(x)` | What a guess costs |
 |---|---|---|
-| Android, Keystore at TEE or StrongBox level | HMAC-SHA256 with a non-exportable Keystore key created with `setUnlockedDeviceRequired(true)` | a Keystore operation on this unlocked device |
+| Android, Keystore at TEE or StrongBox level | HMAC-SHA256 over `HKDF(0^32, x, L("vault/keystore"), 32)`, with a non-exportable Keystore key, StrongBox where the device has it, created with `setUnlockedDeviceRequired(true)`; each epoch has its own key (§10.5) | a Keystore operation on this unlocked device |
 | Windows with a TPM 2.0 | `SHA256(L("vault/tpm") ‖ ECDH(K_tpm, P))`, where `K_tpm` is a non-exportable P-256 key in the Microsoft Platform Crypto Provider whose TPM usage authorisation is the raw 32 bytes of `HKDF(0^32, x, L("vault/tpm-pin"), 32)`, set through `NCRYPT_PCP_USAGEAUTH_PROPERTY`, and `P` is `K_tpm`'s own public key, stored in the vault header | a TPM operation, and every wrong guess counts towards the TPM's dictionary-attack lockout |
-| Anything else | **software only**: a DPAPI-protected random `Khw` on Windows, an app-private random `Khw` on Android | nothing beyond Argon2id once the secret is read |
+| Anything else | **software only**: a random `Khw` drawn by the core for each epoch and kept by the platform, DPAPI-protected on Windows and in app-private storage on Android; it is created and deleted like a Keystore key (§10.5) | nothing beyond Argon2id once the secret is read |
 
 `P` must be a point whose discrete logarithm nobody knows outside the TPM;
 otherwise whoever knows it computes `ECDH(K_tpm, P)` from `K_tpm`'s public key
@@ -795,6 +802,8 @@ key of an existing `K_tpm` is an integrity error.
 as SEC 1 defines it; a provider that returns the raw secret in another byte
 order has it reversed first. The core derives the usage authorisation and
 `Khw` from it; creating `K_tpm` and computing the ECDH belong to the platform.
+Whatever the mode, the platform's output is exactly 32 bytes and never all
+zero; any other output is a hardware failure.
 
 **What the TPM adds.** `K_tpm` and `P` are fixed, so on Windows `HW(x)` is a
 per-device constant that the TPM releases only for the right `x`. It binds the
@@ -837,8 +846,15 @@ check = HMAC(K_check, L("vault/check") ‖ enc(header without check))
 
 Its field layout is in [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures);
 `wrapped_data_key` is `n ‖ AEAD(KEK, n, L("vault/data-key"), VK)`, 72 bytes.
-`ops` and `mem` must lie between the floor and the ceiling; anything outside is
-an integrity error, found before `PWHash` runs. Unlocking computes `Kpw`, `Khw`
+`ops` and `mem` must lie between the floor and the platform's ceiling, which is
+never above the general ceiling. A header outside them is an integrity error,
+found before `PWHash` runs. A cost outside them, given to create a vault or to
+change its passphrase, is a programmer error. `epoch` is at least 1. A master
+key is bound to the `salt`, `ops` and `mem` it was derived with and to the
+hardware key it used, which is named by the header's `epoch` in Keystore and
+software mode and by `tpm_point` in TPM mode; a TPM header's epoch is bound only
+through `check`. The core refuses to open a header with a master key bound to
+another. Unlocking computes `Kpw`, `Khw`
 and `KEK`, compares `check` in constant time and tries to unwrap `VK`. A wrong
 passphrase or hardware key fails both, and so does a header changed in a field
 the keys depend on — `salt`, `ops`, `mem`, `hw_mode`, `tpm_point` — or in
@@ -853,29 +869,44 @@ passphrase.
 | Android default | 3 | 64 MiB |
 | Desktop default | 3 | 256 MiB |
 | Floor | 2 | 64 MiB |
+| Android ceiling | 4 | 256 MiB |
 | Ceiling | 10 | 1 GiB |
+
+A passphrase change needs the current passphrase. It keeps the hardware mode,
+draws a new `salt`, uses the platform's default cost, re-wraps `VK` under the
+new `KEK` and writes the header at `epoch + 1`.
 
 ### 10.4 Records and manifest
 
 ```
-record = nonce ‖ AEAD(K_rec, nonce, L("vault/record") ‖ u8(type) ‖ lp(id) ‖ u64(counter), payload)
-root   = Σ HMAC(K_root, L("vault/root") ‖ u8(type) ‖ lp(id) ‖ u64(counter) ‖ nonce)  mod 2^256, over the type's live records
-tag    = HMAC(K_man, L("vault/manifest") ‖ enc(Manifest { epoch, types: list<{ type, count, root }> }))
+slot     = a random integer from 1 to 2^63 − 1, drawn when a record is first written and kept until it is deleted
+record   = nonce ‖ AEAD(K_rec, nonce, L("vault/record") ‖ u8(type) ‖ lp(id) ‖ u64(counter), pad(payload))
+address  = n ‖ AEAD(K_addr, n, L("vault/address") ‖ u64(slot), enc(VaultAddress { type, id, counter, nonce }))
+root     = Σ HMAC(K_root, L("vault/root") ‖ u8(type) ‖ lp(id) ‖ u64(counter) ‖ nonce)  mod 2^256, over the type's live records
+manifest = n ‖ AEAD(K_man, n, L("vault/manifest"), pad_1195(enc(Manifest { epoch, types: list<{ type, count, root }> })))
+pad(m)   = m ‖ 0x80 ‖ 0x00…   to the smallest of 256, 512, …, 131 072 bytes that is at least len(m) + 1
 ```
 
-`id` is at most 64 bytes, and `counter` grows by one on every write of a
-record. A record that is deleted and written again may start its counter
-again, so the term also covers the record's own nonce, which is fresh for every
-write: an older copy of a record never has the term of the current one, even at
-the same counter. Terms and roots are 256-bit big-endian integers. The manifest lists each type that has a live
-record, in ascending order, with its number of live records; `epoch` is the
-header's, and `tag` is compared in constant time. Its field layout is in
+`type` is 1 to 255 and `id` at most 64 bytes, both chosen by the client; a
+payload holds at most 128 KiB − 1 bytes, so that its padding fits. Unpadding
+accepts exactly the outputs of `pad`, as in §7.3. `pad_1195` pads the same way
+to exactly 1195 bytes, one more than the largest manifest, so every sealed
+manifest is 1235 bytes and its size shows nothing. A record's `nonce` is the one
+at its start, and its address is 138 bytes. `counter` grows by one on every
+write of a record. A record that is deleted and written again starts again at 0
+under a new slot, so the term also covers the record's nonce, which is fresh for
+every write: an older copy of a record never has the term of the current one.
+Terms and roots are 256-bit big-endian integers. The manifest lists each type
+that has a live record, in ascending order, with its number of live records;
+`epoch` is the header's. Sealing hides these fields in the file; in memory they
+are not secret, since the open vault keeps every record's type, id, counter and
+nonce, and every type's count and root, to read and write it. Field layouts are in
 [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures).
 
 `root` is updated incrementally — subtract a record's term, add the new one — so
 a write does not rehash the type, and because the terms are keyed, nobody
 without the vault keys can produce a matching root for a different set of
-records. A record holds at most 128 KiB (§2.1); collections that can grow beyond it —
+records. A payload holds at most 128 KiB − 1 bytes; collections that can grow beyond it —
 the seen message ids, skipped message keys, a long history — are split into
 records by contact and by day. A record write and its manifest update are
 **one SQLite transaction**,
@@ -1037,10 +1068,10 @@ Each is used exactly once, always as `L(name)`.
 | `ratchet/root` | §6.2 |
 | `seal/key`, `seal/ad` | §8 |
 | `token` | §9.1 |
-| `vault/master`, `vault/data-key`, `vault/record-key`, `vault/check-key`, `vault/manifest-key`, `vault/root-key` | §10.1 |
-| `vault/tpm`, `vault/tpm-pin` | §10.2 |
+| `vault/master`, `vault/data-key`, `vault/record-key`, `vault/address-key`, `vault/check-key`, `vault/manifest-key`, `vault/root-key` | §10.1 |
+| `vault/tpm`, `vault/tpm-pin`, `vault/keystore` | §10.2 |
 | `vault/check` | §10.3 |
-| `vault/record`, `vault/root`, `vault/manifest` | §10.4 |
+| `vault/record`, `vault/address`, `vault/root`, `vault/manifest` | §10.4 |
 | `card`, `card/key`, `card/ad` | §11.2 |
 | `directory-keys` | PROTOCOL §2.1 |
 | `fingerprint`, `invite/fingerprint` | §12 |
@@ -1068,6 +1099,7 @@ secret or associated-data inputs, so it cannot run that example itself.
 LUME publishes its own vectors for every construction above — identity and
 device derivation, prekey signatures, PQXDH, ratchet transcripts including
 skipped and out-of-order messages, contents, seals, introductions, cards,
-username certificates, directory key lists, vault headers, records and
-manifests, and safety numbers — generated once,
+username certificates, directory key lists, vault headers, Keystore inputs,
+record addresses, padded records, sealed manifests, and safety numbers —
+generated once,
 committed, and checked on every platform the core builds for.

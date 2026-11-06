@@ -7,6 +7,7 @@
 #include "lume/crypto/error.hpp"
 
 #include <cstdint>
+#include <span>
 
 namespace lume::crypto::detail {
 
@@ -15,6 +16,10 @@ namespace lume::crypto::detail {
 void require_operational();
 
 void throw_unless_operational(const Result<void>& state);
+
+void wipe(std::span<std::uint8_t> bytes) noexcept;
+
+[[nodiscard]] bool is_zero(ByteView bytes) noexcept;
 
 [[nodiscard]] inline const std::uint8_t* pointer_to(ByteView bytes) noexcept
 {

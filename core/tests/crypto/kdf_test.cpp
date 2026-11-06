@@ -3,6 +3,7 @@
 
 #include "lume/crypto/kdf.hpp"
 
+#include "crypto/hmac_internal.hpp"
 #include "support/mutate.hpp"
 #include "support/vectors.hpp"
 
@@ -11,6 +12,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 
 namespace lume::crypto {
 namespace {
@@ -26,6 +28,43 @@ TEST(HmacSha256, MatchesWycheproof)
         EXPECT_EQ(matches, vector.result() == "valid") << "tcId " << vector.id();
     });
     EXPECT_EQ(checked, suite.at("numberOfTests").get<int>());
+}
+
+ByteArray<hmac_sha256_size> tag_of(const detail::HmacKey& key, ByteView message)
+{
+    ByteArray<hmac_sha256_size> tag{};
+    if (!key.tag(message, tag)) {
+        ADD_FAILURE() << "a prepared key refused to tag";
+    }
+    return tag;
+}
+
+TEST(HmacKey, MatchesWycheproof)
+{
+    const auto suite = test::load_wycheproof("hmac_sha256_test.json");
+    const int checked = test::for_each_wycheproof_case(suite, [](const test::WycheproofCase& vector) {
+        const auto tag_bytes = vector.group.at("tagSize").get<std::size_t>() / 8;
+        const auto expected = vector.bytes("tag");
+        const auto tag = tag_of(detail::HmacKey::of(vector.bytes("key")), vector.bytes("msg"));
+        const bool matches = expected.size() == tag_bytes && std::ranges::equal(ByteView(tag).first(tag_bytes), expected);
+        EXPECT_EQ(matches, vector.result() == "valid") << "tcId " << vector.id();
+    });
+    EXPECT_EQ(checked, suite.at("numberOfTests").get<int>());
+}
+
+TEST(HmacKey, TagsEveryMessageWithTheSameKey)
+{
+    for (const std::size_t key_size : {std::size_t{0}, std::size_t{1}, std::size_t{32}, std::size_t{64}, std::size_t{65}, std::size_t{200}}) {
+        const Bytes key(key_size, 0x5c);
+        const auto prepared = detail::HmacKey::of(key);
+        for (const std::size_t message_size : {std::size_t{0}, std::size_t{1}, std::size_t{100}}) {
+            const Bytes message(message_size, static_cast<std::uint8_t>(message_size));
+            const auto first = tag_of(prepared, message);
+            EXPECT_TRUE(hmac_sha256(key, message).equals(first)) << key_size << " " << message_size;
+            EXPECT_EQ(tag_of(prepared, message), first) << key_size << " " << message_size;
+        }
+        EXPECT_NE(tag_of(prepared, Bytes{1}), tag_of(prepared, Bytes{2}));
+    }
 }
 
 TEST(HkdfSha256, MatchesWycheproof)
@@ -80,6 +119,13 @@ RC_GTEST_PROP(KdfProperties, DifferentInfoGivesDifferentKeys, (const Bytes& inpu
     const auto second = hkdf_sha256({}, input_key, other_info, 32);
     RC_ASSERT(first.has_value() && second.has_value());
     RC_ASSERT_FALSE(first->equals(second->view()));
+}
+
+RC_GTEST_PROP(KdfProperties, APreparedHmacKeyTagsLikeHmac, (const Bytes& key, const Bytes& first, const Bytes& second))
+{
+    const auto prepared = detail::HmacKey::of(key);
+    RC_ASSERT(hmac_sha256(key, first).equals(tag_of(prepared, first)));
+    RC_ASSERT(hmac_sha256(key, second).equals(tag_of(prepared, second)));
 }
 
 RC_GTEST_PROP(KdfProperties, HmacDependsOnEveryKeyBit, (const Bytes& key, const Bytes& message))

@@ -246,11 +246,15 @@ VaultHeader        = { version: u8, salt: bytes[16], ops: u32, mem: u32, hw_mode
                      tpm_point is present for hw_mode 2 and only then, as an uncompressed
                      P-256 point 0x04 ‖ x ‖ y
 Manifest           = { epoch: u64, types: list<{ type: u8, count: u32, root: bytes[32] }>≤32 }
-                     types strictly ascending, each with a count of at least 1
+                     each type at least 1, strictly ascending, each with a count of at least 1
+VaultAddress       = { type: u8, id_length: u8, id: bytes[64], counter: u64, nonce: bytes[24] }
+                     type at least 1; id_length at most 64; every byte of id from id_length on is 0
 ```
 
-`VaultHeader` and `Manifest` are stored on the device and never sent (CRYPTO
-§10); "the header without `check`" is every field before it, in this order.
+`VaultHeader`, `Manifest` and `VaultAddress` are stored on the device and never
+sent; the manifest and every address are stored only sealed, the manifest
+padded to one size (CRYPTO §10.4). "The header without `check`" is every field
+before it, in this order.
 
 Every `seal_key` and `ssk` is kind 4, and a `Card`'s `spk` is kind 1 and its
 `pqspk` kind 2. Decoding refuses any other kind, and a
