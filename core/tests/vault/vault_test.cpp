@@ -347,7 +347,8 @@ TEST(VaultHeader, MatchesTheLumeVectors)
             const auto& from_vector = header_vector(vector.at("from").get<std::string>());
             const auto& from = built.at(from_vector.at("name").get<std::string>());
             if (from_vector.at("passphrase") == vector.at("passphrase")) {
-                return detail::next_header(hardware_of(vector.at("hardware")), from, nonce);
+                const auto unlocked = must(open_header(master_of(from_vector), from.header()));
+                return detail::next_header(hardware_of(vector.at("hardware")), unlocked, nonce);
             }
             return detail::rekeyed_header(master_of(vector), from, must(confirm(master_of(from_vector), from)), nonce);
         }();
@@ -403,6 +404,13 @@ TEST(VaultHeader, SalvagesKeysOnlyWhenTheCheckAloneFails)
     EXPECT_EQ(refused("another_epoch"), Error::invalid_parameters);
     const auto& first = header_vector("keystore_first");
     EXPECT_EQ(test::error_of(salvage_keys(master_of(first), header_of(first))), Error::invalid_parameters);
+
+    const auto& epoch_zero = named(refusals, "tpm_epoch_zero");
+    auto damaged = header_of(epoch_zero);
+    damaged.check.front() = static_cast<std::uint8_t>(damaged.check.front() ^ 0x01U);
+    EXPECT_EQ(test::error_of(salvage_keys(master_of(epoch_zero), damaged)), Error::integrity);
+    damaged.epoch = 1;
+    EXPECT_TRUE(salvage_keys(master_of(epoch_zero), damaged).has_value());
 }
 
 TEST(VaultHeader, IsBoundToTheCostAndTheTpmKeyOfItsMasterKey)
@@ -565,7 +573,7 @@ TEST(VaultHeader, GivesTheHardwareInputOfItsOwnPassphraseKeyUntilItForgetsIt)
     const auto& first_vector = header_vector("keystore_first");
     const auto next = next_header(hardware_of(header_vector("keystore_next").at("hardware")), current);
     ASSERT_TRUE(next.has_value());
-    EXPECT_TRUE(must(hardware_input(*next)).equals(keystore->view()));
+    EXPECT_EQ(test::error_of(hardware_input(*next)), Error::invalid_parameters);
 
     current.forget_passphrase();
     EXPECT_EQ(test::error_of(hardware_input(current)), Error::invalid_parameters);
@@ -586,7 +594,29 @@ TEST(VaultHeader, GivesTheHardwareInputOfItsOwnPassphraseKeyUntilItForgetsIt)
     ASSERT_TRUE(confirmed.has_value());
     const auto rekeyed = rekeyed_header(master_from("changed", keystore_name(2), random_output()), current, *confirmed);
     ASSERT_TRUE(rekeyed.has_value());
-    EXPECT_TRUE(must(hardware_input(*rekeyed)).equals(must(hardware_input(passphrase_key("changed"), HardwareMode::keystore)).view()));
+    EXPECT_EQ(test::error_of(hardware_input(*rekeyed)), Error::invalid_parameters);
+    const auto unlocked = open_header(master_from("changed", keystore_name(2), random_output()), rekeyed->header());
+    EXPECT_EQ(test::error_of(unlocked), Error::wrong_passphrase);
+}
+
+TEST(VaultHeader, KeepsNoPassphraseKeyInTheHeadersItWrites)
+{
+    const auto master = master_from("floor", keystore_name(1), random_output());
+    const auto first = first_header(master);
+    ASSERT_TRUE(first.has_value());
+    EXPECT_EQ(test::error_of(hardware_input(*first)), Error::invalid_parameters);
+    EXPECT_EQ(test::error_of(next_header(must(hardware_key(keystore_name(2), random_output())), *first)),
+        Error::invalid_parameters);
+    const auto unlocked = open_header(master, first->header());
+    ASSERT_TRUE(unlocked.has_value());
+    EXPECT_TRUE(must(hardware_input(*unlocked)).equals(must(hardware_input(passphrase_key("floor"), HardwareMode::keystore)).view()));
+    const auto next = next_header(must(hardware_key(keystore_name(2), random_output())), *unlocked);
+    ASSERT_TRUE(next.has_value());
+    EXPECT_EQ(test::error_of(hardware_input(*next)), Error::invalid_parameters);
+    const auto confirmed = must(confirm(master, *unlocked));
+    const auto rekeyed = rekeyed_header(master_from("changed", keystore_name(2), random_output()), *unlocked, confirmed);
+    ASSERT_TRUE(rekeyed.has_value());
+    EXPECT_EQ(test::error_of(hardware_input(*rekeyed)), Error::invalid_parameters);
 }
 
 TEST(VaultKeys, NameHardwareKeysExactly)
@@ -1024,7 +1054,7 @@ Root random_root()
 
 RecordAddress random_address()
 {
-    return RecordAddress{.type = *rc::gen::inRange<std::uint8_t>(1, 0xff),
+    return RecordAddress{.type = static_cast<std::uint8_t>(*rc::gen::inRange<int>(1, 256)),
         .id = *rc::gen::container<Bytes>(*rc::gen::inRange<std::size_t>(0, record_id_bound + 1), rc::gen::arbitrary<std::uint8_t>()),
         .counter = *rc::gen::arbitrary<std::uint64_t>()};
 }

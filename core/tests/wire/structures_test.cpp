@@ -228,7 +228,8 @@ Manifest random_manifest()
 {
     Manifest value;
     value.epoch = any_integer<std::uint64_t>();
-    auto types = *rc::gen::container<std::vector<std::uint8_t>>(rc::gen::inRange<std::uint8_t>(1, 0xff));
+    auto types = *rc::gen::container<std::vector<std::uint8_t>>(
+        rc::gen::map(rc::gen::inRange<int>(1, 256), [](int type) { return static_cast<std::uint8_t>(type); }));
     std::ranges::sort(types);
     const auto [first, last] = std::ranges::unique(types);
     types.erase(first, last);
@@ -247,7 +248,7 @@ Manifest random_manifest()
 VaultAddress random_vault_address()
 {
     VaultAddress value;
-    value.type = *rc::gen::inRange<std::uint8_t>(1, std::numeric_limits<std::uint8_t>::max());
+    value.type = static_cast<std::uint8_t>(*rc::gen::inRange<int>(1, 256));
     value.id_length = *rc::gen::inRange<std::uint8_t>(0, static_cast<std::uint8_t>(vault_record_id_bound + 1));
     const auto id = test::random_bytes_of(value.id_length);
     std::ranges::copy(id, value.id.begin());

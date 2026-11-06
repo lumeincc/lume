@@ -763,10 +763,11 @@ Each derived key has one job. Records are encrypted under keys derived from
 `VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
 nothing else. `Kpw`, `KEK`, `VK` and the keys derived from them never leave the
 core. The platform's key store (§10.2) receives only a value derived from `Kpw`
-for that purpose, or a secret the core drew for it. The core keeps `Kpw` only
-until the flow that needs it has committed, whether that is an unlock's move to
-the next epoch or a passphrase change, and then wipes it; the open vault holds
-`VK` and the keys derived from it, never `Kpw`.
+for that purpose, or a secret the core drew for it. Only a header opened at
+unlock keeps `Kpw`, so that the vault can move to the next epoch; a header the
+core writes, at creation, at the next epoch or after a passphrase change, keeps
+none. The unlock wipes `Kpw` once the next epoch has committed, so the open vault
+holds `VK` and the keys derived from it, never `Kpw`.
 
 `PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
 its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
@@ -897,7 +898,9 @@ under a new slot, so the term also covers the record's nonce, which is fresh for
 every write: an older copy of a record never has the term of the current one.
 Terms and roots are 256-bit big-endian integers. The manifest lists each type
 that has a live record, in ascending order, with its number of live records;
-`epoch` is the header's. Field layouts are in
+`epoch` is the header's. Sealing hides these fields in the file; in memory they
+are not secret, since the open vault keeps every record's type, id, counter and
+nonce, and every type's count and root, to read and write it. Field layouts are in
 [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures).
 
 `root` is updated incrementally — subtract a record's term, add the new one — so

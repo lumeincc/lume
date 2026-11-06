@@ -188,8 +188,7 @@ Result<wire::VaultHeader> seal(const SecretBytes& master_key, const SecretBytes&
     return header;
 }
 
-Result<OpenedHeader> opened(Result<wire::VaultHeader> header, const SecretBytes& data_key, const SecretBytes& passphrase,
-    const KeyName& hardware)
+Result<OpenedHeader> written(Result<wire::VaultHeader> header, const SecretBytes& data_key, const KeyName& hardware)
 {
     if (!header) {
         return std::unexpected(header.error());
@@ -198,7 +197,7 @@ Result<OpenedHeader> opened(Result<wire::VaultHeader> header, const SecretBytes&
     if (!keys) {
         return std::unexpected(keys.error());
     }
-    return KeyAccess::opened_header(*header, std::move(*keys), passphrase.clone(), hardware);
+    return KeyAccess::opened_header(*header, std::move(*keys), SecretBytes{}, hardware);
 }
 
 }
@@ -503,8 +502,8 @@ Result<OpenedHeader> first_header(const MasterKey& master_key, const SecretBytes
     if (hardware.epoch != first_epoch || data_key.size() != key_size) {
         return std::unexpected(Error::invalid_parameters);
     }
-    return opened(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), hardware, first_epoch, nonce),
-        data_key, KeyAccess::passphrase(master_key), hardware);
+    return written(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), hardware, first_epoch, nonce),
+        data_key, hardware);
 }
 
 Result<OpenedHeader> next_header(const HardwareKey& hardware_key, const OpenedHeader& current, const Nonce& nonce)
@@ -528,8 +527,7 @@ Result<OpenedHeader> next_header(const HardwareKey& hardware_key, const OpenedHe
         return std::unexpected(master_key.error());
     }
     const auto& data_key = KeyAccess::data(current.keys());
-    return opened(seal(*master_key, data_key, header.salt, cost_of(header), name, header.epoch + 1, nonce), data_key,
-        passphrase, name);
+    return written(seal(*master_key, data_key, header.salt, cost_of(header), name, header.epoch + 1, nonce), data_key, name);
 }
 
 Result<OpenedHeader> rekeyed_header(
@@ -547,9 +545,9 @@ Result<OpenedHeader> rekeyed_header(
         return std::unexpected(Error::invalid_parameters);
     }
     const auto& data_key = KeyAccess::data(current.keys());
-    return opened(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), name,
-                      header.epoch + 1, nonce),
-        data_key, KeyAccess::passphrase(master_key), name);
+    return written(seal(KeyAccess::secret(master_key), data_key, master_key.salt(), master_key.cost(), name,
+                       header.epoch + 1, nonce),
+        data_key, name);
 }
 
 }

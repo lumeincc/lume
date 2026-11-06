@@ -252,7 +252,7 @@ bool is_canonical(const Manifest& value)
 void write(Writer& writer, const Manifest& value)
 {
     if (!canonical_types(value.types)) {
-        throw std::invalid_argument("manifest types must be strictly ascending from 1, each with a live record");
+        throw std::invalid_argument("manifest types must be at least 1 and strictly ascending, each with a live record");
     }
     writer.u64(value.epoch).count(value.types.size(), manifest_types_bound);
     for (const auto& entry : value.types) {

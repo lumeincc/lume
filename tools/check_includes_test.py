@@ -10,13 +10,13 @@ INTERNAL = "core/src/vault/vault_internal.hpp"
 HEADERS = (KEY_ACCESS, INTERNAL, "core/src/vault/keys.hpp", "core/include/lume/vault/vault.hpp")
 
 
-def failures_for(name: str, line: str) -> list[str]:
-    return check({name: line + "\n"}, HEADERS)
+def failures_for(name: str, text: str) -> list[str]:
+    return check({name: text + "\n"}, HEADERS)
 
 
 class GuardedHeaders(unittest.TestCase):
     def test_every_spelling_of_the_key_access_header_is_caught(self) -> None:
-        for line in (
+        for text in (
             '#include "vault/key_access.hpp"',
             "#include <vault/key_access.hpp>",
             '#include "key_access.hpp"',
@@ -26,9 +26,13 @@ class GuardedHeaders(unittest.TestCase):
             '#include "Vault/Key_Access.hpp"',
             '  #  include   "vault/key_access.hpp"',
             '#include "vault\\\\key_access.hpp"',
+            '%:include "vault/key_access.hpp"',
+            '#\\\ninclude "vault/key_access.hpp"',
+            '#inc\\\nlude "key_access.hpp"',
+            '#include \\\n"vault/key_access.hpp"',
         ):
-            with self.subTest(line=line):
-                self.assertTrue(failures_for("core/src/vault/store.cpp", line))
+            with self.subTest(text=text):
+                self.assertTrue(failures_for("core/src/vault/store.cpp", text))
 
     def test_the_two_owners_may_include_the_key_access_header(self) -> None:
         for name in ("core/src/vault/keys.cpp", "core/src/vault/records.cpp"):
@@ -43,20 +47,38 @@ class GuardedHeaders(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertTrue(failures_for(name, "#include <vault/vault_internal.hpp>"))
 
-    def test_public_headers_include_only_public_headers(self) -> None:
+    def test_a_guarded_header_cannot_be_reached_through_another_file(self) -> None:
+        files = {
+            "core/tests/support/vault.hpp": '#include "vault/vault_internal.hpp"\n',
+            "core/src/vault/vault.cpp": '#include "../../tests/support/vault.hpp"\n',
+            "core/tests/vault/store_test.cpp": '#include "support/vault.hpp"\n',
+        }
+        failures = check(files, HEADERS)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("core/src/vault/vault.cpp", failures[0])
+        self.assertIn("through core/tests/support/vault.hpp", failures[0])
+
+    def test_public_headers_include_only_public_and_standard_headers(self) -> None:
         name = "core/include/lume/vault/hardware.hpp"
-        self.assertTrue(failures_for(name, "#include <vault/keys.hpp>"))
-        self.assertTrue(failures_for(name, '#include "vault/keys.hpp"'))
-        self.assertEqual(failures_for(name, '#include "lume/vault/vault.hpp"'), [])
-        self.assertEqual(failures_for(name, '#include "vault.hpp"'), [])
-        self.assertEqual(failures_for(name, "#include <optional>"), [])
+        for text in ("#include <vault/keys.hpp>", '#include "vault/keys.hpp"', "#include <sodium.h>", '#include "sodium.h"',
+                     "#include <oqs/oqs.h>"):
+            with self.subTest(text=text):
+                self.assertTrue(failures_for(name, text))
+        for text in ('#include "lume/vault/vault.hpp"', '#include "vault.hpp"', "#include <optional>", "#include <string_view>"):
+            with self.subTest(text=text):
+                self.assertEqual(failures_for(name, text), [])
 
-    def test_an_include_without_a_header_name_is_refused(self) -> None:
-        self.assertTrue(failures_for("core/src/vault/store.cpp", "#include LUME_HEADER"))
+    def test_includes_must_name_files_the_check_can_read(self) -> None:
+        for text in ("#include LUME_HEADER", '#include "missing.hpp"', '#include "C:/dev/lume/core/src/vault/key_access.hpp"',
+                     "#include </usr/include/vault/key_access.hpp>"):
+            with self.subTest(text=text):
+                self.assertTrue(failures_for("core/src/vault/store.cpp", text))
+        inc = check({"core/src/vault/store.cpp": '#include "store_impl.inc"\n'}, (*HEADERS, "core/src/vault/store_impl.inc"))
+        self.assertTrue(inc)
 
-    def test_headers_outside_the_repository_are_ignored(self) -> None:
+    def test_system_headers_are_allowed_outside_public_headers(self) -> None:
         self.assertEqual(failures_for("core/src/vault/keys.cpp", "#include <sodium.h>"), [])
-        self.assertEqual(failures_for("core/src/vault/keys.cpp", '#include "../../../outside.hpp"'), [])
+        self.assertEqual(failures_for("core/src/vault/keys.cpp", "#include <oqs/oqs.h>"), [])
 
 
 if __name__ == "__main__":
