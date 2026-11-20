@@ -6,13 +6,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 # LUME — Cryptography
 
 Status: **draft**, revision 9.
-Nothing here is implemented until this document says it is; code that
-disagrees with it is a bug in one of the two.
 
 This document specifies every key, derivation and construction LUME uses. It
 composes vetted primitives from libsodium and liboqs and invents none. Where a
 construction follows a published design, the design is named and the
 deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
+
+**What is built.** The core library in `core/` implements the primitives and
+conventions (§2), the recovery phrase and identity keys (§3), prekey signatures
+and their validity windows (§4), the handshake computations of both sides
+(§5.1 to §5.4), the Double Ratchet with header encryption and its skipped-key
+store (§6), the content encoding and padding (§7.1, §7.3), sealed sender (§8),
+the vault's key schedule, header, records, sealed record addresses and sealed
+manifest (§10.1 to §10.4), introduction cards (§11.2), safety numbers and
+invite fingerprints (§12), and directory key lists and username certificates
+(PROTOCOL §2.1). Everything else is designed here but not built yet: the
+session layer that keeps sessions, prekeys, receipts and delivery tokens (the
+prekey lifecycle of §4, §5.5, §7.2, §9), the vault's storage, the platform side
+of its hardware binding (§10.2), the unlock, rollback-detection, lock and wipe
+flows (§10.3, §10.5, §10.6), attachments and group messaging (§11), the relay
+and the apps. Those parts are described as LUME will work when it is released.
+Where the code and this document disagree, one of them has a bug.
 
 ---
 
@@ -30,7 +44,7 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
   stole session state once and then lost access: the ratchet heals within one
   round trip.
 - **Who sent a stored envelope**: the relay stores the recipient, never the
-  sender (§9).
+  sender (§9.5).
 - **Group state**: the relay holds no groups, names or member lists (§11).
 - **Local data at rest** against someone holding the device's storage but not
   the passphrase, to the degree §10 states per platform.
@@ -51,9 +65,8 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
   can attach a name to the wrong identity until that key is dropped from the
   directory key list — up to 14 days after the drop if the relay withholds the
   new list (PROTOCOL §2.1); the safety number (§12) is the check that does not
-  depend on the relay. A certificate given to a contact can also
-  be shown by that contact to others as proof that a username belongs to an
-  identity.
+  depend on the relay. A certificate given to a contact can also be shown by
+  that contact to others as proof that a username belongs to an identity.
 - **First flights against a later compromise.** The first envelopes of a
   session that used no one-time key are sealed to a signed prekey whose private
   half is kept up to 40 days (§4) — or, if the app is not opened in that time,
@@ -111,11 +124,14 @@ deviations are listed. The relay protocol is in [PROTOCOL.md](PROTOCOL.md).
 | `Random(n)` | OS CSPRNG | `randombytes_buf`; liboqs is configured to draw from it too |
 | `Eq(a, b)` | constant-time equality | `sodium_memcmp` |
 
-**Versions.** libsodium ≥ 1.0.19 (the HKDF-SHA256 API). liboqs **≥ 0.12.0**:
-0.10.x implements the FIPS 203 *draft*, which does not interoperate with the
-final standard, and 0.10.0 has a secret-dependent branch in ML-KEM
-decapsulation under Clang 15–18 (CVE-2024-36405). Both versions are pinned in
-the vcpkg baseline; liboqs is built with ML-KEM-768 only and without OpenSSL.
+**Versions.** libsodium must be at least 1.0.19, the first release with the
+HKDF-SHA256 API; the build requires 1.0.20 or later. liboqs must be at least
+**0.12.0**: 0.10.x implements the FIPS 203 *draft*, which does not
+interoperate with the final standard, and 0.10.0 has a secret-dependent branch
+in ML-KEM decapsulation under Clang 15–18 (CVE-2024-36405). The build takes
+libsodium from the pinned vcpkg baseline and liboqs 0.15.0 from the
+repository's own vcpkg port, which builds it with ML-KEM-768 only and without
+OpenSSL.
 
 **Self-test.** At start-up the core checks SHA-2, HMAC, HKDF, X25519 (including
 rejection of low-order points), Ed25519 (including rejection of a small-order
@@ -149,32 +165,31 @@ proves it with Wycheproof's modulus-overflow vectors.
   number does not multiply the guard pages. Values that exist only inside one
   function call — a recovery-phrase word while it is looked up, its index, an
   intermediate bit buffer — sit on the stack and in registers and are not wiped.
-- **Locking memory is best effort.** `sodium_malloc` asks the system to keep
-  its pages out of swap, and the system may refuse: Windows locks no more than a
+- **Locking memory is best effort.** `sodium_malloc` asks the system to keep its
+  pages out of swap, and the system may refuse: Windows locks no more than a
   process's minimum working set, 200 KiB by default, and Android limits locked
-  memory per app. At start-up the client raises the limit to 32 MiB where the
-  platform allows it: on Windows the minimum working set, and the maximum by
-  the same amount; elsewhere the soft `RLIMIT_MEMLOCK`, up to its hard limit.
-  Every `SecretBytes` locks at least one whole page, so 32 MiB holds about
-  8 000 of them with 4 KiB pages and fewer with larger ones. Android usually
-  sets the limit to 64 KiB, which an app cannot raise, so there most secrets
-  are not locked. The client checks every lock and reports in its diagnostics
-  how many failed and whether the limit reached 32 MiB. A key on a page that
-  was not locked can reach swap or the page file and outlive its wiping there,
-  and even a locked page is written to a hibernation file or a crash dump; on
-  disk it is protected only by the device's disk encryption — BitLocker,
-  FileVault or Android's file-based encryption. The same holds for Argon2id's
-  working memory (§10.1): `crypto_pwhash` neither locks nor wipes it, and its
-  last block determines `Kpw`; while it runs it can reach the page file, and
-  after it is freed its pages hold that block until the system reuses them.
+  memory per app. At start-up the core raises the limit to 32 MiB where the
+  platform allows it: on Windows the minimum working set, and the maximum by the
+  same amount; elsewhere the soft `RLIMIT_MEMLOCK`, up to its hard limit. Every
+  `SecretBytes` locks at least one whole page, so 32 MiB holds about 8 000 of
+  them with 4 KiB pages and fewer with larger ones. Android usually sets the
+  limit to 64 KiB, which an app cannot raise, so there most secrets are not
+  locked. The core counts every lock that fails and reports, for the app's
+  diagnostics, how many failed and whether the limit reached 32 MiB. A key on a
+  page that was not locked can reach swap or the page file and outlive its
+  wiping there, and even a locked page is written to a hibernation file or a
+  crash dump; on disk it is protected only by the device's disk encryption —
+  BitLocker, FileVault or Android's file-based encryption. The same holds for
+  Argon2id's working memory (§10.1): `crypto_pwhash` neither locks nor wipes it,
+  and its last block determines `Kpw`; while it runs it can reach the page file,
+  and after it is freed its pages hold that block until the system reuses them.
 - **Private keys are held as seeds**: Ed25519 as its 32-byte seed, ML-KEM-768 as
   its 64-byte seed `d ‖ z` (FIPS 203 §7.1). The expanded forms exist only inside
   one signing or decapsulation, so a stored key cannot be half-replaced.
 - **`AEAD` always draws its own nonce**, `n = Random(24)`, and every use stores
   it next to the ciphertext — as `n ‖ AEAD(k, n, ad, m)` or in a structure's
-  `nonce` field; no caller chooses a nonce. A plaintext is at most
-  128 KiB, checked before anything is allocated; larger data uses `Stream`
-  (§11.1).
+  `nonce` field; no caller chooses a nonce. A plaintext is at most 128 KiB,
+  checked before anything is allocated; larger data uses `Stream` (§11.1).
 - Times are seconds since the Unix epoch. "Now" is checked with 5 minutes of
   allowed clock skew.
 - **Generation** always means the account's device generation (§3.3). The
@@ -288,12 +303,12 @@ while it is published, as long as its `created_at` is not in the future.
 the vault is unlocked. So on every unlock the client withdraws the generations
 that start more than a day later, deletes their private halves, and uploads
 fresh ones up to four weeks ahead of each rotating kind. Their `created_at`
-values continue the active key's schedule — `created_at` of the active key
-plus 7, 14, 21 and 28 days — so frequent unlocks never stretch a rotation past
-§4's 9 days; the relay serves each from its
-`created_at` on and refuses uploads more than 31 days ahead. A user who opens
-the app at least once every four weeks never becomes unreachable, and a device
-compromise exposes only the generations created since the last unlock.
+values continue the active key's schedule — `created_at` of the active key plus
+7, 14, 21 and 28 days — so frequent unlocks never stretch a rotation past the 9
+days above. The relay serves each from its `created_at` on and refuses uploads
+more than 31 days ahead. A user who opens the app at least once every four weeks
+never becomes unreachable, and a device compromise exposes only the generations
+created since the last unlock.
 
 **Ids** are random 32-bit values, checked against the ids already used for that
 kind in the vault.
@@ -390,15 +405,16 @@ plaintext, it is authenticated by the session.
 
 **The name is checked offline.** `certificate` is signed by the relay's
 directory key (PROTOCOL §2.1). Alice fetches her own on her authenticated
-connection, which reveals nothing about Bob. Bob shows the username only if:
-the certificate's directory key is on the client's current directory key list
+connection, which reveals nothing about Bob. Bob shows the username only if: the
+certificate's directory key is on the client's current directory key list
 (PROTOCOL §2.1) and the key's window contains the time of the check; its
 username follows the username rule; its `issued_at` is not in the future, it
-has not expired and it expires no more than 31 days from now; its `ik_sig` and
-`ik_dh` equal the session's peer identity; and its `account_id` equals the
-introduction's. The name stays verified only until that certificate expires. Otherwise he shows "unverified contact"
-with the safety number. He makes no request to the relay to check a name, so
-checking reveals nothing either.
+claims a life of at most 30 days from its `issued_at`; it has not expired and it
+expires no more than 31 days from now; its `ik_sig` and `ik_dh` equal the
+session's peer identity; and its `account_id` equals the introduction's.
+Otherwise he shows "unverified contact" with the safety number. The name stays
+verified only until that certificate expires. He makes no request to the relay
+to check a name, so checking reveals nothing either.
 
 The seal's sender hint (§8) must equal `ik_sig` of the initial header, or the
 envelope is dropped.
@@ -439,8 +455,9 @@ initiated. If both sides started sessions at the same time and each has
 received in the other's, the one initiated by the identity with the
 lexicographically lower `IKsig.pk` is used. Every other session is receive-only
 and deleted 30 days after it stopped being used. A session made receive-only by
-§5.4 is never sent in again, even if it is the newest to have received. A contact has at most three
-sessions; a fourth makes the oldest receive-only session go first.
+§5.4 is never sent in again, even if it is the newest to have received. A
+contact has at most three sessions; a fourth makes the oldest receive-only
+session go first.
 
 ### 5.6 Why hybrid
 
@@ -596,22 +613,21 @@ A recipient answers with **delivery receipts**: one `Content` of kind
 a minute per contact and only to the message's sender, also in groups. A
 receipt is resent whenever a duplicate of an already received message arrives.
 
-A sender keeps the content of every message without a receipt for up to 30
-days. It resends it after 1 hour, 4 hours, 24 hours and 7 days; after that only
-when something shows it is missing — a receipt from the contact for a later
-message but not for this one, acted on at most once a day — and when a new
-session starts (§5.4). A send the relay answers with a transient error is not a
-resend: it is retried with backoff. Each resend is a new ratchet message, freshly
+A sender keeps the content of every message without a receipt for up to 30 days.
+It resends it after 1 hour, 4 hours, 24 hours and 7 days; after that only when
+something shows it is missing — a receipt from the contact for a later message
+but not for this one, acted on at most once a day — and when a new session
+starts (§5.4). A send the relay answers with a transient error is not a resend:
+it is retried with backoff. Each resend is a new ratchet message, freshly
 sealed, so two resends cannot be linked by their bytes. Resends that fall due
 while §5.4 holds a backlog wait with it. A send the relay refuses for good —
 `NOT_ACCEPTED`, `NOT_FOUND`, `TOO_LARGE`, `MALFORMED` — is not retried; the
-message is marked as not delivered. While its recipient is
-away a message is therefore at most five envelopes on the relay, one more for
-each session restart. A recipient keeps the ids it has seen for 31 days and
-discards any content whose id it already has, whatever session it arrives in.
-Resending never produces a duplicate on screen, and a message lost to
-eviction, a relay crash or a recovery comes back within the 30 days once the
-recipient is reachable again.
+message is marked as not delivered. While its recipient is away a message is
+therefore at most five envelopes on the relay, one more for each session
+restart. A recipient keeps the ids it has seen for 31 days and discards any
+content whose id it already has, whatever session it arrives in. Resending never
+produces a duplicate on screen, and a message lost to eviction, a relay crash or
+a recovery comes back within the 30 days once the recipient is reachable again.
 
 ### 7.3 Padding
 
@@ -674,10 +690,10 @@ one that verifies means the recipient recovered, and the sender starts a new
 session (§5.4) instead of sealing.
 
 **Forward secrecy of the sender.** A seal key's private half is deleted 40 days
-after its `created_at` (§4), so a recorded
-envelope stops revealing its sender to someone who later takes Bob's device or
-phrase after that. The seal is classical X25519; a quantum adversary who records
-envelopes could later learn *who* sent them, not *what* they said.
+after its `created_at` (§4), so a recorded envelope stops revealing its sender
+to someone who later takes Bob's device or phrase after that. The seal is
+classical X25519; a quantum adversary who records envelopes could later learn
+*who* sent them, not *what* they said.
 
 ---
 
@@ -720,29 +736,39 @@ Blocking turns the contact's token into a **sink** and adds their identity to
 the block list. The relay answers a sink token **exactly as a live one** in
 every request — sending, fetching a bundle, an identity or a seal key — and
 silently discards envelopes that arrive on it; quotas are charged on the bytes
-presented, whether or not they are kept. Blobs are the exception that proves
-the rule: an uploader can download its own blob, so a blob uploaded on a sink
-token is stored and served like any other and expires unread. It counts against
-that token's own limits and in that token's answers, never against what the
-recipient's other tokens may store (PROTOCOL §4.7). No cap, eviction or `UNAVAILABLE` answer
-depends on whether a token is a sink. A blocked sender therefore gets
-no signal from the relay. Revoking a token outright is used only for rotation
-(§9.1), when the contact already holds the replacement.
+presented, whether or not they are kept. Blobs are the one exception, and they
+still give no signal: an uploader can download its own blob, so a blob uploaded
+on a sink token is stored and served like any other and expires unread. It
+counts against that token's own limits and in that token's answers, never
+against what the recipient's other tokens may store (PROTOCOL §4.7). No cap,
+eviction or `UNAVAILABLE` answer depends on whether a token is a sink. A
+blocked sender therefore gets no signal from the relay. Revoking a token
+outright is used only for rotation (§9.1), when the contact already holds the
+replacement.
 
 ### 9.5 What the relay and the vault learn
 
-For an undelivered envelope the relay holds `(recipient, token hash or
-"intro", sealed bytes, time)`: given only its database, the sender cannot be
-identified. A token is a stable pseudonym for one contact of one recipient while
-it lives; the relay can count envelopes per pseudonym and pseudonyms per
-recipient, and a live operator can try to match pseudonyms across rotations by
-timing. On the recipient's side the vault maps tokens to contacts, so whoever
-unlocks the vault learns the sender of any recorded envelope that arrived on a
-token still mapped.
+For an undelivered envelope the relay holds the recipient and its generation,
+the lane, the sealed bytes and the time it arrived (PROTOCOL §7). The lane is a
+token hash, or for the introduction lane the invite hash, if any. No column
+names the sender, so the relay's database alone does not identify who sent an
+envelope. A token hash is a pseudonym: it stands for one contact of one
+recipient for as long as the token lives. For an introduction without an invite
+the relay also keeps the contributor's network prefix, hashed under that day's
+key, until the envelope is deleted. The relay can count envelopes per pseudonym
+and pseudonyms per recipient, and a live operator can try to match pseudonyms
+across rotations by timing. On the recipient's side the vault maps tokens to
+contacts, so whoever unlocks the vault learns the sender of any recorded
+envelope that arrived on a token still mapped.
 
 ---
 
 ## 10. Vault — data at rest
+
+The core implements the vault's formats: the key schedule, the header, records,
+sealed record addresses and the sealed manifest (§10.1 to §10.4). The storage
+in SQLite, the platform's key stores (§10.2) and the unlock, rollback-detection,
+lock and wipe flows (§10.3, §10.5, §10.6) are not built yet.
 
 ### 10.1 Keys
 
@@ -760,14 +786,15 @@ K_root  = HKDF(0^32, VK, L("vault/root-key"), 32)
 ```
 
 Each derived key has one job. Records are encrypted under keys derived from
-`VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK` and re-encrypts
-nothing else. `Kpw`, `KEK`, `VK` and the keys derived from them never leave the
-core. The platform's key store (§10.2) receives only a value derived from `Kpw`
-for that purpose, or a secret the core drew for it. Only a header opened at
-unlock keeps `Kpw`, so that the vault can move to the next epoch; a header the
-core writes, at creation, at the next epoch or after a passphrase change, keeps
-none. The unlock wipes `Kpw` once the next epoch has committed, so the open vault
-holds `VK` and the keys derived from it, never `Kpw`.
+`VK`, which never changes; a new passphrase or a new hardware key re-wraps `VK`
+and re-encrypts nothing else. `Kpw`, `KEK`, `VK` and the keys derived from them
+never leave the core. The platform's key store (§10.2) receives only a value
+derived from `Kpw` for that purpose, or a secret the core drew for it. Only a
+header opened at unlock keeps `Kpw`, so that the vault can move to the next
+epoch; a header the core writes, at creation, at the next epoch or after a
+passphrase change, keeps none. The unlock wipes `Kpw` once the next epoch has
+committed, so the open vault holds `VK` and the keys derived from it, never
+`Kpw`.
 
 `PWHash` runs Argon2id v1.3 (§2) with one lane and a 32-byte output; `ops` is
 its number of passes and `mem` its memory in KiB. The passphrase is the UTF-8
@@ -810,11 +837,12 @@ per-device constant that the TPM releases only for the right `x`. It binds the
 vault to the device and makes every guess pay a TPM operation and a lockout
 count; it adds no entropy, and the passphrase enters the vault key only through
 `Kpw` (§10.1). That guess cost holds only because the usage authorisation is the
-TPM object's own authValue, checked inside the TPM: the Windows test suite
-proves that a wrong value fails with the TPM's authorisation error and advances
-the dictionary-attack counter. At setup the vault creates `K_tpm`, sets its usage authorisation and performs
-one ECDH; if the provider cannot do all three, the device is treated as
-software only. A passphrase change creates a new `K_tpm` and `P`, commits the
+TPM object's own authValue, checked inside the TPM. The Windows integration,
+which is not built yet, must prove in its tests that a wrong value fails with
+the TPM's authorisation error and advances the dictionary-attack counter. At
+setup the vault creates `K_tpm`, sets its usage authorisation and performs one
+ECDH; if the provider cannot do all three, the device is treated as software
+only. A passphrase change creates a new `K_tpm` and `P`, commits the
 header re-wrapped under them, and only then deletes the old key — so a crash
 leaves a vault that opens, and an authorisation value that leaked once is
 worthless afterwards.
@@ -854,15 +882,14 @@ key is bound to the `salt`, `ops` and `mem` it was derived with and to the
 hardware key it used, which is named by the header's `epoch` in Keystore and
 software mode and by `tpm_point` in TPM mode; a TPM header's epoch is bound only
 through `check`. The core refuses to open a header with a master key bound to
-another. Unlocking computes `Kpw`, `Khw`
-and `KEK`, compares `check` in constant time and tries to unwrap `VK`. A wrong
-passphrase or hardware key fails both, and so does a header changed in a field
-the keys depend on — `salt`, `ops`, `mem`, `hw_mode`, `tpm_point` — or in
-`wrapped_data_key`; these cannot be told apart and are reported as a wrong
-passphrase. A header whose `check` fails while `VK` unwraps was changed after
-it was written, and one whose `check` verifies while `VK` does not unwrap was
-written wrongly: both are integrity errors and never reported as a wrong
-passphrase.
+another. Unlocking computes `Kpw`, `Khw` and `KEK`, compares `check` in constant
+time and tries to unwrap `VK`. A wrong passphrase or hardware key fails both,
+and so does a header changed in a field the keys depend on — `salt`, `ops`,
+`mem`, `hw_mode`, `tpm_point` — or in `wrapped_data_key`; these cannot be told
+apart and are reported as a wrong passphrase. A header whose `check` fails while
+`VK` unwraps was changed after it was written, and one whose `check` verifies
+while `VK` does not unwrap was written wrongly: both are integrity errors and
+never reported as a wrong passphrase.
 
 | | `ops` | `mem` |
 |---|---|---|
@@ -889,49 +916,50 @@ pad(m)   = m ‖ 0x80 ‖ 0x00…   to the smallest of 256, 512, …, 131 072 by
 
 `type` is 1 to 255 and `id` at most 64 bytes, both chosen by the client; a
 payload holds at most 128 KiB − 1 bytes, so that its padding fits. Unpadding
-accepts exactly the outputs of `pad`, as in §7.3. `pad_1195` pads the same way
-to exactly 1195 bytes, one more than the largest manifest, so every sealed
-manifest is 1235 bytes and its size shows nothing. A record's `nonce` is the one
-at its start, and its address is 138 bytes. `counter` grows by one on every
-write of a record. A record that is deleted and written again starts again at 0
-under a new slot, so the term also covers the record's nonce, which is fresh for
-every write: an older copy of a record never has the term of the current one.
-Terms and roots are 256-bit big-endian integers. The manifest lists each type
-that has a live record, in ascending order, with its number of live records;
-`epoch` is the header's. Sealing hides these fields in the file; in memory they
-are not secret, since the open vault keeps every record's type, id, counter and
-nonce, and every type's count and root, to read and write it. Field layouts are in
+accepts exactly the outputs of `pad`, as in §7.3. A record's `nonce` is the one
+at its start, and its sealed address is 138 bytes. `counter` grows by one on
+every write of a record. A record that is deleted and written again starts
+again at 0 under a new slot, so a counter can repeat; the term therefore also
+covers the record's nonce, which is fresh for every write, and an older copy of
+a record never has the term of the current one. Terms and roots are 256-bit
+big-endian integers.
+
+The manifest lists each type that has a live record, at most 32 types, in
+ascending order, each with its number of live records; `epoch` is the header's.
+`pad_1195` pads the same way as `pad`, to exactly 1195 bytes, one more than the
+largest manifest, so every sealed manifest is 1235 bytes and its size shows
+nothing. Sealing hides these fields in the file. In memory they are not secret:
+the open vault keeps every record's type, id, counter and nonce, and every
+type's count and root, to read and write it. Field layouts are in
 [PROTOCOL.md §3.2](PROTOCOL.md#32-shared-structures).
 
-`root` is updated incrementally — subtract a record's term, add the new one — so
-a write does not rehash the type, and because the terms are keyed, nobody
+`root` is updated incrementally — subtract a record's old term, add the new
+one — so a write does not rehash the type. Because the terms are keyed, nobody
 without the vault keys can produce a matching root for a different set of
-records. A payload holds at most 128 KiB − 1 bytes; collections that can grow beyond it —
-the seen message ids, skipped message keys, a long history — are split into
-records by contact and by day. A record write and its manifest update are
-**one SQLite transaction**,
+records. Collections that can grow beyond one payload — the seen message ids,
+skipped message keys, a long history — are split into records by contact and
+by day. A record write and its manifest update are **one SQLite transaction**,
 so a crash leaves both or neither. On unlock the vault recomputes every root
 and keeps the counter and nonce of every live record and the count and root of
-every type; until it locks, it reads a record only at the counter and nonce it
+every type. Until it locks, it reads a record only at the counter and nonce it
 verified or wrote itself, and computes every manifest update from the counts
 and roots it holds, so a row or a manifest swapped while the vault is open is
-caught when it is read or written over. A
-missing, extra or older record is an **integrity error**: the vault stops
-writing for the session and says so, never treating a record as empty. The user
-can then export everything that still authenticates and start again from the
-recovery phrase.
+caught when it is read or written over. A missing, extra or older record is an
+**integrity error**: the vault stops writing for the session and says so, and
+never treats a record as empty. The user can then export everything that still
+authenticates and start again from the recovery phrase.
 
 ### 10.5 Rollback
 
-The vault **epoch** increases on every unlock. On Android the epoch is part of
-the Keystore key alias: unlock creates the key for epoch `e + 1`, re-wraps `VK`
-under it and commits the header, and only then deletes the key for epoch `e`. An
-older copy of the vault file then finds no key for its epoch while a newer one
-exists, which is reported as rollback. Detection works at the granularity of an
-unlock: the manifest is bound to the vault only through the epoch, so a copy
-taken since the last unlock carries the current epoch and is not detected at
-the next one. Restoring a full device image — Keystore included — defeats this
-as well. On Windows rollback is not detected in this version.
+The vault **epoch** increases on every unlock. On Android with Keystore the
+epoch is part of the key alias: unlock creates the key for epoch `e + 1`,
+re-wraps `VK` under it and commits the header, and only then deletes the key for
+epoch `e`. An older copy of the vault file then finds no key for its epoch while
+a newer one exists, which is reported as rollback. Detection works at the
+granularity of an unlock: the manifest is bound to the vault only through the
+epoch, so a copy taken since the last unlock carries the current epoch and is
+not detected at the next one. Restoring a full device image, Keystore included,
+defeats this as well. On Windows rollback is not detected in this version.
 
 A vault belongs to one identity. Creating or recovering a different identity
 opens a new vault with a new salt and never reads another's records.
@@ -1008,22 +1036,23 @@ card that expires before it is used is dropped. The inviter cannot read a
 sealed card, so the receiver tells the inviter in their own session, and the
 inviter asks its member for a fresh card.
 
-A card is sealed with the construction of §8, under the labels `card/key` and
-`card/ad` instead of `seal/key` and `seal/ad` —
-`ad = L("card/ad") ‖ u8(1) ‖ u32(SSK.id) ‖ ES.pk ‖ SSK.pk`, over `pad(enc(card))` —
-to a **seal key** of its recipient — never to `IKdh`. A card for the newcomer is sealed to the `SSK` the
-newcomer put in their acceptance, which the inviter passes on with the
-membership update; the newcomer's card for a member is sealed to the `ssk` in
-that member's card, while that card has not expired. Either seal key is checked first: its signature under the
-recipient's `ik_sig` (§4), and its age — for a card up to 30 days past its
-`created_at` instead of the 9 days of §4, since the card lives 7 days and the
-private half 40, so a member who answers late can still be introduced. So the member who forwards a card
-cannot read the token, and a card has the same sender forward secrecy as a
-seal (§8). It expires within 7 days. It holds everything §5.1 needs, so the
-receiver opens a session over the card's token without asking the relay for
-anything. The two members then rotate the token inside their new session.
-Identities that arrive this way are marked "introduced by <name>" until verified
-by safety number.
+A card is sealed with the construction of §8 to a **seal key** of its
+recipient, never to `IKdh`, under the labels `card/key` and `card/ad` instead
+of `seal/key` and `seal/ad`:
+`ad = L("card/ad") ‖ u8(1) ‖ u32(SSK.id) ‖ ES.pk ‖ SSK.pk`, and the box encrypts
+`pad(enc(card))`. A card for the newcomer is sealed to the `SSK` the newcomer
+put in their acceptance, which the inviter passes on with the membership update;
+the newcomer's card for a member is sealed to the `ssk` in that member's card,
+while that card has not expired. Either seal key is checked first: its signature
+under the recipient's `ik_sig` (§4), and its age. For a card the key may be up
+to 30 days past its `created_at` instead of the 9 days of §4: the card lives 7
+days and the private half 40, so a member who answers late can still be
+introduced. The member who forwards a card therefore cannot read the token, and
+a card has the same sender forward secrecy as a seal (§8). A card holds
+everything §5.1 needs, so the receiver opens a session over the card's token
+without asking the relay for anything. The two members then rotate the token
+inside their new session. Identities that arrive this way are marked "introduced
+by <name>" until verified by safety number.
 
 **Leaving.** When a member leaves or is removed, every other member revokes the
 token they issued to that member, unless the two have also exchanged messages
@@ -1057,7 +1086,10 @@ contact by invite is authenticated out of band.
 
 ## 13. Labels
 
-Each is used exactly once, always as `L(name)`.
+Each label is used in exactly one place, always as `L(name)`. The core uses
+every label in the table except `token`, `invite`, `auth`, `register`,
+`delete`, `report/key`, `report/ad` and `pow`, which belong to the session
+layer and the relay and are reserved until those are built.
 
 | Name | Used in |
 |---|---|
@@ -1089,17 +1121,23 @@ Each is used exactly once, always as `L(name)`.
 Every primitive is tested against published vectors: Project Wycheproof's
 X25519, Ed25519, HMAC-SHA256, HKDF-SHA256, XChaCha20-Poly1305 and ML-KEM-768
 (key generation from a seed, encapsulation including keys that fail the modulus
-check, and decapsulation) suites, the RFC 8032 and RFC 7748 examples, the
-FIPS 180-4 SHA-2 examples, and the BIP39 English entropy-to-mnemonic vectors.
-Argon2id is tested with single-lane vectors from an implementation of its own,
-`core/tools/argon2id.mjs`, which is first checked against RFC 9106 §5.3 (four
-lanes, with a secret and associated data); `crypto_pwhash` has one lane and no
-secret or associated-data inputs, so it cannot run that example itself.
+check, and decapsulation) suites, the RFC 8032 example, the RFC 7748 examples
+that Wycheproof's X25519 suite includes, the FIPS 180-4 SHA-2 examples, and the
+BIP39 English entropy-to-mnemonic vectors. Argon2id is tested with single-lane
+vectors from an implementation of its own, `core/tools/argon2id.mjs`, which is
+first checked against RFC 9106 §5.3 (four lanes, with a secret and associated
+data); `crypto_pwhash` has one lane and no secret or associated-data inputs, so
+it cannot run that example itself.
 
-LUME publishes its own vectors for every construction above — identity and
-device derivation, prekey signatures, PQXDH, ratchet transcripts including
-skipped and out-of-order messages, contents, seals, introductions, cards,
-username certificates, directory key lists, vault headers, Keystore inputs,
-record addresses, padded records, sealed manifests, and safety numbers —
-generated once,
-committed, and checked on every platform the core builds for.
+LUME publishes its own vectors, computed by an implementation independent of the
+core, for every cryptographic construction the core implements: the recovery
+phrase, identity and device derivation, prekey signatures, both sides of PQXDH,
+a ratchet conversation with skipped, reordered and replayed messages, seals and
+padding, cards, directory key lists and username certificates, safety numbers
+and invite fingerprints, and the vault's Argon2id cases, Keystore and TPM
+inputs, headers, padded records, sealed record addresses, root terms and sealed
+manifests. They are generated once, committed in `core/tests/vectors/lume`, and
+checked on every platform the core builds for. The content encoding (§7.1) is
+not a cryptographic construction and has no vectors of its own; the wire
+round-trip tests cover it. Constructions that are not built yet get their
+vectors when they are.

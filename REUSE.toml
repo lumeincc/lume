@@ -10,12 +10,6 @@ SPDX-FileCopyrightText = "2026 LUME Inc."
 SPDX-License-Identifier = "LicenseRef-LUME-Brand"
 
 [[annotations]]
-path = ["**/*.ru.md", "**/*.kk.md", "site/pages/kk/**"]
-precedence = "closest"
-SPDX-FileCopyrightText = "2026 LUME Inc."
-SPDX-License-Identifier = "AGPL-3.0-only"
-
-[[annotations]]
 path = ["vcpkg.json", "vcpkg-configuration.json", "CMakePresets.json", "vcpkg/ports/**/vcpkg.json"]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 LUME Inc."

@@ -9,35 +9,58 @@ SPDX-License-Identifier: AGPL-3.0-only
 [How it works](https://lumeincc.github.io/lume/how-it-works/) ·
 [Documentation](https://lumeincc.github.io/lume/docs/)
 
-</div>
+LUME is an end-to-end encrypted messenger, in development for Android and
+Windows. All cryptography runs on the device, in a C++ core that every app will
+share. The relay server is designed to store and forward sealed envelopes
+without access to message content, keys or the sender's identity.
 
----
+The cryptography and the relay protocol are specified in [`docs/`](docs/). The
+specifications are drafts and change as the code is written. Read them before
+you treat any part of the design as built or as a security guarantee.
 
-LUME is an end-to-end encrypted messenger for desktop and Android, built around a shared C++ core. The relay is designed to store and forward sealed envelopes without access to message plaintext, keys or sender identity.
+## Status
 
-The cryptography and relay protocol are specified in [`docs/`](docs/). Those specifications are drafts and evolve alongside the implementation; read them before treating any design detail as a shipped feature or security guarantee.
+Nothing is released, and there is no app to install yet.
 
-## Project status
+Built and tested in the core library:
 
-LUME is under active development. There is no public release to install yet. This repository is for the source code, specifications and development work.
+- the cryptographic primitives and their start-up self-test;
+- accounts from a 24-word recovery phrase, with identity and device keys;
+- safety numbers and invite fingerprints;
+- the wire format;
+- the PQXDH handshake, which combines X25519 and ML-KEM-768;
+- the Double Ratchet with header encryption;
+- the encoding of message content, sealed sender and padding;
+- directory key lists, username certificates and introduction cards;
+- the vault's formats: its key schedule, header, records, sealed record
+  addresses and sealed manifest.
 
-## Project map
+Not built yet:
+
+- the vault's storage, its use of hardware key stores, and unlocking;
+- the session layer, which will hold sessions, prekeys, receipts and delivery
+  tokens, and the C API;
+- attachments and group messaging;
+- the relay server;
+- the Android and Windows apps.
+
+## Repository
 
 | Path | Contents |
 | --- | --- |
-| [`core/`](core/) | Shared C++23 core: cryptography, identity, vault, sessions and wire format |
-| [`server/`](server/) | C++23 relay |
-| [`android/`](android/) | Android client, Kotlin and Jetpack Compose |
-| [`desktop/`](desktop/) | Windows desktop client, WinUI 3 and C++/WinRT |
+| [`core/`](core/) | The core library, C++23: cryptography, identity, handshake, ratchet, content encoding, sealed sender, wire format and vault formats |
 | [`docs/`](docs/) | Cryptography and relay protocol specifications |
-| [`site/`](site/) | Website and generated documentation |
-| [`legal/`](legal/) | User-facing policies |
+| [`legal/`](legal/) | Privacy policy, terms and the other user-facing policies |
+| [`site/`](site/) | The website and its generator |
+| [`tools/`](tools/) | Test scripts, CI helpers and `lume-lab`, a walkthrough of the core |
+| [`brand/`](brand/) | The LUME name and logo, not covered by the code licence |
 
 ## Build and test
 
-The project uses CMake and vcpkg in manifest mode. Use a vcpkg checkout matching the baseline pinned in [`vcpkg.json`](vcpkg.json), and set `VCPKG_ROOT` to its path.
+The project uses CMake and vcpkg in manifest mode. Check out vcpkg at the
+baseline pinned in [`vcpkg.json`](vcpkg.json) and set `VCPKG_ROOT` to its path.
 
-Run the full configure, build and test workflow:
+To configure, build and run every test:
 
 **Linux**
 ```sh
@@ -49,9 +72,12 @@ sh tools/test.sh
 pwsh tools/test.ps1
 ```
 
-The test scripts run the corresponding CMake workflow and produce an HTML test report under `build/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for toolchain requirements, project conventions and details.
+Each script runs the CMake workflow for its platform and writes an HTML test
+report to `build/<preset>/test-report.html`.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) lists the toolchain requirements and the
+project's rules.
 
-To build the static website locally with Python 3.11:
+To build the website locally, with Python 3.11 or later:
 
 ```sh
 python site/build.py
@@ -59,17 +85,23 @@ python site/build.py
 
 ## Security and design
 
-- [`docs/CRYPTO.md`](docs/CRYPTO.md) — cryptographic design and its current status
-- [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — relay protocol
-- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution and review process
+- [`docs/CRYPTO.md`](docs/CRYPTO.md): the cryptographic design
+- [`docs/PROTOCOL.md`](docs/PROTOCOL.md): the relay protocol
+- [`SECURITY.md`](SECURITY.md): how to report a vulnerability privately
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution and review rules
 
-The specifications describe intended properties and known limitations; they are not a claim that the project has been independently audited. Please read the threat model and non-goals in the cryptography specification.
+The specifications state the intended properties and the known limits. LUME
+has not been independently audited. Read the goals and non-goals in section 1
+of the cryptography specification.
 
 ## Contributing
 
-Start with [`CONTRIBUTING.md`](CONTRIBUTING.md). Changes to security-sensitive components require review against the specifications. By submitting a pull request, contributors agree to the licence terms described there.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md). Changes to security-sensitive
+parts are reviewed against the specifications. By opening a pull request, you
+agree to the licence terms set out there.
 
 ## Licence
 
-The code is licensed under the [GNU Affero General Public License v3.0 only](LICENSE). The LUME name and artwork are **not** covered by the code licence; see [`TRADEMARKS.md`](TRADEMARKS.md).
+The code and documentation are licensed under the
+[GNU Affero General Public License v3.0 only](LICENSE). The LUME name and logo
+are **not** covered by that licence; see [`TRADEMARKS.md`](TRADEMARKS.md).

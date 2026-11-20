@@ -58,7 +58,6 @@ class BuildError(Exception):
 @dataclass(frozen=True)
 class Page:
     route: str
-    language: str
     source: PurePosixPath | None
     group: str
     summary: str
@@ -67,7 +66,7 @@ class Page:
 
     @property
     def directory(self) -> PurePosixPath:
-        return PurePosixPath(*[part for part in (self.language, self.route) if part])
+        return PurePosixPath(self.route)
 
     @property
     def output(self) -> PurePosixPath:
@@ -108,28 +107,25 @@ class Site:
         self.base = base
         self.repository = config["repository"]
         self.reference = config["reference"]
-        self.strings: dict[str, dict] = config["strings"]
-        self.languages: list[str] = config["languages"]
+        self.language: str = config["language"]
+        self.moved: list[str] = config.get("moved", [])
+        self.strings: dict = config["strings"]
         self.pages: list[Page] = []
         for entry in config["pages"]:
-            sources = entry.get("source", {})
-            if "neutral" in entry:
-                sources = {"": entry["neutral"]}
-                entry = {**entry, "title": {"": entry["title"]}}
-            languages = entry.get("languages", list(sources))
-            for language in languages:
-                source = sources.get(language)
-                self.pages.append(Page(
-                    route=entry["route"],
-                    language=language,
-                    source=PurePosixPath(source) if source else None,
-                    group=entry.get("group", ""),
-                    summary=entry.get("summary", {}).get(language, ""),
-                    generate=entry.get("generate", ""),
-                    title=entry.get("title", {}).get(language, ""),
-                ))
+            source = entry.get("source")
+            self.pages.append(Page(
+                route=entry["route"],
+                source=PurePosixPath(source) if source else None,
+                group=entry.get("group", ""),
+                summary=entry.get("summary", ""),
+                generate=entry.get("generate", ""),
+                title=entry.get("title", ""),
+            ))
         self.by_source = {page.source: page for page in self.pages if page.source}
-        self.by_route = {(page.language, page.route): page for page in self.pages if page.generate != "not-found"}
+        self.by_route = {page.route: page for page in self.pages if page.generate != "not-found"}
+        for prefix in self.moved:
+            if prefix in self.by_route:
+                raise BuildError(f"the moved prefix {prefix} is also a page")
         self.tokens = {"spec-revision": spec_revision(), "repository": self.repository}
         self.documents: dict[Page, render.Document] = {}
 
@@ -171,11 +167,10 @@ class Site:
             if page.generate == "not-found":
                 return self.base + route
             return relative(page.directory, PurePosixPath(route), False)
-        language = page.language or self.languages[0]
         first, _, rest = route.partition("/")
-        if first in self.languages:
-            language, route = first, rest
-        target = self.by_route.get((language, route)) or self.by_route.get((self.languages[0], route))
+        if first in self.moved:
+            route = rest
+        target = self.by_route.get(route)
         if target is None:
             raise BuildError(f"{page.source or page.route}: no page at {path}")
         return self.link_to_page(page, target, fragment)
@@ -213,10 +208,16 @@ class Site:
         layout = string.Template(strip_leading_comment((SITE / "layout.html").read_text(encoding="utf-8")))
         for page in self.pages:
             rendered = self.render_page(page)
-            html = layout.substitute(self.layout_values(page, rendered))
-            target = self.output / page.output
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(html, encoding="utf-8", newline="\n")
+            self.write(page.output, layout.substitute(self.layout_values(page, rendered)))
+        for prefix in self.moved:
+            for page in self.pages:
+                if page.generate != "not-found":
+                    self.write(PurePosixPath(prefix) / page.output, layout.substitute(self.moved_values(prefix, page)))
+
+    def write(self, name: PurePosixPath, html: str) -> None:
+        target = self.output / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(html, encoding="utf-8", newline="\n")
 
     def render_page(self, page: Page) -> Rendered:
         if page.generate == "legal":
@@ -227,8 +228,8 @@ class Site:
         if page.source.suffix == ".html":
             text = strip_leading_comment((ROOT / page.source).read_text(encoding="utf-8"))
             main = self.resolve_fragment_links(page, self.substitute(page, text))
-            if page.generate == "not-found" or page.language == "":
-                kind = page.generate or "redirect"
+            if page.generate == "not-found":
+                kind = "not-found"
             else:
                 kind = "home" if page.route == "" else "page"
             return Rendered(page.title, main, kind)
@@ -238,11 +239,8 @@ class Site:
         main = self.article_frame(page, page.title, "", f'<pre class="licence">{text}</pre>')
         return Rendered(page.title, main, "page")
 
-    def strings_for(self, page: Page) -> dict:
-        return self.strings[page.language or self.languages[0]]
-
     def article(self, page: Page, document: render.Document) -> str:
-        words = self.strings_for(page)
+        words = self.strings
         sections = [heading for heading in document.headings if heading.level == 2]
         contents = ""
         if len(sections) >= 4:
@@ -254,9 +252,9 @@ class Site:
         return self.article_frame(page, document.title, contents, f'<div class="prose">\n{document.body}\n</div>')
 
     def article_frame(self, page: Page, title: str, contents: str, body: str) -> str:
-        words = self.strings_for(page)
+        words = self.strings
         eyebrow = words["groups"].get(page.group, "")
-        home = self.link_to_page(page, self.by_route[(page.language, "")], "")
+        home = self.link_to_page(page, self.by_route[""], "")
         group = f"<span>{eyebrow}</span>" if eyebrow else ""
         eyebrow_html = f'<p class="eyebrow"><a href="{home}">LUME</a>{group}</p>'
         note = words["notes"].get(page.group, "")
@@ -276,29 +274,26 @@ class Site:
         )
 
     def docs_index(self, page: Page) -> Rendered:
-        words = self.strings_for(page)
+        words = self.strings
         groups = []
         for group in DOCS_GROUPS:
-            targets = [target for target in self.pages if target.group == group and target.language == page.language]
-            note = ""
-            if not targets:
-                targets = [target for target in self.pages if target.group == group and target.language == self.languages[0]]
-                note = f' {words["english"]}'
             items = []
-            for target in targets:
+            for target in self.pages:
+                if target.group != group:
+                    continue
                 title = target.title or self.document(target).title
                 items.append(
                     f'<li><a href="{self.link_to_page(page, target, "")}"><span class="title">{render.escape(title)}</span>'
-                    f'<span class="summary">{render.escape(target.summary)}{note}</span></a></li>'
+                    f'<span class="summary">{render.escape(target.summary)}</span></a></li>'
                 )
             groups.append(f'<section class="docs-group"><h2>{words["groups"][group]}</h2><ul class="index">{"".join(items)}</ul></section>')
         return Rendered(page.title, self.article_frame(page, page.title, "", "\n".join(groups)), "page")
 
     def legal_index(self, page: Page) -> Rendered:
-        words = self.strings_for(page)
+        words = self.strings
         items = []
         for target in self.pages:
-            if target.group != "legal" or target.language != page.language:
+            if target.group != "legal":
                 continue
             title = self.document(target).title
             href = self.link_to_page(page, target, "")
@@ -310,96 +305,56 @@ class Site:
         body = f'<div class="prose">{intro}</div>\n<ul class="index">{"".join(items)}</ul>'
         return Rendered(page.title, self.article_frame(page, page.title, "", body), "page")
 
-    def language_switch(self, page: Page) -> str:
-        words = self.strings_for(page)
-        switches = []
-        for language in self.config["switcher"]:
-            name = self.strings[language]["language-name"]
-            short = self.strings[language]["language-short"]
-            if language == page.language:
-                switches.append(f'<span aria-current="true" lang="{language}" title="{name}">{short}</span>')
-                continue
-            target = self.by_route.get((language, page.route)) or self.by_route[(language, "")]
-            switches.append(
-                f'<a href="{self.link_to_page(page, target, "")}" hreflang="{language}" lang="{language}" title="{name}">{short}</a>'
-            )
-        return f'<nav class="languages" aria-label="{words["language-label"]}">{"".join(switches)}</nav>'
-
     def footer(self, page: Page) -> str:
-        if page.generate == "not-found" or page.language == "":
+        if page.generate == "not-found":
             return ""
-        words = self.strings_for(page)
-        home = self.link_to_page(page, self.by_route[(page.language, "")], "")
-        docs = self.link_to_page(page, self.by_route[(page.language, "docs")], "")
-        privacy = self.link_to_page(page, self.by_route[(page.language, "legal/privacy")], "")
-        consent = words["consent"]
-        path, _, fragment = consent["policy"].partition("#")
-        settings = self.resolve_route(page, "/" + path, fragment)
+        words = self.strings
+        home = self.link_to_page(page, self.by_route[""], "")
+        docs = self.link_to_page(page, self.by_route["docs"], "")
+        privacy = self.link_to_page(page, self.by_route["legal/privacy"], "")
         return (
             '<footer class="site-footer"><div class="bar">'
-            f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a>{self.language_switch(page)}</div>'
+            f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a></div>'
             f'<p class="imprint"><span>{words["imprint"]}</span><a href="{docs}">{words["footer-docs"]}</a>'
-            f'<a href="{privacy}">{words["footer-privacy"]}</a>'
-            f'<a href="{settings}" data-consent="open">{consent["footer"]}</a></p>'
+            f'<a href="{privacy}">{words["footer-privacy"]}</a></p>'
             "</div></footer>"
         )
 
-    def head(self, page: Page) -> str:
-        if page.generate or page.language:
-            return ""
-        target = self.link_to_page(page, self.by_route[(self.languages[0], "")], "")
-        return f'<noscript><meta http-equiv="refresh" content="0; url={target}"></noscript>'
-
-    def consent(self, page: Page) -> str:
-        if page.generate == "not-found" or page.language == "":
-            return ""
-        words = self.strings_for(page)["consent"]
-        path, _, fragment = words["policy"].partition("#")
-        policy = self.resolve_route(page, "/" + path, fragment)
-        categories = []
-        for name, state in (("necessary", " checked disabled"), ("preferences", ' id="consent-preferences"'), ("analytics", " disabled")):
-            categories.append(
-                f'<div class="category"><h3 id="consent-{name}-title">{words[name]}</h3><p>{words[name + "-text"]}</p>'
-                f'<label class="switch"><input type="checkbox" aria-labelledby="consent-{name}-title"{state}><span></span></label></div>'
-            )
-        return (
-            f'<section class="consent" aria-label="{words["title"]}" hidden>'
-            f'<p>{words["text"]} <a href="{policy}">{words["more"]}</a></p>'
-            '<div class="choices">'
-            f'<button class="btn small" type="button" data-consent="accept">{words["accept"]}</button>'
-            f'<button class="btn small" type="button" data-consent="reject">{words["reject"]}</button>'
-            f'<button class="btn small ghost" type="button" data-consent="open">{words["settings"]}</button>'
-            "</div></section>\n"
-            '<dialog class="consent-settings" aria-labelledby="consent-title"><div class="inner">'
-            f'<button class="close" type="button" data-consent="close" aria-label="{words["close"]}"></button>'
-            f'<h2 id="consent-title">{words["title"]}</h2><p>{words["intro"]} <a href="{policy}">{words["more"]}</a></p>'
-            f'{"".join(categories)}'
-            '<div class="choices">'
-            f'<button class="btn small" type="button" data-consent="save">{words["save"]}</button>'
-            f'<button class="btn small ghost" type="button" data-consent="accept">{words["accept"]}</button>'
-            "</div></div></dialog>"
-        )
+    def title_of(self, page: Page, rendered: Rendered) -> str:
+        title = rendered.title or self.strings["site-title"]
+        if page.route and page.generate != "not-found" and "LUME" not in title:
+            title = f"{title} — LUME"
+        return title
 
     def layout_values(self, page: Page, rendered: Rendered) -> dict[str, str]:
-        words = self.strings_for(page)
-        if page.language and page.route and "LUME" not in rendered.title:
-            title = f"{rendered.title} — LUME"
-        elif page.language and page.route:
-            title = rendered.title
-        else:
-            title = rendered.title or words["site-title"]
         return {
-            "lang": page.language or self.languages[0],
-            "title": render.escape(title),
-            "description": render.attribute(page.summary or words["description"]),
+            "lang": self.language,
+            "title": render.escape(self.title_of(page, rendered)),
+            "description": render.attribute(page.summary or self.strings["description"]),
             "policy": POLICY,
             "root": self.page_root(page),
             "kind": rendered.kind,
-            "skip": words["skip"],
+            "skip": self.strings["skip"],
             "main": rendered.main,
             "footer": self.footer(page),
-            "consent": self.consent(page),
-            "head": self.head(page),
+            "head": "",
+        }
+
+    def moved_values(self, prefix: str, page: Page) -> dict[str, str]:
+        directory = PurePosixPath(prefix) / page.directory
+        target = relative(directory, page.directory, True)
+        title = self.title_of(page, self.render_page(page))
+        return {
+            "lang": self.language,
+            "title": render.escape(title),
+            "description": render.attribute(page.summary or self.strings["description"]),
+            "policy": POLICY,
+            "root": relative(directory, PurePosixPath(), True),
+            "kind": "moved",
+            "skip": self.strings["skip"],
+            "main": f'<p class="moved"><a href="{render.attribute(target)}">{self.strings["moved"]}</a></p>',
+            "footer": "",
+            "head": f'<meta http-equiv="refresh" content="0; url={render.attribute(target)}">\n<link rel="canonical" href="{render.attribute(target)}">',
         }
 
     def images(self) -> None:

@@ -5,14 +5,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # Pinned third-party artefacts
 
-Everything CI downloads is pinned by commit or by hash. Workflows cannot carry
-comments, so this table says what each pin is. Update a pin and its row in the
-same change, and check the new value against the upstream source as shown.
+Everything CI downloads is pinned by commit or by hash, with the two exceptions
+marked below. Workflows carry no comments, so this table says what each pin is.
+Update a pin and its row in the same change, and check the new value against
+the upstream source as shown.
 
 | Artefact | Pin | Version | Check |
 |---|---|---|---|
 | `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` | v7.0.1 | `gh api repos/actions/checkout/git/ref/tags/v7.0.1` |
 | `actions/cache` | `55cc8345863c7cc4c66a329aec7e433d2d1c52a9` | v6.1.0 | `gh api repos/actions/cache/git/ref/tags/v6.1.0` |
+| `actions/upload-pages-artifact` | `fc324d3547104276b827a68afc52ff2a11cc49c9` | v5.0.0 | `gh api repos/actions/upload-pages-artifact/git/ref/tags/v5.0.0` |
+| `actions/deploy-pages` | `368f82528645a54fb793d4d04e342629a3f51346` | v5.0.1 | `gh api repos/actions/deploy-pages/git/ref/tags/v5.0.1` |
 | vcpkg | `817892b0ecbc6af994dd6df999c73faf795adbf2` | baseline in `vcpkg.json` | the commit in `microsoft/vcpkg` |
 | liboqs source | SHA512 `d4a48335…be151` in `vcpkg/ports/liboqs/portfile.cmake` | 0.15.0 | `sha512sum` of `github.com/open-quantum-safe/liboqs/archive/0.15.0.tar.gz` |
 | gitleaks | SHA-256 `551f6fc8…f2470eb` | 8.30.1, `linux_x64` | the asset digest on the GitHub release |
