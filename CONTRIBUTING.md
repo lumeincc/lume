@@ -5,26 +5,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # Contributing to LUME
 
-LUME is an end-to-end encrypted messenger. The relay is blind: it stores and
-forwards sealed envelopes and never sees plaintext, keys, or who sent what. All
-cryptography runs on the client, in a C++ core shared by every app.
+LUME is an end-to-end encrypted messenger. The relay is designed to be blind:
+it stores and forwards sealed envelopes and never sees plaintext, keys or who
+sent what. All cryptography runs on the client, in a C++ core that every app
+will share.
 
 The specification is the authority: [`docs/CRYPTO.md`](docs/CRYPTO.md) and
-[`docs/PROTOCOL.md`](docs/PROTOCOL.md). Code that disagrees with it is a bug in
-one of the two — fix the one that is wrong, in the same change.
+[`docs/PROTOCOL.md`](docs/PROTOCOL.md). When code and specification disagree,
+one of them is wrong. Fix that one, in the same change.
 
 ## Layout
 
 ```
-core/      liblume, C++23 — crypto, identity, vault, handshake, ratchet, wire, session, C API
-server/    lume-relay, C++23 — WebSocket over Boost.Beast/Asio, SQLite
-android/   Kotlin + Jetpack Compose; the core through JNI over the C API
-desktop/   WinUI 3 (C++/WinRT); the core linked directly
-docs/      specification
+core/      liblume, C++23: crypto, identity, safety, handshake, ratchet, seal, wire, directory, card, vault
+docs/      the specification
 legal/     privacy policy, terms and the other user-facing policies
 site/      the website, generated from legal/, docs/ and its own pages
+tools/     test scripts, CI helpers, source checks and lume-lab
 brand/     name and logo of LUME Inc., not covered by the code licence
 ```
+
+The session layer and the C API in `core/`, the relay, the Android app and the
+Windows app are not written yet. As planned, the relay is C++23 with
+WebSocket over Boost.Beast/Asio and SQLite; the Android app is Kotlin and
+Jetpack Compose, calling the core through JNI over the C API; the Windows app
+is WinUI 3 in C++/WinRT and links the core directly.
 
 Dependencies come from vcpkg in manifest mode with a pinned baseline. A new
 dependency needs a stated reason and is reviewed like code.
@@ -67,9 +72,9 @@ CI.
 
 ## Cryptography
 
-1. **Primitives come from libsodium and liboqs only.** Never implement a cipher,
-   MAC, hash, KDF, signature or KEM. The composition is specified in
-   `docs/CRYPTO.md` before it is written.
+1. **Primitives come from libsodium and liboqs only.** The core never
+   implements a cipher, MAC, hash, KDF, signature or KEM. A composition is
+   specified in `docs/CRYPTO.md` before it is written.
 2. **Secrets live in `SecretBytes`** (sodium_malloc-backed, wiped on
    destruction) — never in `std::string`, `std::vector`, a log line, an
    exception message, or a JNI or WinRT object that outlives the call.
@@ -88,8 +93,8 @@ CI.
 8. Randomness comes from `randombytes_buf` — never `rand()`, `<random>` or the
    clock.
 9. **Nothing works before the self-test passes.** Every primitive goes through
-   one gate that runs the start-up self-test once; if it failed, every call that would
-   generate, sign, verify, encrypt or decrypt throws instead.
+   one gate that runs the start-up self-test once. If the test failed, every
+   call that would generate, sign, verify, encrypt or decrypt throws instead.
 10. **Private keys are held as seeds.** Ed25519 keeps its 32-byte seed and
     ML-KEM-768 its 64-byte seed; the expanded forms exist only inside a single
     signing or decapsulation call, so a stored key cannot be half-replaced.
@@ -103,16 +108,19 @@ CI.
 ## Wire format
 
 - One canonical, versioned binary codec in `core/wire`. The relay and every
-  client use the same parser.
+  client will use the same parser.
 - Decoding rejects non-canonical input, trailing bytes, unknown versions and
   out-of-range lengths, and never reads past the buffer it was given.
 - Every decoder has a fuzz target.
 
 ## Relay
 
+The relay is not written yet. These rules apply to it from its first line.
+
 1. Never log, inspect or store plaintext, keys, or the sender of an envelope.
 2. Every frame is decoded through `core/wire` before anything acts on it.
-3. Every operation is rate limited. Address keys collapse IPv6 to its /64;
+3. Every operation is rate limited. An address-keyed limit applies at every
+   level of the address, from the IPv6 /64 or IPv4 /32 up (PROTOCOL.md §6.1);
    account keys come from the authenticated identity, never a claimed one.
 4. Every table has a TTL, a row cap, or both. Prepared statements only.
 5. Configuration is validated at boot; an invalid or missing value stops the
@@ -121,10 +129,11 @@ CI.
 
 ## C++
 
-- C++23, which needs GCC 13, Clang 19 or MSVC 19.40 at least — older ones
-  lack `std::expected`. Warnings are errors: `-Wall -Wextra -Wpedantic -Wconversion
-  -Wsign-conversion -Wshadow -Wold-style-cast -Werror` on GCC and Clang,
-  `/W4 /WX /permissive-` on MSVC — see `cmake/LumeCompilerOptions.cmake`.
+- C++23, which needs at least GCC 13, Clang 19 or MSVC 19.40; older compilers
+  lack `std::expected`. Warnings are errors: `-Wall -Wextra -Wpedantic
+  -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -Werror` and more on
+  GCC and Clang, `/W4 /WX /permissive-` on MSVC. The full list is in
+  `cmake/LumeCompilerOptions.cmake`.
 - RAII for every resource. No owning raw pointers, no `new` or `delete`.
 - No undefined behaviour; sanitizer builds stay clean.
 - Untrusted bytes are `std::span<const std::uint8_t>` with explicit lengths.
@@ -132,11 +141,12 @@ CI.
 - Expected failures — bad sizes, invalid keys, failed authentication — return
   `lume::crypto::Result<T>` (`std::expected`). Failures that should never
   happen — allocation, a failed self-test, a library that stopped working —
-  throw. The C API catches every exception and turns it into an error code;
-  no exception crosses the C ABI.
+  throw. The C API, once written, catches every exception and turns it into an
+  error code; no exception crosses the C ABI.
 - Hardened standard libraries in every build: `_GLIBCXX_ASSERTIONS`, the
-  libc++ extensive hardening mode, `_MSVC_STL_HARDENING`; `_FORTIFY_SOURCE=3`,
-  full RELRO and stack-clash protection outside Debug on Linux and Android.
+  libc++ extensive hardening mode, `_MSVC_STL_HARDENING`. `_FORTIFY_SOURCE=3`
+  outside Debug on GCC and Clang; full RELRO and stack-clash protection on
+  Linux and Android.
 - `clang-tidy` 22 with [`.clang-tidy`](.clang-tidy) reports nothing on the
   library or the tests; CI fails otherwise.
 
@@ -146,31 +156,33 @@ CI.
   test vectors where they exist, property-based tests for codecs and protocol
   invariants, and a fuzz target for every parser.
 - CI runs GCC and Clang with AddressSanitizer and UndefinedBehaviorSanitizer,
-  a GCC release build, and MSVC Debug and Release on Windows. ThreadSanitizer
-  for the relay and the Android build on an emulator join when those exist.
-  Coverage of `core/` below 90 % of lines or 70 % of branches fails the build.
+  a GCC release build, the fuzz targets, and MSVC Debug and Release on
+  Windows. ThreadSanitizer for the relay and the Android build on an emulator
+  will join once those exist. Coverage of `core/` below 90 % of lines or 70 %
+  of branches fails the build.
 - Generated files (`core/src/crypto/known_answers.hpp` and the like) are
   regenerated in CI and must match what is committed.
-- Every download in CI is pinned by commit or hash, except the Clang 22
-  packages — apt.llvm.org keeps only its newest build, so only its signing key
-  is pinned — and the tools that come with the runner image; see
-  [`.github/PINS.md`](.github/PINS.md).
-- Property tests run 500 cases each (`LUME_PROPERTY_RUNS`); a failure prints
-  the seed that reproduces it. The one exception is the properties over the
-  5200-round safety-number fingerprint, which run 100 cases
+- Every download in CI is pinned by commit or hash, with two exceptions: the
+  Clang 22 packages, because apt.llvm.org keeps only its newest build and so
+  only its signing key is pinned, and the tools that come with the runner
+  image. See [`.github/PINS.md`](.github/PINS.md).
+- Property tests run 500 cases each (`LUME_PROPERTY_RUNS`), and a failure
+  prints the seed that reproduces it. The one exception is the properties over
+  the 5200-round safety-number fingerprint, which run 100 cases
   (`LUME_FINGERPRINT_PROPERTY_RUNS`); the fingerprint itself is checked
   against independent vectors in both orders.
-- Run everything with one command — configure, build, every test, and an
-  HTML report grouped by module (`build/<preset>/test-report.html`):
-  `pwsh tools/test.ps1` on Windows, `sh tools/test.sh` on Linux. Both are
-  `cmake --workflow --preset windows` (or `linux`) plus the report.
+- One command configures, builds, runs every test and writes an HTML report
+  grouped by module (`build/<preset>/test-report.html`): `pwsh tools/test.ps1`
+  on Windows, `sh tools/test.sh` on Linux. Each runs
+  `cmake --workflow --preset windows` (or `linux`) and then builds the report.
   `VCPKG_ROOT` must point at a vcpkg checkout of the commit pinned in
   `vcpkg.json`.
-- See the core work: `lume-lab` (built next to the tests, in
-  `build/<preset>/tools/lab/`) walks through accounts, recovery, the PQXDH
-  handshake, attacks and safety numbers on the real core and marks every check
-  `[ ok ]` or `[FAIL]`; `lume-lab new` creates a throwaway account, and
-  `lume-lab phrase` checks a phrase you type. The walkthrough is also a test.
+- To see the core at work, run `lume-lab`, which is built next to the tests in
+  `build/<preset>/tools/lab/`. It walks through accounts, recovery, the PQXDH
+  handshake, the Double Ratchet, attacks and safety numbers on the real core,
+  and marks every check `[ ok ]` or `[FAIL]`. `lume-lab new` creates a
+  throwaway account, and `lume-lab phrase` checks a phrase you type. The
+  walkthrough also runs as a test.
 - Never weaken or delete an assertion to make a run pass. When a test fails,
   decide first whether the code or the test is wrong, and say which.
 - Report only what was observed. A check that could not run is reported as
@@ -179,22 +191,21 @@ CI.
 ## Website
 
 - `python site/build.py` builds the static site into `build/site/`;
-  `--serve` also serves it on `127.0.0.1` with the headers production must
-  send. It needs Python 3.11 and nothing else. `--base /lume/` builds it for
+  `--serve` also serves it on `127.0.0.1` with strict security headers. It
+  needs Python 3.11 or later and nothing else. `--base /lume/` builds it for
   GitHub Pages, where it is served under that path; the `pages` workflow
   publishes `main` there.
-- Policies and the specification are rendered from `legal/` and `docs/`, never
-  copied; every policy in `legal/` is published in every language.
-- The build fails on any script other than `site/site.js`, inline script,
+- The site is in English only, and so is all documentation. Policies and the
+  specification are rendered from `legal/` and `docs/`, never copied.
+- The build fails on any script other than `site/site.js`, an inline script,
   an inline style, an event handler, a resource from another server, a broken
-  link, a missing anchor or a repeated id. `site.js` only shows the cookie
-  window, stores the choice and lets the home page's headline appear out of a
-  cipher; it never sends anything anywhere, and the page reads fully without
-  it.
-- A cookie other than a necessary one is set only after the visitor allows it,
-  and every cookie is listed in `legal/WEBSITE.*`; a new one bumps the consent
-  version so that everyone is asked again. No analytics, external fonts or
-  CDNs.
+  link, a missing anchor or a repeated id. `site.js` only animates the heading
+  and buttons at the top of the home page, and does nothing when the visitor
+  asks for reduced motion. It never sends anything anywhere, and every page
+  reads fully without it.
+- The site sets no cookies and uses no local or session storage. Its Content
+  Security Policy allows resources only from the site itself. No analytics,
+  external fonts or CDNs: fonts are served by the site.
 - Logos are re-encoded from `brand/` at build time, which drops the metadata
   of the originals.
 

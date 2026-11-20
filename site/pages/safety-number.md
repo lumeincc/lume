@@ -7,8 +7,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 When you add a contact on LUME, your app receives their keys through the relay.
 The **safety number** lets you check, outside LUME, that those keys really
-belong to the person you think — so that nobody, including whoever runs the
-relay, can quietly put themselves in the middle.
+belong to the person you think they do. That way nobody, including whoever
+runs the relay, can quietly put themselves in the middle.
 
 > [!NOTE]
 > There are no LUME apps yet. This page explains how verification works; the
@@ -55,9 +55,9 @@ the safety number confirms that the keys it pinned were the right ones.
 
 - Do not share anything sensitive in that conversation.
 - Check that you are both looking at the same conversation.
-- A mismatch means the keys you have are not the keys your contact has: you are
-  talking to a different account than you think, or someone is in between.
-  Reach the person another way and ask.
+- A mismatch means the keys you have are not the keys your contact has: either
+  you are talking to a different account than you think, or someone is in
+  between. Reach the person another way and ask.
 
 ## Invite links
 
@@ -70,7 +70,7 @@ source you do not trust proves only that you reached whoever sent the link.
 
 ## For the technically curious
 
-Each person's half is 5,200 rounds of SHA-512 over their two public identity
-keys, cut into 30 digits. The two halves are put in a fixed order, so both
-devices show the same 60 digits. The exact construction is in
+Each person's half comes from 5,200 rounds of SHA-512 over their two public
+identity keys, cut into 30 digits. The two halves are put in a fixed order, so
+both devices show the same 60 digits. The exact construction is in
 [§12 of the specification](/spec/crypto/#12-pinning-safety-numbers-and-invites).

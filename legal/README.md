@@ -5,53 +5,89 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 # legal/
 
-User-facing policies of LUME Inc. (ТОО «LUME Inc.», Republic of Kazakhstan,
-BIN 260740032421). Every document exists in Russian, Kazakh and English; all
-three say the same thing, and a change to one is made to the others in the same
-commit.
+The user-facing documents of LUME Inc. (ТОО «LUME Inc.», Republic of
+Kazakhstan, BIN 260740032421, Temirtau, Karaganda Region) for LUME, its
+apps, its relay and its website.
 
-| Document | English | Русский | Қазақша |
-|---|---|---|---|
-| Privacy Policy (the operator's personal-data policy) | [PRIVACY.md](PRIVACY.md) | [PRIVACY.ru.md](PRIVACY.ru.md) | [PRIVACY.kk.md](PRIVACY.kk.md) |
-| Consent to the processing of personal data (shown in the app) | [CONSENT.md](CONSENT.md) | [CONSENT.ru.md](CONSENT.ru.md) | [CONSENT.kk.md](CONSENT.kk.md) |
-| Terms of Use (and end-user licence) | [TERMS.md](TERMS.md) | [TERMS.ru.md](TERMS.ru.md) | [TERMS.kk.md](TERMS.kk.md) |
-| Privacy on the website | [WEBSITE.md](WEBSITE.md) | [WEBSITE.ru.md](WEBSITE.ru.md) | [WEBSITE.kk.md](WEBSITE.kk.md) |
-| Deleting your account | [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md) | [ACCOUNT-DELETION.ru.md](ACCOUNT-DELETION.ru.md) | [ACCOUNT-DELETION.kk.md](ACCOUNT-DELETION.kk.md) |
-| Child Safety Standards | [CHILD-SAFETY.md](CHILD-SAFETY.md) | [CHILD-SAFETY.ru.md](CHILD-SAFETY.ru.md) | [CHILD-SAFETY.kk.md](CHILD-SAFETY.kk.md) |
-| Law Enforcement Policy | [LAW-ENFORCEMENT.md](LAW-ENFORCEMENT.md) | [LAW-ENFORCEMENT.ru.md](LAW-ENFORCEMENT.ru.md) | [LAW-ENFORCEMENT.kk.md](LAW-ENFORCEMENT.kk.md) |
-| Permissions and background behaviour | [PERMISSIONS.md](PERMISSIONS.md) | [PERMISSIONS.ru.md](PERMISSIONS.ru.md) | [PERMISSIONS.kk.md](PERMISSIONS.kk.md) |
-| App store disclosures | [STORE-DISCLOSURES.md](STORE-DISCLOSURES.md) | [STORE-DISCLOSURES.ru.md](STORE-DISCLOSURES.ru.md) | [STORE-DISCLOSURES.kk.md](STORE-DISCLOSURES.kk.md) |
-| Contact and company details | [CONTACT.md](CONTACT.md) | [CONTACT.ru.md](CONTACT.ru.md) | [CONTACT.kk.md](CONTACT.kk.md) |
+The documents are published in English. On the screen where the user accepts
+them, the app shows a short summary of the main terms of the Terms of Use, the
+Privacy Policy and the Consent in Kazakh and in Russian, for information. The
+English documents govern.
 
-Related, at the repository root: [SECURITY.md](../SECURITY.md),
-[SECURITY.ru.md](../SECURITY.ru.md) and [SECURITY.kk.md](../SECURITY.kk.md)
-(vulnerability reporting and good-faith research), [TRADEMARKS.md](../TRADEMARKS.md),
-[TRADEMARKS.ru.md](../TRADEMARKS.ru.md) and [TRADEMARKS.kk.md](../TRADEMARKS.kk.md)
-(name and logo),
-[LICENSE](../LICENSE) (AGPL-3.0 for the code) and
+| Document | What it does | File |
+|---|---|---|
+| Terms of Use | the contract for using the LUME service (the relay and accounts) and the LUME name and logo | [TERMS.md](TERMS.md) |
+| Privacy Policy | the operator's policy on personal data, and the information owed to users under Kazakh law and the GDPR | [PRIVACY.md](PRIVACY.md) |
+| Consent to the processing of personal data | the consent given in the app when an account is created, the ground for processing under Kazakh law | [CONSENT.md](CONSENT.md) |
+| The LUME website: privacy and terms of use | what the website stores and receives, and the terms for using it | [WEBSITE.md](WEBSITE.md) |
+| Deleting your account | how to delete an account in the app, how to ask without it, and what is kept | [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md) |
+| Child Safety Standards | the rules against child sexual abuse and exploitation, which are part of the Terms of Use, and how to report it | [CHILD-SAFETY.md](CHILD-SAFETY.md) |
+| Law Enforcement Policy | what LUME Inc. can give to public authorities, and how it responds | [LAW-ENFORCEMENT.md](LAW-ENFORCEMENT.md) |
+| Permissions and background behaviour | what the official apps ask the operating system for | [PERMISSIONS.md](PERMISSIONS.md) |
+| App store disclosures | the answers given in each store's data and content forms | [STORE-DISCLOSURES.md](STORE-DISCLOSURES.md) |
+| Contact and company details | how to reach LUME Inc., and the points of contact the law requires | [CONTACT.md](CONTACT.md) |
+
+Related, at the repository root: [SECURITY.md](../SECURITY.md) (vulnerability
+reporting and good-faith research), [TRADEMARKS.md](../TRADEMARKS.md) (the
+LUME name and logo), [LICENSE](../LICENSE) (AGPL-3.0-only for the code) and
 [CONTRIBUTING.md](../CONTRIBUTING.md) (contributor licence agreement).
 
-**Which law.** The documents are written for the law of the Republic of
-Kazakhstan first — above all the Law "On Personal Data and Their Protection"
-(No. 94-V, as amended in 2026) — and also give what the EU General Data
-Protection Regulation and the Digital Services Act require of a service offered
-in the EU.
+## When the documents apply
 
-**Which text.** Russian is the master text. The Kazakh and Russian texts have
-equal force; if they differ, the Russian text applies. English is a translation
-for convenience.
+**WEBSITE.md is in effect**, because the website is live. It applies from the
+day each version is published.
 
-**All documents are drafts** until the first public release. Before that
-release they need: the contact addresses, the name of the hosting provider (a
-data centre in Kazakhstan), the EU representative, the trademark filing, and a review by a lawyer
-admitted in Kazakhstan. Each fact that is not settled yet is an *Important* note
-starting with **To be filled in before release** (**Заполнить до выпуска** in
-Russian, **Шығарылымға дейін толтыру керек** in Kazakh); `python site/build.py`
-lists how many each document has left. The Kazakh texts are translations that a
-native-speaking lawyer has not reviewed yet.
+**All other documents are drafts** until the first public release of LUME, and
+take effect on that day. They describe LUME as it will be when it is released.
+Before that release they need the contact addresses, the hosting provider of
+the relay (whose database for users in Kazakhstan must be located in
+Kazakhstan), the EU representative, the trademark filing, the summary in
+Kazakh and Russian on the screen where the user accepts, and a review by a
+lawyer admitted in Kazakhstan. Each fact that is not settled yet is an
+*Important* note starting with **To be filled in before release**;
+`python site/build.py` lists how many each document has left.
 
-The website renders these files as they are, from `site/`; nothing is copied.
+## Which document prevails
 
-These policies describe what the software does. If the code and a policy
-disagree, that is a defect to fix before release, never a policy to leave as
+1. On the contract between a user and LUME Inc., the
+   [Terms of Use](TERMS.md) prevail over the other documents. The
+   [Child Safety Standards](CHILD-SAFETY.md) are part of the rules of use in
+   the Terms of Use and bind every user.
+2. On the processing of personal data, the
+   [Consent to the processing of personal data](CONSENT.md) and the
+   [Privacy Policy](PRIVACY.md) prevail over the other documents. Where the
+   two differ, the narrower one applies: we process personal data only as far
+   as both allow.
+3. The other documents explain or apply the Terms of Use, the Privacy Policy
+   and the Consent, and, to the extent the law allows, do not add to them or
+   change them. The Child Safety Standards are the exception: they are part of
+   the Terms of Use (point 1).
+4. None of these documents limits the rights that the
+   [GNU Affero General Public License v3.0](../LICENSE) gives anyone in the
+   source code.
+
+## Which law
+
+The documents are written for the law of the Republic of Kazakhstan first,
+above all the Law "On Personal Data and Their Protection" (No. 94-V, as
+amended in 2026), the Law "On Consumer Protection" and the Law "On Online
+Platforms and Online Advertising". They also give what the EU General Data
+Protection Regulation and the Digital Services Act require of a service
+offered in the EU. Where a user has a right that the law does not allow a
+contract to take away, the documents keep it.
+
+## How the documents are kept
+
+The website is built from these files by `site/build.py`; nothing is copied by
+hand. Every change is made in the public repository, where the whole history of
+each document can be seen.
+
+LUME Inc. numbers each published set of the Terms of Use, the Privacy Policy
+and the Consent. When an account is created, the app sends the number of the
+version the user accepted, and the relay keeps that number and the day of
+acceptance with the account; a later version that the user accepts is recorded
+the same way (sections 4.2 and 7 of the [protocol](../docs/PROTOCOL.md)).
+
+These documents describe what the software does. If the code and a document
+disagree, that is a defect to fix before release, never a document to leave as
 written.

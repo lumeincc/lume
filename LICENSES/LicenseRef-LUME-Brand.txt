@@ -1,21 +1,35 @@
 Copyright (C) 2026 LUME Inc. All rights reserved.
 
-The LUME name, the LUME logo, and the artwork in the brand/ directory of this
-repository are trademarks and copyrighted works of LUME Inc. (Republic of
-Kazakhstan, BIN 260740032421).
+The LUME name, the LUME logo and the artwork in the brand/ directory of this
+repository are used by LUME Inc. (ТОО «LUME Inc.», Republic of Kazakhstan, BIN
+260740032421) as its trademarks, and the logo and the artwork are copyrighted
+works of LUME Inc.
 
 They are NOT licensed under the GNU Affero General Public License or under any
 other licence that covers the source code in this repository. No right to use,
 copy, modify or distribute them is granted, except:
 
   1. displaying them unmodified, in this repository and in unmodified copies of
-     it, to identify the official LUME project; and
+     it, to identify the official LUME project;
 
   2. referring to the LUME project by name in text, for example in reviews,
      articles or compatibility statements, in a way that does not suggest
-     endorsement by LUME Inc.
+     endorsement by LUME Inc.;
 
-A modified or redistributed version of the software must not use the LUME name
-or logo as its own name or logo. See TRADEMARKS.md for the full policy.
+  3. passing on, under the licence of the software, an unmodified build of a
+     LUME app exactly as LUME Inc. published it, with the name, logo and icons
+     it contains, provided that nothing suggests that the person passing it on
+     is LUME Inc. or is endorsed by it; and
+
+  4. keeping the brand/ directory in a copy of this repository that is changed
+     only to prepare contributions to the official project, such as a fork made
+     for a pull request, as long as that copy is not distributed as a product
+     or published as another app.
+
+A modified version of the software must not use the LUME name or logo as its
+own name or logo, and must remove the brand/ directory before it is
+distributed. These conditions concern the name and the logo only; they do not
+limit any right the licence of the software grants in the software itself. See
+TRADEMARKS.md for the full policy.
 
 For any other use, ask LUME Inc. for written permission.

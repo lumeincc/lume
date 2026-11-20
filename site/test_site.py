@@ -80,8 +80,8 @@ class Inline(unittest.TestCase):
         self.assertEqual(body("*Non-discoverable* hides, 2 * 3 * 4"), "<p><em>Non-discoverable</em> hides, 2 * 3 * 4</p>")
 
     def test_links_are_rewritten_and_keep_code_labels(self) -> None:
-        document = render.render("[`docs/CRYPTO.md`](../docs/CRYPTO.md#1-goals)", lambda href: "rewritten/" + href)
-        self.assertEqual(document.body, '<p><a href="rewritten/../docs/CRYPTO.md#1-goals"><code>docs/CRYPTO.md</code></a></p>')
+        document = render.render("[`docs/CRYPTO.md`](../docs/CRYPTO.md#1-goals-and-non-goals)", lambda href: "rewritten/" + href)
+        self.assertEqual(document.body, '<p><a href="rewritten/../docs/CRYPTO.md#1-goals-and-non-goals"><code>docs/CRYPTO.md</code></a></p>')
 
     def test_link_targets_are_escaped(self) -> None:
         document = render.render('[x](a"b)', lambda href: href)

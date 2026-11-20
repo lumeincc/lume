@@ -82,19 +82,19 @@ summary = "The consent to the processing of personal data you give in the app wh
 route = "legal/terms"
 group = "legal"
 source = "legal/TERMS.md"
-summary = "The agreement for using LUME, including the end-user licence, price and refunds."
+summary = "The agreement for using the LUME service and name, how it relates to the open-source licence, and the price."
 
 [[pages]]
 route = "legal/website"
 group = "legal"
 source = "legal/WEBSITE.md"
-summary = "What this website stores on your device, which is nothing, and what its host receives."
+summary = "What this website stores and receives, which is next to nothing, and its terms of use."
 
 [[pages]]
 route = "legal/account-deletion"
 group = "legal"
 source = "legal/ACCOUNT-DELETION.md"
-summary = "How to delete your account and what is deleted with it."
+summary = "How to delete your account, how to ask without the app, and what is kept."
 
 [[pages]]
 route = "legal/child-safety"
@@ -150,7 +150,7 @@ outputs = [["favicon.png", 32]]
 
 [strings]
 site-title = "LUME"
-description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. No phone number, no e-mail, no trackers."
+description = "LUME is an end-to-end encrypted messenger with a post-quantum key exchange, in development. An account needs no phone number or e-mail address."
 skip = "Skip to content"
 footer-docs = "Documentation"
 footer-privacy = "Privacy"
@@ -161,7 +161,7 @@ history = "history of changes"
 moved = "This page has moved."
 legal-intro = [
     "These documents describe what the software does. If the code and a policy ever disagree, that is a defect to fix, not a policy to leave as written.",
-    "<strong>All of them are drafts.</strong> They take effect with the first public release of LUME. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the name of the data centre in Kazakhstan that hosts the server.",
+    "<strong>The page about this website is in effect.</strong> All the other documents are drafts until the first public release of LUME, and take effect on that day. Until then, places marked <em>To be filled in before release</em> are facts that are not settled yet, such as contact addresses and the provider and data centre in Kazakhstan that will host the server.",
 ]
 
 [strings.groups]
