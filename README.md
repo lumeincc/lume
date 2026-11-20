@@ -30,7 +30,7 @@ Built and tested in the core library:
 - the wire format;
 - the PQXDH handshake, which combines X25519 and ML-KEM-768;
 - the Double Ratchet with header encryption;
-- sealed sender and padding;
+- the encoding of message content, sealed sender and padding;
 - directory key lists, username certificates and introduction cards;
 - the vault's formats: its key schedule, header, records, sealed record
   addresses and sealed manifest.
@@ -48,7 +48,7 @@ Not built yet:
 
 | Path | Contents |
 | --- | --- |
-| [`core/`](core/) | The core library, C++23: cryptography, identity, handshake, ratchet, sealed sender, wire format and vault formats |
+| [`core/`](core/) | The core library, C++23: cryptography, identity, handshake, ratchet, content encoding, sealed sender, wire format and vault formats |
 | [`docs/`](docs/) | Cryptography and relay protocol specifications |
 | [`legal/`](legal/) | Privacy policy, terms and the other user-facing policies |
 | [`site/`](site/) | The website and its generator |
@@ -73,8 +73,9 @@ pwsh tools/test.ps1
 ```
 
 Each script runs the CMake workflow for its platform and writes an HTML test
-report to `build/<preset>/test-report.html`. [`CONTRIBUTING.md`](CONTRIBUTING.md)
-lists the toolchain requirements and the project's rules.
+report to `build/<preset>/test-report.html`.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) lists the toolchain requirements and the
+project's rules.
 
 To build the website locally, with Python 3.11 or later:
 

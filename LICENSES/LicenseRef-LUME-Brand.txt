@@ -21,15 +21,15 @@ copy, modify or distribute them is granted, except:
      it contains, provided that nothing suggests that the person passing it on
      is LUME Inc. or is endorsed by it; and
 
-  4. keeping the brand/ directory in a copy of this repository that is changed
-     only to prepare contributions to the official project, such as a fork made
-     for a pull request, as long as that copy is not distributed as a product
-     or published as another app.
+  4. keeping the brand/ directory, and the name of this repository, in a copy
+     of this repository that is changed only to prepare contributions to the
+     official project, such as a fork made for a pull request, as long as that
+     copy is not distributed as a product or published as another app.
 
 A modified version of the software must not use the LUME name or logo as its
 own name or logo, and must remove the brand/ directory before it is
-distributed. These conditions concern the name and the logo only; they do not
-limit any right the licence of the software grants in the software itself. See
-TRADEMARKS.md for the full policy.
+distributed, except as item 4 allows. These conditions concern the name and
+the logo only; they do not limit any right the licence of the software grants
+in the software itself. See TRADEMARKS.md for the full policy.
 
 For any other use, ask LUME Inc. for written permission.

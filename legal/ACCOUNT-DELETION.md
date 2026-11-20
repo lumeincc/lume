@@ -19,7 +19,8 @@ deleted and what is kept.
 2. Deleting the account also withdraws your
    [consent to the processing of personal data](CONSENT.md) and ends the
    [Terms of Use](TERMS.md) for that account. Processing stops at once, except
-   as section 3 describes, sooner than the 15 working days the law allows.
+   as section 3 describes, although the law would allow us up to 15 working
+   days.
 3. Deletion is final. Neither you nor we can restore a deleted account or its
    data. Obligations under the Terms of Use that arose before deletion are not
    affected.
@@ -46,8 +47,10 @@ Deleted records are overwritten in the server's database, not just marked as
 deleted, and the attachment files are deleted.
 
 After that, the username is held for 31 days, with only its hash stored, and
-then anyone can register it. People who already have you as a contact know you
-by your keys, so the name's new holder cannot pass as you.
+then anyone can register it. The hold ends sooner if the list of held and
+barred names is full (section 3 of the [Privacy Policy](PRIVACY.md)). People
+who already have you as a contact know you by your keys, so the name's new
+holder cannot pass as you.
 
 ## 3. What is not deleted
 
@@ -65,27 +68,34 @@ by your keys, so the name's new holder cannot pass as you.
   [Child Safety Standards](CHILD-SAFETY.md).
 - **A barred name.** If the account was deleted for abuse and its name was
   barred, the hash of the name is kept while the bar lasts.
-- **Evidence preserved for the authorities.** If we delete an account for
-  child sexual abuse or exploitation, or a competent authority has lawfully
-  asked us to preserve data about it, we keep a copy of the account data and
-  the reports for as long as the law requires or the authority lawfully asks,
-  and then delete it. See the [Law Enforcement Policy](LAW-ENFORCEMENT.md).
+- **Evidence preserved for the authorities.** If we delete an account for, or
+  report, child sexual abuse or exploitation, if we report a threat to life,
+  if the law requires it, or if a competent authority has lawfully asked us to
+  preserve data about the account, we keep a copy of the account data and the
+  reports for as long as the law requires or the authority lawfully asks, and
+  then delete it. See the [Law Enforcement Policy](LAW-ENFORCEMENT.md).
+- **The record of measures.** If we took a measure on the account, such as a
+  warning, a suspension or the deletion itself, we keep a record of it, with
+  the facts and the clause of the Terms of Use on which it was based and the
+  decision on any appeal, until the limitation period for claims about it
+  ends (section 12 of the [Privacy Policy](PRIVACY.md)).
 - **What you wrote to us.** Messages you sent to the addresses on the
-  [contact page](CONTACT.md), such as a claim, an appeal or a deletion request,
-  are kept as the [Privacy Policy](PRIVACY.md) describes.
+  [contact page](CONTACT.md), or by post to our registered office, such as a
+  claim, an appeal or a deletion request, are kept as the
+  [Privacy Policy](PRIVACY.md) describes.
 
 ## 4. Without the app
 
 1. You can write to us without installing the app, but we can delete an
    account only on a request signed with that account's key. Today the only
-   way to sign such a request is the LUME app (clause 4.3). Write to the
-   personal-data address on the [contact page](CONTACT.md) and name the
-   username. We answer within the period the law sets and explain what you
-   can do.
-2. We hold no e-mail address or phone number for you, so the only proof that an
-   account is yours is its key. We do not delete an account on the strength of
-   a name, a message or a document alone, because anyone could then delete
-   someone else's account.
+   software LUME Inc. offers that signs such a request is the LUME app
+   (clause 4.3). Write to the personal-data address on the
+   [contact page](CONTACT.md) and name the username. We answer within the
+   period the law sets and explain what you can do.
+2. No e-mail address or phone number is linked to an account, so the only
+   proof that an account is yours is its key. We do not delete an account on
+   the strength of a name, a message or a document alone, because anyone
+   could then delete someone else's account.
 3. **If you still have your recovery phrase**, install LUME on any device,
    recover the account from the phrase and delete it in the app. Recovery also
    disconnects the old device.
@@ -116,22 +126,48 @@ by your keys, so the name's new holder cannot pass as you.
   server as soon as your app confirms receiving it. An attachment stays until
   its download limit is used up, and for at most 30 days.
 
+While the account is suspended, the server accepts only the requests that
+clause 6.5.3 of the [Terms of Use](TERMS.md) lists, so you cannot turn off
+search by name or block a contact until the suspension ends; you can still
+delete the account.
+
 ## 6. When we delete an account
 
-We may also delete an account ourselves. What is deleted and kept is then the
-same as in sections 2 and 3.
+We may also delete an account ourselves, on the grounds that clauses 3.1 and
+12.3 of the [Terms of Use](TERMS.md) give. What is deleted and kept is then the
+same as in sections 2 and 3. A deleted account cannot receive a notice,
+because the server deletes its notices with it. Where we delete an account
+after suspending it under item 3 or item 4, the notice of the suspension is
+the notice of the measure. Where we delete an account without such a
+suspension, as under item 2 (even if we suspended the account while we
+assessed a report), for a serious and repeated breach under item 3, or under
+item 5, or where the law or the safety of others does not allow notice, the
+account receives no notice, and the period for an appeal in clause 6.9 of the
+Terms of Use runs from the day you learn of the deletion.
 
 1. **Inactive accounts.** The server deletes an account automatically 365 days
-   after it last connected. This is an automated measure: no person decides it,
-   and it does not assess you or your content.
+   after it last connected. This is automatic, not a measure under the Terms
+   of Use: no person decides it, and it does not assess you or your content
+   (clause 6.7 of the [Terms of Use](TERMS.md)).
 2. **Child sexual exploitation or a real threat to life.** If a report or other
    information clearly shows either, we delete the account and bar its
-   username at once, as the [Child Safety Standards](CHILD-SAFETY.md) describe.
+   username at once. For child sexual exploitation we first preserve the
+   evidence, as the [Child Safety Standards](CHILD-SAFETY.md) describe.
 3. **Other breaches of the Terms of Use.** We first suspend the account and
-   tell you in the app. We delete it only after the 30-day appeal period in
-   section 6 of the [Terms of Use](TERMS.md) has passed, or your appeal has
-   been rejected, unless the breach is serious and repeated.
-4. **A court or a competent authority.** We carry out a lawful order to delete
-   an account, as the [Law Enforcement Policy](LAW-ENFORCEMENT.md) describes.
-5. **The end of the service.** If LUME Inc. stops the service, every account is
+   tell you in the app. We may then delete it as clause 6.6.2 of the
+   [Terms of Use](TERMS.md) describes: once your appeal against the suspension
+   has been rejected or, if no appeal made in time is pending, once 61 days
+   have passed since the day the notice of the suspension was issued. If the
+   breach is serious and repeated, we may delete the account at once.
+4. **A user under 18.** We suspend the account and tell you in the app. We
+   delete it only as item 3 describes for a suspended account: once an appeal
+   has been rejected or, if no appeal made in time is pending, once 61 days
+   have passed since the day the notice of the suspension was issued. The
+   exception in item 3 for a serious and repeated breach never applies to
+   such an account.
+5. **A court, a competent authority or sanctions law.** We carry out a lawful
+   order to delete an account, as the
+   [Law Enforcement Policy](LAW-ENFORCEMENT.md) describes, and delete an
+   account where sanctions law requires it.
+6. **The end of the service.** If LUME Inc. stops the service, every account is
    deleted after notice in the app, as the [Terms of Use](TERMS.md) describe.

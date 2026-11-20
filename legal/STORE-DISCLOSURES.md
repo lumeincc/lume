@@ -17,7 +17,7 @@ The stores ask for two web pages: the Privacy Policy and the account deletion
 page. Both name the app, LUME, and its developer, LUME Inc.
 
 > [!IMPORTANT]
-> **To be filled in before release:** the web addresses of the Privacy Policy
+> **To be filled in before release.** The web addresses of the Privacy Policy
 > and of the account deletion page that each store requires, and the developer
 > name as listed in each store. The current addresses are provisional:
 > <https://lumeincc.github.io/lume/legal/privacy/> for the Privacy Policy and
@@ -31,13 +31,13 @@ page. Both name the app, LUME, and its developer, LUME Inc.
 | Does the app collect or share user data? | Yes, it collects data. It shares data with no one |
 | **Personal info → User IDs** | **Collected**: the username. Not shared. Required. Purposes: app functionality, account management. Not processed ephemerally |
 | **Device or other IDs** | **Collected**: the account and device public keys that the app creates, and the account ID that the relay assigns. Not shared. Required. Purposes: app functionality, account management, fraud prevention |
-| Messages, photos, videos, files | Sent only end-to-end encrypted; LUME Inc. cannot read them. Under Play's rules, end-to-end encrypted data does not count as collected; check the current Play Console help before submitting. The exception is a report: if a user reports messages, the app sends those messages and the sender's identity keys sealed to LUME Inc.'s report key, so LUME Inc. can read them. Optional, started by the user. Purposes: safety and compliance. Kept for 90 days, or longer where the law requires |
+| Messages, photos, videos, files | Sent only end-to-end encrypted; LUME Inc. cannot read them. Under Play's rules, end-to-end encrypted data does not count as collected; check the current Play Console help before submitting. The exception is a report: if a user reports messages, the app sends those messages and the sender's identity keys sealed to LUME Inc.'s report key, so LUME Inc. can read them. Optional, started by the user. Purposes: safety and compliance. Kept on the server for 90 days; a copy that LUME Inc. preserves as evidence for the authorities is kept for as long as the law requires or a competent authority lawfully asks |
 | IP address | Processed ephemerally, in memory, for delivery and abuse protection, and never written to disk. For a message from a stranger without an invite, the relay keeps a hash of the sender's network block, keyed with a key that changes daily, and deletes it with the message |
 | Other account data | Kept with the account and declared with it, for account management: the day the account was created and the day it last connected, the number of the version of the Terms of Use, the Privacy Policy and the Consent the user accepted and the day of acceptance, any measure on the account and the day it ends, and notices waiting for the account (at most 20, for at most 30 days). Play has no separate data type for these; check the current Play Console help before submitting |
 | Location, contacts, financial info, health, app activity, web browsing, diagnostics | Not collected |
 | Sharing with third parties | No |
 | Encrypted in transit | Yes |
-| Users can request deletion | Yes. *Delete account* in the app deletes the account and all server data linked to it in one step. [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md) is the web page the store requires. It names the app and its developer and lists what is kept. It explains that anyone can write to us without the app, but that we delete an account only on a request signed with that account's key, and that today only the app can sign one. An account that has not connected for 365 days is deleted automatically, with all server data linked to it |
+| Users can request deletion | Yes, in the app. *Delete account* in the app deletes the account and everything the server holds about it in one step, also while the account is suspended. [ACCOUNT-DELETION.md](ACCOUNT-DELETION.md) is the web page the store requires. It names the app and its developer. It explains that anyone can write to us without the app, but that we delete an account only on a request signed with that account's key, and that today only the app can sign one. It lists what is kept after deletion: the hash of the username for up to 31 days, or while a bar on it lasts; reports about the account's messages, for the period the Privacy Policy gives, because the server cannot link them to an account; messages and attachments the user sent that still wait for delivery, which are not linked to the account and are gone within 30 days; evidence preserved where LUME Inc. deletes an account for, or reports, child sexual exploitation, reports a threat to life, where the law requires it, or where a competent authority lawfully asks; the record of any measure LUME Inc. took on the account, until the limitation period for claims about it ends; and what the user wrote to LUME Inc., for the periods the Privacy Policy gives. An account that has not connected for 365 days is deleted automatically in the same way |
 | Independent security review | Not yet. This answer will be updated after one |
 
 > [!IMPORTANT]
@@ -69,7 +69,7 @@ Other Play declarations:
   ([Terms of Use](TERMS.md)).
 
 > [!IMPORTANT]
-> **To be filled in before release:** how the Windows app is packaged and the
+> **To be filled in before release.** How the Windows app is packaged and the
 > capabilities it declares, the same as in the [permissions](PERMISSIONS.md).
 
 ## Stores not yet decided

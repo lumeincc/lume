@@ -174,8 +174,9 @@ of signing, so it does not reveal when the owner was active. A client fetches
 its own certificate on its authenticated connection (`GetCertificate`, §4.2),
 refreshes it weekly, and presents it in introductions (CRYPTO §5.3) and cards
 (CRYPTO §11.2). A username freed by deletion or by the inactivity sweep cannot
-be registered again for 31 days, so two valid certificates never name the same
-username.
+be registered again for 31 days, so that two valid certificates do not name the
+same username; only a full `barred_usernames` table (§7) can end the hold
+sooner.
 
 ---
 
@@ -302,14 +303,17 @@ authenticated connections, `[N]` only on anonymous ones, and `[*]` on either.
 ```
 
 Notice kinds come from a fixed list: a change to the Terms, the Privacy Policy
-or the Consent; a notice required before a lawful disclosure; a measure taken
-on the account (§6.4); a security incident that affects the account; a transfer
-of the service to a successor; and the end of the service. The app shows its
-own text for each kind and links to the full text, which LUME Inc. publishes on
-its website; the relay sends no text. A notice is pushed at once to a connected
-account and is otherwise kept in `notices` (§7) and pushed when the account next
-connects, so that an account that is offline still receives it. `day` is the
-day the notice was issued.
+or the Consent; a notice required before a lawful disclosure; a warning to the
+account; a measure taken on the account (§6.4) or its end; a security incident
+that affects the account; a transfer of the service to a successor; and the end
+of the service. The app shows its own text for each kind and links to the full
+text, which LUME Inc. publishes on its website; the relay sends no text. A
+notice is pushed at once to a connected account and is otherwise kept in
+`notices` (§7) and pushed when the account next connects. The relay keeps at
+most 20 notices for an account and none for more than 30 days, so an account
+that stays offline longer, or for which more are issued, may miss one; the app
+also reads the account's state from `AccountData` (§4.2). `day` is the day the
+notice was issued.
 
 ### 4.2 Account
 
@@ -374,7 +378,7 @@ about 75 KB.
 → AccountInfo    [A] { }                       ← AccountData
 ← AccountData { username: text≤32, account_id: bytes[16], discoverable: bool,
                 created_day: u32, last_seen_day: u32, accepted: u32, accepted_day: u32,
-                measure: u8, measure_until_day: u32,
+                current: u32, measure: u8, measure_until_day: u32,
                 generation: u32, tokens: u16, invites: u8, pending: u32, pending_bytes: u64,
                 blobs: u32, blob_bytes: u64 }
 ```
@@ -387,6 +391,12 @@ hand-out, not the time, and forgets the entry after 15 days. `DeleteAccount`
 and the inactive-account sweep remove the account and, in the same
 transaction, everything in §7 that refers to it, and then delete its blob
 files.
+
+`current` is the number of the version of the Terms of Use, the Privacy Policy
+and the Consent now in effect. When it is higher than `accepted`, the app shows
+the new version, asks the user to accept it and sends `AcceptTerms`. The app
+sends `AccountInfo` each time it authenticates, so it learns of a new version,
+or of a measure on the account, even if the notice of it never arrived (§4.1).
 
 ### 4.3 Directory
 
@@ -669,23 +679,29 @@ anyone.
 
 These bounds make abuse expensive, not impossible (CRYPTO §1).
 
----
-
 ### 6.4 Measures on an account
 
-LUME Inc. may put a measure on an account for a breach of the Terms of Use. The
-relay applies it; people at LUME Inc. decide it.
+LUME Inc. may put a measure on an account on the grounds in section 6 of the
+Terms of Use. The relay applies it; people at LUME Inc. decide it.
 
-- **Restricted**: the account cannot send on the introduction lane, create
-  invites or add tokens. Everything else works.
-- **Suspended**: the relay accepts from the account only `Ping`,
-  `AccountInfo`, `AcceptTerms` and `DeleteAccount`. It answers every other
-  request with `ACCOUNT_SUSPENDED`. It still accepts and keeps messages for the
-  account, within the usual bounds.
+- **Restricted**: the relay refuses `CreateInvite` and `AddTokens` from the
+  account, and accepts every other request.
+- **Suspended**: on the account's authenticated connection the relay accepts
+  only `Ping`, `AccountInfo`, `AcceptTerms` and `DeleteAccount`, and answers
+  every other request with `ACCOUNT_SUSPENDED`. It still accepts and keeps
+  messages for the account, within the usual bounds, but pushes them to it
+  only once the suspension ends; notices are still pushed.
+
+Neither measure can stop sends from the account, which arrive on anonymous
+connections (§1.1); the Terms of Use forbid a restricted account to send on
+the introduction lane and a suspended account to send at all.
 
 A measure ends on `measure_until_day`, or when LUME Inc. lifts it; 0 means it
 has no end day. The account receives a notice when a measure is set and when it
-ends (§4.1).
+ends (§4.1). A warning is a notice of its own kind (§4.1) and changes nothing
+else on the relay.
+
+---
 
 ## 7. What the relay stores
 
@@ -741,6 +757,7 @@ out of range stops the process with a message naming the setting.
 | `LUME_DB_PATH` | `./data/relay.db` | |
 | `LUME_BLOB_DIR` | `./data/blobs` | |
 | `LUME_INACTIVE_ACCOUNT_DAYS` | `365` | at least 30; a value below 30 days stops the relay at boot |
+| `LUME_TERMS_VERSION` | required | the number of the version of the Terms of Use, the Privacy Policy and the Consent now in effect (§4.2); a `Register` with a lower `accepted` is refused with `TERMS_OUTDATED`, and `AccountData.current` reports it; at least 1 |
 | `LUME_DEV` | unset | allows `ws://` and a directory key file; refuses to start unless `LUME_HOST` is `localhost` |
 
 Logs carry event names, counts, durations and error codes — never usernames,
