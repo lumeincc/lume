@@ -269,6 +269,7 @@ class Site:
             )
         width = " wide" if page.group == "spec" else ""
         return (
+            f'<canvas class="edge{width}" aria-hidden="true"></canvas>\n'
             f'<article class="doc{width}">\n<header class="doc-head">{eyebrow_html}<h1>{render.escape(title)}</h1>{note_html}</header>\n'
             f"{contents}\n{body}\n{source}\n</article>"
         )
@@ -314,7 +315,7 @@ class Site:
         privacy = self.link_to_page(page, self.by_route["legal/privacy"], "")
         return (
             '<footer class="site-footer"><div class="bar">'
-            f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a></div>'
+            f'<div class="footer-top"><a class="wordmark" href="{home}">LUME</a><span class="status">{words["status"]}</span></div>'
             f'<p class="imprint"><span>{words["imprint"]}</span><a href="{docs}">{words["footer-docs"]}</a>'
             f'<a href="{privacy}">{words["footer-privacy"]}</a></p>'
             "</div></footer>"
