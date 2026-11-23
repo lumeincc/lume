@@ -124,6 +124,8 @@
     let atlas = null;
     let digits = new Uint8Array(0);
     let shown = new Int16Array(0);
+    let appear = new Float32Array(0);
+    let born = -1;
     let last = 0;
     let running = false;
     let visible = false;
@@ -175,8 +177,10 @@
       };
       const count = grid.columns * grid.rows;
       digits = new Uint8Array(count);
+      appear = new Float32Array(count);
       for (let index = 0; index < count; index += 1) {
         digits[index] = Math.random() < 0.5 ? 0 : 1;
+        appear[index] = Math.random();
       }
       shown = new Int16Array(count).fill(-2);
       drawAtlas(cell.font * scale, pixelWidth, pixelHeight);
@@ -187,6 +191,7 @@
     const paint = (time) => {
       scene.frame(time);
       const { columns, rows, pixelWidth, pixelHeight } = grid;
+      const reveal = still ? 1 : Math.min(1, Math.max(0, (time - born) / 1100));
       if (!still) {
         const flips = Math.ceil(digits.length * 0.012);
         for (let flip = 0; flip < flips; flip += 1) {
@@ -200,7 +205,7 @@
       for (let row = 0; row < rows; row += 1) {
         for (let column = 0; column < columns; column += 1) {
           const index = row * columns + column;
-          const value = scene.value(index, column, row);
+          const value = appear[index] > reveal ? empty : scene.value(index, column, row);
           const slot = value === empty ? empty : value * 2 + digits[index];
           if (slot === shown[index]) {
             continue;
@@ -245,7 +250,11 @@
       if (!layout()) {
         return;
       }
+      if (born < 0) {
+        born = performance.now();
+      }
       paint(performance.now());
+      canvas.classList.add("shown");
       start();
     };
 

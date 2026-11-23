@@ -212,13 +212,19 @@ class Site(unittest.TestCase):
             if page.group in build.DOCS_GROUPS:
                 self.assertIn(f'href="{self.site.link_to_page(docs, page, "")}"', text, page.route)
 
-    def test_every_page_footer_links_documentation_and_privacy(self) -> None:
+    def test_every_page_footer_holds_only_the_wordmark_and_the_imprint(self) -> None:
         text = (self.output / "how-it-works" / "index.html").read_text(encoding="utf-8")
         footer = text[text.index('<footer class="site-footer">'):]
-        self.assertIn('href="../docs/"', footer)
-        self.assertIn('href="../legal/privacy/"', footer)
-        self.assertNotIn("languages", footer)
+        self.assertEqual(footer.count("<a "), 1)
+        self.assertIn('class="wordmark" href="../"', footer)
+        self.assertIn("BIN 260740032421", footer)
         self.assertNotIn("<header", text[:text.index("<main")])
+
+    def test_the_privacy_policy_is_reachable_from_the_home_page_through_the_documentation(self) -> None:
+        home = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn('href="docs/"', home)
+        docs = (self.output / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('href="../legal/privacy/"', docs)
 
     def test_the_not_found_page_links_under_the_base_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
