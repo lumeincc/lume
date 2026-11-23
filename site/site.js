@@ -357,8 +357,8 @@
       sketch.height = Math.max(1, Math.ceil(grid.frameHeight / step));
       const pen = sketch.getContext("2d", { willReadFrequently: true });
       const portrait = sketch.height > sketch.width * 1.2;
-      const size = portrait ? sketch.width * 0.3 : Math.min(sketch.width * 0.3, sketch.height * 0.42);
-      const middle = portrait ? sketch.height * 0.25 : sketch.height / 2;
+      const size = portrait ? sketch.width * 0.34 : Math.min(sketch.width * 0.3, sketch.height * 0.4);
+      const middle = portrait ? sketch.height * 0.4 : sketch.height * 0.44;
       masks = shapes.map((shape) => {
         pen.clearRect(0, 0, sketch.width, sketch.height);
         pen.fillStyle = "#fff";
@@ -383,7 +383,7 @@
       fades = new Float32Array(rows);
       const frameBox = canvas.getBoundingClientRect();
       const pad = 10;
-      const boxes = [...hero.querySelectorAll("h1, .actions")].map((element) => {
+      const boxes = [...hero.querySelectorAll(".actions")].map((element) => {
         const box = element.getBoundingClientRect();
         return {
           left: box.left - frameBox.left - pad,

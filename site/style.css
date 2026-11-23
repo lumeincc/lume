@@ -61,7 +61,8 @@ pre, code { font-family: var(--font-code); }
 
 
 .binary { position: absolute; inset: 0; z-index: -1; display: block; width: 100%; height: 100%; pointer-events: none; }
-.hero-inner { display: grid; justify-items: center; max-width: 980px; }
+.hero-inner { display: grid; justify-items: center; align-self: end; max-width: 980px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .hero h1 { margin: 0; font-weight: 300; font-size: clamp(40px, 6.2vw, 92px); line-height: 1.04; letter-spacing: -.045em; color: var(--fg-2); text-wrap: balance; }
 .hero h1 em { display: block; color: var(--fg); }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: clamp(32px, 4vw, 48px); }
