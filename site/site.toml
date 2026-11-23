@@ -154,6 +154,7 @@ description = "LUME is an end-to-end encrypted messenger with a post-quantum key
 skip = "Skip to content"
 footer-docs = "Documentation"
 footer-privacy = "Privacy"
+status = "In development"
 imprint = "© 2026 LUME Inc. — ТОО «LUME Inc.», Republic of Kazakhstan, BIN 260740032421."
 contents = "On this page"
 source = "Source:"
