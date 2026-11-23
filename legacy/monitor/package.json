@@ -11,9 +11,9 @@
     "test": "node test/classify.test.js && node test/correlate.test.js"
   },
   "dependencies": {
-    "puppeteer": "^23.9.0"
+    "puppeteer": "^25.18.1"
   },
   "devDependencies": {
-    "electron": "^33.2.0"
+    "electron": "^42.11.16"
   }
 }
