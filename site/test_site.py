@@ -80,8 +80,8 @@ class Inline(unittest.TestCase):
         self.assertEqual(body("*Non-discoverable* hides, 2 * 3 * 4"), "<p><em>Non-discoverable</em> hides, 2 * 3 * 4</p>")
 
     def test_links_are_rewritten_and_keep_code_labels(self) -> None:
-        document = render.render("[`docs/CRYPTO.md`](../docs/CRYPTO.md#1-goals)", lambda href: "rewritten/" + href)
-        self.assertEqual(document.body, '<p><a href="rewritten/../docs/CRYPTO.md#1-goals"><code>docs/CRYPTO.md</code></a></p>')
+        document = render.render("[`docs/CRYPTO.md`](../docs/CRYPTO.md#1-goals-and-non-goals)", lambda href: "rewritten/" + href)
+        self.assertEqual(document.body, '<p><a href="rewritten/../docs/CRYPTO.md#1-goals-and-non-goals"><code>docs/CRYPTO.md</code></a></p>')
 
     def test_link_targets_are_escaped(self) -> None:
         document = render.render('[x](a"b)', lambda href: href)
@@ -125,17 +125,12 @@ class Site(unittest.TestCase):
     def test_the_built_site_passes_every_check(self) -> None:
         self.assertEqual(build.check(self.output), [])
 
-    def test_every_policy_is_published_in_every_language(self) -> None:
+    def test_every_policy_is_published(self) -> None:
         sources = {str(page.source) for page in self.site.pages if page.source}
         for policy in (build.ROOT / "legal").glob("*.md"):
             if policy.name == "README.md":
                 continue
             self.assertIn(f"legal/{policy.name}", sources)
-        published = {(page.language, page.route) for page in self.site.pages if page.group in ("legal", "guide", "open-source")}
-        everywhere = {route for _, route in published}
-        for language in self.config["languages"]:
-            routes = {route for page_language, route in published if page_language == language}
-            self.assertEqual(routes, everywhere - {"licence"} if language != "en" else everywhere, language)
 
     def test_every_page_states_the_content_security_policy(self) -> None:
         for page in self.output.rglob("*.html"):
@@ -174,7 +169,7 @@ class Site(unittest.TestCase):
         self.assertIn("script-src 'self'", build.POLICY)
         self.assertNotIn("unsafe-inline", build.POLICY)
 
-    def test_only_the_consent_script_may_run(self) -> None:
+    def test_only_the_site_script_may_run(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
             (output / "style.css").write_text("", encoding="utf-8")
@@ -188,56 +183,58 @@ class Site(unittest.TestCase):
             problems = build.check(output)
         self.assertEqual(len(problems), 4, problems)
 
-    def test_every_language_page_offers_the_cookie_choice(self) -> None:
-        for language in self.config["languages"]:
-            text = (self.output / language / "index.html").read_text(encoding="utf-8")
-            self.assertIn('<section class="consent"', text)
-            self.assertIn('id="consent-preferences"', text)
-            self.assertIn('data-consent="reject"', text)
-            footer = text[text.index('<footer class="site-footer">'):]
-            self.assertIn('data-consent="open"', footer)
-        root = (self.output / "index.html").read_text(encoding="utf-8")
-        self.assertIn(build.SCRIPT_NAME, root)
-        self.assertNotIn('class="consent"', root)
+    def test_the_site_stores_nothing_on_the_device(self) -> None:
+        script = (build.SITE / build.SCRIPT_NAME).read_text(encoding="utf-8")
+        for storage in ("cookie", "localStorage", "sessionStorage", "indexedDB"):
+            self.assertNotIn(storage, script)
+        for page in self.output.rglob("*.html"):
+            text = page.read_text(encoding="utf-8")
+            self.assertNotIn('class="consent', text, page)
+            self.assertNotIn("data-consent", text, page)
 
-    def test_the_root_sends_every_visitor_to_a_language(self) -> None:
+    def test_the_home_page_is_at_the_root(self) -> None:
         root = (self.output / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<body class="redirect">', root)
-        self.assertIn('<noscript><meta http-equiv="refresh" content="0; url=en/"></noscript>', root)
-        self.assertNotIn('<a ', root[root.index("<main"):root.index("</main>")])
+        self.assertIn('<body class="home">', root)
+        self.assertIn('<html lang="en">', root)
+
+    def test_old_language_addresses_lead_to_the_same_page(self) -> None:
+        for prefix in self.config["moved"]:
+            home = (self.output / prefix / "index.html").read_text(encoding="utf-8")
+            self.assertIn('<meta http-equiv="refresh" content="0; url=../">', home)
+            text = (self.output / prefix / "legal" / "privacy" / "index.html").read_text(encoding="utf-8")
+            self.assertIn('<meta http-equiv="refresh" content="0; url=../../../legal/privacy/">', text)
+            self.assertIn('<a href="../../../legal/privacy/">', text)
 
     def test_the_documentation_page_lists_every_guide_policy_and_specification(self) -> None:
-        for language in self.config["languages"]:
-            text = (self.output / language / "docs" / "index.html").read_text(encoding="utf-8")
-            docs = self.site.by_route[(language, "docs")]
-            for page in self.site.pages:
-                if page.group not in build.DOCS_GROUPS:
-                    continue
-                if page.language == language or (page.group == "spec" and page.language == self.config["languages"][0]):
-                    self.assertIn(f'href="{self.site.link_to_page(docs, page, "")}"', text, (language, page.route))
+        text = (self.output / "docs" / "index.html").read_text(encoding="utf-8")
+        docs = self.site.by_route["docs"]
+        for page in self.site.pages:
+            if page.group in build.DOCS_GROUPS:
+                self.assertIn(f'href="{self.site.link_to_page(docs, page, "")}"', text, page.route)
 
     def test_every_page_footer_links_documentation_and_privacy(self) -> None:
-        for language in self.config["languages"]:
-            text = (self.output / language / "how-it-works" / "index.html").read_text(encoding="utf-8")
-            footer = text[text.index('<footer class="site-footer">'):]
-            self.assertIn('href="../docs/"', footer)
-            self.assertIn('href="../legal/privacy/"', footer)
-            self.assertNotIn("<header", text[:text.index("<main")])
+        text = (self.output / "how-it-works" / "index.html").read_text(encoding="utf-8")
+        footer = text[text.index('<footer class="site-footer">'):]
+        self.assertIn('href="../docs/"', footer)
+        self.assertIn('href="../legal/privacy/"', footer)
+        self.assertNotIn("languages", footer)
+        self.assertNotIn("<header", text[:text.index("<main")])
 
     def test_the_not_found_page_links_under_the_base_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "site"
             build.Site(self.config, output, "/lume/").build()
             text = (output / "404.html").read_text(encoding="utf-8")
-            self.assertIn('href="/lume/ru/"', text)
+            self.assertIn('href="/lume/"', text)
             self.assertIn('href="/lume/style.css"', text)
             self.assertEqual(build.check(output, "/lume/"), [])
             self.assertNotEqual(build.check(output, "/"), [])
 
-    def test_links_between_languages_resolve(self) -> None:
-        privacy = self.site.by_route[("ru", "legal/privacy")]
-        self.assertEqual(self.site.resolve(privacy, "PRIVACY.md"), "../../../en/legal/privacy/")
-        self.assertEqual(self.site.resolve(privacy, "/en/spec/crypto/#1-goals-and-non-goals"), "../../../en/spec/crypto/#1-goals-and-non-goals")
+    def test_links_resolve(self) -> None:
+        privacy = self.site.by_route["legal/privacy"]
+        self.assertEqual(self.site.resolve(privacy, "TERMS.md"), "../terms/")
+        self.assertEqual(self.site.resolve(privacy, "/spec/crypto/#1-goals-and-non-goals"), "../../spec/crypto/#1-goals-and-non-goals")
+        self.assertEqual(self.site.resolve(privacy, "/en/legal/terms/"), "../terms/")
         self.assertEqual(self.site.resolve(privacy, "/legal/terms/"), "../terms/")
         self.assertTrue(self.site.resolve(privacy, "../CONTRIBUTING.md").startswith(self.config["repository"] + "/blob/"))
 

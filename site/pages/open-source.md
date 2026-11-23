@@ -53,24 +53,27 @@ format.
 
 - One command configures, builds and runs every test and writes a report:
   `pwsh tools/test.ps1` on Windows or `sh tools/test.sh` on Linux. What it
-  needs is in [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+  needs is in [CONTRIBUTING.md](../../CONTRIBUTING.md).
 - `lume-lab`, built next to the tests, walks through accounts, recovery, the
-  post-quantum handshake, attacks and safety numbers on the real core, and marks
-  every check `[ ok ]` or `[FAIL]`.
-- The specification says what the code must do. Code that disagrees with it is
-  a bug in one of the two.
+  post-quantum handshake, the Double Ratchet, attacks and safety numbers on the
+  real core, and marks every check `[ ok ]` or `[FAIL]`.
+- The specification says what the code must do. When the code and the
+  specification disagree, one of them has a defect.
 
 ## Contributing
 
 Contributions arrive as pull requests, signed off under the contributor licence
-agreement in [CONTRIBUTING.md](../../../CONTRIBUTING.md). Security bugs are
+agreement in [CONTRIBUTING.md](../../CONTRIBUTING.md). Security bugs are
 reported privately — see [Security](/security/).
 
 ## This website
 
-The website is built from the same repository: [`site/`](../../../site) holds a
-small generator that uses only Python's standard library, and the policies are
-rendered straight from [`legal/`](../../../legal), so the website and the
-repository cannot disagree. It runs one small script, for the cookie window
-and the home page's headline, sets cookies only with your consent and loads
-nothing from other servers; see [The website and cookies](/legal/website/).
+The website is built from the same repository and hosted on GitHub Pages.
+[`site/`](../../site) holds a small generator that uses only Python's standard
+library, and the policies are rendered straight from [`legal/`](../../legal), so
+the website and the repository cannot disagree. The site is in English. Its one
+small script animates the heading and buttons at the top of the home page, and
+does nothing if you ask your system for reduced motion. The site sets no
+cookies, stores nothing on your device and loads nothing from other servers; its
+fonts are served by the site itself. See
+[The LUME website: privacy](/legal/website/).
