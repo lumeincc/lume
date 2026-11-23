@@ -109,8 +109,11 @@ attorney, if one is hired, are paid separately.
 - Enter the application number in [`TRADEMARKS.md`](../../TRADEMARKS.md) in
   place of the "To be filled in before release" note; after registration, the
   certificate number.
-- Until the mark is registered, **do not put ®** next to LUME: this warning
-  mark may be used only with a registered mark. ™ may be used.
+- Until the mark is registered, **do not put ®** next to LUME, and do not use
+  the words "тауар белгісі", "товарный знак" or "зарегистрированный товарный
+  знак" for it: under article 20 of Law of the Republic of Kazakhstan
+  No. 456 on trademarks, only the holder of a certificate may use these
+  warning marks. ™ may be used.
 - Within 6 months of the filing date, applications can be filed in other
   countries claiming the priority of the Kazakh application (Paris Convention),
   or an international application can be filed under the Madrid System through

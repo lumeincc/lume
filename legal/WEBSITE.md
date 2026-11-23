@@ -11,9 +11,10 @@ this page in our repository.
 
 This page covers only the LUME website at <https://lumeincc.github.io/lume/>
 (the "website"). The website is run by LUME Inc. (section 11). Sections 1 to 7
-describe how the website treats your privacy. Sections 8 to 10 are the terms of
-use of the website. The LUME apps, the relay and LUME accounts are covered by
-the [Terms of Use](TERMS.md), the [Privacy Policy](PRIVACY.md) and the
+describe how the website treats your privacy and what LUME Inc. does with what
+you send it (section 4.4). Sections 8 to 10 are the terms of use of the
+website. The LUME apps, the relay and LUME accounts are covered by the
+[Terms of Use](TERMS.md), the [Privacy Policy](PRIVACY.md) and the
 [Consent to the processing of personal data](CONSENT.md), not by this page.
 
 ## 1. In short
@@ -34,6 +35,8 @@ the [Terms of Use](TERMS.md), the [Privacy Policy](PRIVACY.md) and the
   Security Policy of every page allows resources only from the website, and
   your browser enforces it.
 - **No forms.** The website asks you to type nothing and collects nothing.
+- **Letters.** If you write to us, we use what you send only to deal with the
+  matter (section 4.4).
 - **No referrer.** When you follow a link to another site, your browser is told
   not to reveal which page you came from.
 
@@ -56,7 +59,7 @@ device. Your browser's own settings for cookies and site data apply as usual,
 and clearing them changes nothing on the website. The website also works with
 JavaScript turned off.
 
-## 4. Hosting and what it receives
+## 4. Hosting, and what LUME Inc. receives
 
 1. The website is hosted on GitHub Pages, a service of GitHub, Inc. (USA). To
    send you a page, GitHub's server receives what your browser sends with any
@@ -68,10 +71,23 @@ JavaScript turned off.
 2. LUME Inc. receives no access logs and does not see visitors' IP addresses.
    When you open the website, your browser connects to GitHub's servers
    directly; those servers may be outside the Republic of Kazakhstan.
-3. LUME Inc. itself collects no personal data through the website. Where the
-   EU General Data Protection Regulation (GDPR) applies, our ground for having
-   the website delivered by a hosting service is our legitimate interest in
-   publishing information about LUME (GDPR article 6(1)(f)).
+3. Other than what you send us (point 4), LUME Inc. itself collects no
+   personal data in connection with the website. Where the EU General Data
+   Protection Regulation (GDPR) applies, our ground for having the website
+   delivered by a hosting service is our legitimate interest in publishing
+   information about LUME (GDPR article 6(1)(f)).
+4. If you write to us, for example with a claim under section 10 or a request
+   under section 6, we receive what you send, including your name and how to
+   reach you if you give them. Please send only what the matter needs. We use
+   what you send only to answer you and to deal with the matter. We keep it in
+   the Republic of Kazakhstan until the matter is closed and then until the
+   limitation period for claims about it ends, and then delete it. We disclose
+   it only to a court or a competent authority, where the law requires it. Our
+   ground under the law of the Republic of Kazakhstan is the consent you give
+   by writing to us and, where a law requires us to answer, the cases in
+   article 9 of the Law "On Personal Data and Their Protection"; under the
+   GDPR, it is our legitimate interest in answering you and in establishing,
+   exercising or defending legal claims (article 6(1)(f)).
 
 ## 5. Links to other sites
 
@@ -85,16 +101,18 @@ JavaScript turned off.
 
 ## 6. Your rights
 
-1. LUME Inc. keeps nothing about visitors to the website, and the website keeps
-   nothing in your browser. A request about your data will therefore usually
-   be answered that we hold none.
+1. Other than what you send us (section 4.4), LUME Inc. keeps nothing about
+   visitors to the website, and the website keeps nothing in your browser.
+   Unless you have written to us, a request about your data will therefore be
+   answered that we hold none.
 2. You keep every right that the law gives you over your personal data. Under
    the law of the Republic of Kazakhstan and, where it applies to you, the
    GDPR, these include the rights to know whether we process data about you,
-   to have it corrected or deleted, to object, and to seek protection from the
-   authorised body for personal-data protection of the Republic of Kazakhstan,
-   from the supervisory authority of the EU country where you live or work, or
-   from a court.
+   to have it corrected or deleted, to withdraw the consent you gave by
+   writing to us, to object, and to seek protection from the authorised body
+   for personal-data protection of the Republic of Kazakhstan, from the
+   supervisory authority of the EU country where you live or work, or from a
+   court.
 3. Questions about data that GitHub processes go to GitHub. How to reach us is
    on the [contact page](CONTACT.md).
 
@@ -165,11 +183,12 @@ accept them, please do not use the website.
    claim first. This is an invitation, not a condition: you may go to court
    without it. Send it by e-mail to the address for claims on the
    [contact page](CONTACT.md) or by any other means the law allows; until that
-   address is published, use the channel the contact page gives. Say who you
-   are and how to reach you, what happened and what you ask for. We answer
-   within the period the law sets; for a consumer claim under the law of the
-   Republic of Kazakhstan that is ten calendar days, and for any other claim
-   it is 30 calendar days.
+   address is published, send it by post to the registered office of LUME
+   Inc. in Temirtau, as the contact page explains. Say who you are and how to
+   reach you, what happened and what you ask for; we use what you send as
+   section 4.4 describes. We answer within the period the law sets; for a
+   consumer claim under the law of the Republic of Kazakhstan that is ten
+   calendar days, and for any other claim it is 30 calendar days.
 3. If LUME Inc. has a claim against you, it sends you a written claim by any
    means available to it. Where it has no means of reaching you, it may go to
    court directly.

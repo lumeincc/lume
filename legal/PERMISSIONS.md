@@ -70,7 +70,7 @@ the relay. So:
 ## Windows
 
 > [!IMPORTANT]
-> **To be filled in before release:** how the Windows app is built and
+> **To be filled in before release.** How the Windows app is built and
 > packaged, and the complete list of capabilities or other permissions it
 > declares. Until then this page makes no statement about them.
 

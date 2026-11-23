@@ -28,8 +28,9 @@ public in our repository.
    that is:
    - the username and the random account identifier that the server assigned
      to the account;
-   - the account's public keys, its generation number (how many times the
-     account was recovered on a new device) and its discoverability setting;
+   - the account's public keys and the signatures on them, its generation
+     number (how many times the account was recovered on a new device) and its
+     discoverability setting;
    - the **day** the account was created and the **day** it last connected,
      without a time;
    - the number of the version of the Terms of Use, the Privacy Policy and the
@@ -68,12 +69,15 @@ public in our repository.
    that the messages were sent. The server stores reports without linking them
    to an account, so we find the reports about an account only by opening the
    reports we hold.
-4. Outside the server, LUME Inc. holds only what the
-   [Privacy Policy](PRIVACY.md) describes: what people send to the addresses
-   on the [contact page](CONTACT.md), with the contact details they chose to
-   give; the reports we have opened; evidence preserved under clause 4.6 or
-   the [Child Safety Standards](CHILD-SAFETY.md); and the record in
-   clause 4.10.
+4. Outside the server, LUME Inc. holds only the data that section 12 of the
+   [Privacy Policy](PRIVACY.md) lists, such as: what people send to the
+   addresses on the [contact page](CONTACT.md) or by post to our registered
+   office, with the contact details they chose to give; the reports we have
+   opened; evidence preserved under clause 4.6 or the
+   [Child Safety Standards](CHILD-SAFETY.md); the record of measures taken on
+   accounts, with the facts and the clause of the Terms of Use on which each
+   is based; copies of vulnerability reports ([SECURITY.md](../SECURITY.md));
+   and the record in clause 4.10.
 
 ## 2. What does not exist
 
@@ -110,10 +114,12 @@ tell users about it where the law allows.
    if it is lawful and it:
    - comes from an authority of the Republic of Kazakhstan that is competent to
      make it under the law of the Republic of Kazakhstan, in the form and by the
-     procedure that law sets; or
+     procedure that law sets;
    - reaches us through a proper channel of international legal assistance,
      such as a request under a treaty to which the Republic of Kazakhstan is a
-     party.
+     party; or
+   - comes directly from a foreign authority and clause 3.3 allows us to answer
+     it directly.
 2. The request must be in writing, on paper or as an electronic document,
    signed by an authorised official. It must state its legal basis and contain
    what the law requires for that kind of request, including, where the law
@@ -131,10 +137,14 @@ tell users about it where the law allows.
    request sent to us directly by a foreign authority only to the extent that
    a law binding on LUME Inc. requires us to answer it directly and the law of
    the Republic of Kazakhstan does not forbid it. Otherwise we refer the
-   authority to international legal assistance. We transfer data to another
-   country only in these ways or under clause 4.9, and only where the law of
-   the Republic of Kazakhstan on the cross-border transfer of personal data
-   permits it.
+   authority to international legal assistance. We transfer data to an
+   authority or body in another country only through international legal
+   assistance; when we report child sexual exploitation or a threat to life to
+   a foreign competent authority or a recognised body, under clause 4.9 or as
+   the [Child Safety Standards](CHILD-SAFETY.md) describe; or where another
+   law binding on LUME Inc. requires it. In each case we transfer only the
+   data that the case requires, and only where the law of the Republic of
+   Kazakhstan on the cross-border transfer of personal data permits it.
 4. Private persons, including parties to civil cases and their lawyers, receive
    data about another person's account only under a court order binding on
    LUME Inc. Users can see the data the server holds about their own account in
@@ -177,15 +187,18 @@ tell users about it where the law allows.
    we delete the preserved data.
 7. We carry out a lawful order of a court or a competent authority to restrict,
    suspend or delete an account, or to bar a username, subject to our right to
-   challenge it under clause 4.2.
+   challenge it under clause 4.2. The server does not know who sends a
+   message, so a restriction or a suspension cannot itself stop the account
+   from sending one (clause 6.5 of the [Terms of Use](TERMS.md)).
 8. We notify the user in the app before we disclose data about their account,
    so that they can seek legal help, unless the law, a court or the authority
    acting within its powers forbids it, or the disclosure is made in an
-   emergency under clause 4.9. The app shows the notice and links to its full
-   text on our website. If the account is not connected, the notice waits on
-   the server until the account next connects, for at most 30 days. We hold no
-   contact details for users other than those a person has sent us
-   (clause 1.4), so the app is the way we notify a user.
+   emergency under clause 4.9. The LUME app shows the notice and links to its
+   full text on our website. If the account is not connected, the notice
+   waits on the server until the account next connects, for at most 30 days,
+   so it may reach the user only after the disclosure. We hold no contact
+   details for users other than those a person has sent us (clause 1.4), so
+   the app is the way we notify a user.
 9. In an emergency involving an imminent threat to a person's life, we may
    disclose to a competent authority, of our own motion or on its request, the
    data in section 1 that exists and that is needed to prevent the threat. We

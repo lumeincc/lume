@@ -34,10 +34,15 @@ They do not replace the Terms of Use.
 
 ## Who may use LUME
 
-LUME is for people aged 18 and over, in every country. If we learn that an
-account belongs to a person under 18, we suspend it and tell the account in the
-app. We delete it once the 30-day appeal period in section 6 of the
-[Terms of Use](TERMS.md) has passed, or an appeal has been rejected.
+LUME is for people aged 18 and over, in every country, as section 3 of the
+[Terms of Use](TERMS.md) and section 10 of the [Privacy Policy](PRIVACY.md)
+set. If we learn that an account belongs to a person under 18, we suspend it
+and tell the account in the app. We delete it only as clause 6.6.2 of the
+[Terms of Use](TERMS.md) describes for a suspended account: once an appeal has
+been rejected or, if no appeal made in time is pending, once 61 days have
+passed since the day the notice of the suspension was issued. The exception in
+clause 6.6.2 for a serious and repeated breach never applies to such an
+account.
 
 ## How to report
 
@@ -65,12 +70,14 @@ app. We delete it once the 30-day appeal period in section 6 of the
    preserve the evidence: the report and the account data the server holds
    (listed in section 3 of the [Privacy Policy](PRIVACY.md)).
 3. Only after the evidence is preserved do we delete the offending account and
-   bar its username, so that it cannot be registered again. We do this at once
-   and without notice. We do not first suspend the account or wait for the
-   appeal period.
+   bar its username, so that it cannot be registered again while the bar
+   lasts. We do this at once and without notice. We do not first suspend the
+   account or wait for the appeal period.
 4. If a report suggests CSAE but does not clearly show it, we may suspend the
    account while we assess it, and then act under section 6 of the
-   [Terms of Use](TERMS.md).
+   [Terms of Use](TERMS.md). The server does not know who sends a message, so
+   a suspension cannot itself stop the account from sending one; sending one
+   evades the measure, which the Terms of Use forbid (clause 5.8).
 5. We report apparent CSAE without undue delay to the competent law enforcement
    authorities of the Republic of Kazakhstan. Where another country is
    concerned, we may also report it to the competent authority or the
@@ -85,9 +92,11 @@ app. We delete it once the 30-day appeal period in section 6 of the
 7. We answer requests from the competent authorities about CSAE as the
    [Law Enforcement Policy](LAW-ENFORCEMENT.md) describes.
 8. The account holder may appeal the measure as section 6 of the
-   [Terms of Use](TERMS.md) describes. A deleted account cannot be restored,
-   but an appeal that succeeds lifts the bar on its username. An appeal does
-   not stop us from preserving evidence or reporting to the authorities.
+   [Terms of Use](TERMS.md) describes. An account deleted at once receives no
+   notice, so the period for the appeal runs from the day the holder learns of
+   the measure (clause 6.9). A deleted account cannot be restored, but an
+   appeal that succeeds lifts the bar on its username. An appeal does not stop
+   us from preserving evidence or reporting to the authorities.
 
 > [!IMPORTANT]
 > **To be filled in before release.** The authority of the Republic of
@@ -115,9 +124,11 @@ app. We delete it once the 30-day appeal period in section 6 of the
    of the app stores that distribute LUME.
 2. Nothing in these standards limits what the law requires of LUME Inc., or the
    right of anyone to go to the police or a court.
-3. We review these standards when the law or the service changes. The current
-   version is the one published on our website, and its history is public in
-   our repository.
+3. We review these standards when the law or the service changes. They are
+   part of the Terms of Use, so a change to them is published as a new version
+   of the Terms of Use and takes effect as section 14 of the
+   [Terms of Use](TERMS.md) describes. Every version remains public in our
+   repository.
 
 ## Child-safety contact
 
