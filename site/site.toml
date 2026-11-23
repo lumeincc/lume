@@ -141,7 +141,12 @@ summary = "The LUME relay protocol specification."
 [[images]]
 source = "brand/lume-icon.png"
 margin = 0
-outputs = [["apple-touch-icon.png", 180], ["favicon.png", 32]]
+outputs = [["apple-touch-icon.png", 180]]
+
+[[images]]
+source = "brand/lume-tab-icon.png"
+margin = 0
+outputs = [["favicon.png", 32]]
 
 [strings]
 site-title = "LUME"
