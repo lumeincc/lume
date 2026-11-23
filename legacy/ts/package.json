@@ -25,7 +25,7 @@
     "clean": "node scripts/clean-dev-cache.mjs"
   },
   "dependencies": {
-    "zod": "^3.23.0",
+    "zod": "^4.6.7",
     "nanoid": "^5.0.0"
   },
   "devDependencies": {
