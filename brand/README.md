@@ -12,7 +12,8 @@ The LUME name and logo.
 | `banner.png` | The mark on a wide black field |
 | `logo 1.png`, `logo 2.png` | The logo |
 | `lume-mark.svg` | The logo as a vector: the eclipse on a transparent background |
-| `lume-favicon.svg`, `lume-favicon.png` | The site icon: the mark cropped close, inverted when the system theme is light; the PNG is the dark version for browsers without SVG icons |
+| `lume-icon.png` | The site and app icon: the eclipse built from 0 and 1, in coral on graphite |
+| `lume-favicon.svg`, `lume-favicon.png` | The mark cropped close for small sizes, inverted when the system theme is light; the PNG is the dark version |
 | `lume_gif_color.gif` | Animated logo |
 | `wallpaper 1.png`, `wallpaper 2.png` | Wallpapers |
 

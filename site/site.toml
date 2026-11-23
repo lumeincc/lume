@@ -9,7 +9,7 @@ moved = ["en", "ru", "kk"]
 [[pages]]
 route = ""
 source = "site/pages/index.html"
-title = "LUME — an end-to-end encrypted messenger"
+title = "LUME"
 
 [[pages]]
 route = "404"
@@ -139,14 +139,9 @@ source = "docs/PROTOCOL.md"
 summary = "The LUME relay protocol specification."
 
 [[images]]
-source = "brand/logo 2.png"
-margin = 300
-outputs = [["apple-touch-icon.png", 180]]
-
-[[images]]
-source = "brand/lume-favicon.png"
+source = "brand/lume-icon.png"
 margin = 0
-outputs = [["favicon.png", 32]]
+outputs = [["apple-touch-icon.png", 180], ["favicon.png", 32]]
 
 [strings]
 site-title = "LUME"
