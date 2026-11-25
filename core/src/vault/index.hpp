@@ -85,7 +85,11 @@ public:
             if (first.type != second.type) {
                 return first.type < second.type;
             }
-            return std::ranges::lexicographical_compare(first.id, second.id);
+            const auto [left_at, right_at] = std::ranges::mismatch(first.id, second.id);
+            if (right_at == second.id.end()) {
+                return false;
+            }
+            return left_at == first.id.end() || *left_at < *right_at;
         }
     };
 
