@@ -23,7 +23,11 @@ GUARDED = {
         "under": (),
     },
     "core/src/vault/vault_internal.hpp": {
-        "files": ("core/src/vault/keys.cpp", "core/src/vault/records.cpp"),
+        "files": ("core/src/vault/keys.cpp", "core/src/vault/records.cpp", "core/src/vault/index.cpp"),
+        "under": ("core/tests/",),
+    },
+    "core/src/vault/index_internal.hpp": {
+        "files": ("core/src/vault/index.cpp",),
         "under": ("core/tests/",),
     },
 }

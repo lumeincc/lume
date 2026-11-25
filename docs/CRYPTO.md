@@ -1135,8 +1135,8 @@ phrase, identity and device derivation, prekey signatures, both sides of PQXDH,
 a ratchet conversation with skipped, reordered and replayed messages, seals and
 padding, cards, directory key lists and username certificates, safety numbers
 and invite fingerprints, and the vault's Argon2id cases, Keystore and TPM
-inputs, headers, padded records, sealed record addresses, root terms and sealed
-manifests. They are generated once, committed in `core/tests/vectors/lume`, and
+inputs, headers, padded records, sealed record addresses, root terms, sealed
+manifests and a scripted sequence of writes and removals. They are generated once, committed in `core/tests/vectors/lume`, and
 checked on every platform the core builds for. The content encoding (§7.1) is
 not a cryptographic construction and has no vectors of its own; the wire
 round-trip tests cover it. Constructions that are not built yet get their

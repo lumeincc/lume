@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 LUME Inc.
 // SPDX-License-Identifier: AGPL-3.0-only
 
+#include "vault/index.hpp"
+#include "vault/index_internal.hpp"
 #include "vault/keys.hpp"
 #include "vault/records.hpp"
 #include "vault/vault_internal.hpp"
@@ -1005,6 +1007,131 @@ TEST(VaultManifest, MatchesTheLumeVectors)
         ++refused;
     }
     EXPECT_EQ(refused, 5);
+}
+
+template <typename T>
+class Drawn {
+public:
+    void add(const T& value)
+    {
+        values_.push_back(value);
+    }
+
+    [[nodiscard]] T next()
+    {
+        if (next_ == values_.size()) {
+            throw std::runtime_error("the plan drew more than the vectors give");
+        }
+        return values_.at(next_++);
+    }
+
+    [[nodiscard]] bool used() const noexcept
+    {
+        return next_ == values_.size();
+    }
+
+private:
+    std::vector<T> values_;
+    std::size_t next_ = 0;
+};
+
+RowWrite write_named(const std::string& name)
+{
+    if (name == "insert") {
+        return RowWrite::insert;
+    }
+    if (name == "replace") {
+        return RowWrite::replace;
+    }
+    if (name == "erase") {
+        return RowWrite::erase;
+    }
+    throw std::runtime_error("the vectors name a write the test does not know");
+}
+
+Nonce held_nonce_field(const nlohmann::json& object, const char* name)
+{
+    const auto bytes = hex_field(object, name);
+    return bytes.empty() ? Nonce{} : array_of<crypto::aead_nonce_size>(bytes);
+}
+
+struct ScriptedStep {
+    std::vector<Bytes> ids;
+    std::vector<std::optional<Bytes>> payloads;
+    std::vector<Change> changes;
+    Drawn<std::uint64_t> slots;
+    Drawn<Nonce> record_nonces;
+    Drawn<Nonce> address_nonces;
+    Drawn<Nonce> manifest_nonces;
+};
+
+void read_step(const nlohmann::json& step, ScriptedStep& scripted)
+{
+    scripted.manifest_nonces.add(nonce_field(step, "manifest_nonce"));
+    for (const auto& change : step.at("changes")) {
+        scripted.ids.push_back(hex_field(change, "id"));
+        if (change.at("payload").is_null()) {
+            scripted.payloads.emplace_back();
+            continue;
+        }
+        scripted.payloads.emplace_back(hex_field(change, "payload"));
+        if (change.contains("slot")) {
+            scripted.slots.add(number_field(change, "slot"));
+        }
+        scripted.record_nonces.add(nonce_field(change, "record_nonce"));
+        scripted.address_nonces.add(nonce_field(change, "address_nonce"));
+    }
+    for (std::size_t index = 0; index < scripted.ids.size(); ++index) {
+        const auto& payload = scripted.payloads.at(index);
+        scripted.changes.push_back(Change{.type = step.at("changes").at(index).at("type").get<RecordType>(),
+            .id = scripted.ids.at(index),
+            .payload = payload ? std::optional<ByteView>(*payload) : std::nullopt});
+    }
+}
+
+void expect_rows(const std::vector<RowChange>& rows, const nlohmann::json& expected)
+{
+    ASSERT_EQ(rows.size(), expected.size());
+    for (std::size_t index = 0; index < rows.size(); ++index) {
+        const auto& row = rows.at(index);
+        const auto& vector = expected.at(index);
+        EXPECT_EQ(row.write, write_named(vector.at("write").get<std::string>())) << index;
+        EXPECT_EQ(row.slot, number_field(vector, "slot")) << index;
+        EXPECT_EQ(test::to_hex(row.address), vector.at("address").get<std::string>()) << index;
+        EXPECT_EQ(test::to_hex(row.record), vector.at("record").get<std::string>()) << index;
+        EXPECT_EQ(row.old_address_nonce, held_nonce_field(vector, "old_address_nonce")) << index;
+        EXPECT_EQ(row.old_record_nonce, held_nonce_field(vector, "old_record_nonce")) << index;
+    }
+}
+
+TEST(VaultIndexScript, ReplaysTheScriptedSequenceOfTheLumeVectors)
+{
+    const auto& script = vectors().at("script");
+    const auto opened = vector_header(script.at("header").get<std::string>());
+    const auto hasher = must(TermHasher::of(opened.keys()));
+    Index index;
+    std::size_t steps = 0;
+    for (const auto& step : script.at("steps")) {
+        ScriptedStep scripted;
+        read_step(step, scripted);
+        const detail::Draws draws{.slot = [&scripted] { return scripted.slots.next(); },
+            .record_nonce = [&scripted] { return scripted.record_nonces.next(); },
+            .address_nonce = [&scripted] { return scripted.address_nonces.next(); },
+            .manifest_nonce = [&scripted] { return scripted.manifest_nonces.next(); }};
+        auto plan = must(detail::plan(index, opened, hasher, scripted.changes, draws));
+        EXPECT_TRUE(scripted.slots.used()) << steps;
+        EXPECT_TRUE(scripted.record_nonces.used()) << steps;
+        EXPECT_TRUE(scripted.address_nonces.used()) << steps;
+        EXPECT_TRUE(scripted.manifest_nonces.used()) << steps;
+        expect_rows(plan.rows, step.at("rows"));
+        EXPECT_EQ(test::to_hex(plan.manifest), step.at("manifest").get<std::string>()) << steps;
+        index.apply(std::move(plan));
+        EXPECT_EQ(must(index.manifest(opened.header().epoch)).types, types_of(step.at("types"))) << steps;
+        EXPECT_TRUE(index.matches(must(open_manifest(opened, hex_field(step, "manifest"))))) << steps;
+        ++steps;
+    }
+    EXPECT_EQ(steps, 5U);
+    EXPECT_EQ(index.records(), 0U);
 }
 
 TEST(VaultManifest, SealsOnlyCanonicalTypesAtOneSize)

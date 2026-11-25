@@ -11,6 +11,14 @@
     {
       "name": "liboqs",
       "version>=": "0.15.0"
+    },
+    {
+      "name": "sqlite3",
+      "version>=": "3.54.1",
+      "default-features": false,
+      "features": [
+        "omit-load-extension"
+      ]
     }
   ],
   "features": {

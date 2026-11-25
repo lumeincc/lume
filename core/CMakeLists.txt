@@ -3,6 +3,7 @@
 
 find_package(unofficial-sodium CONFIG REQUIRED)
 find_package(liboqs CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_library(lume_core STATIC
     src/card/card.cpp
@@ -31,8 +32,10 @@ add_library(lume_core STATIC
     src/safety/safety_number.cpp
     src/seal/padding.cpp
     src/seal/seal.cpp
+    src/vault/index.cpp
     src/vault/keys.cpp
     src/vault/records.cpp
+    src/vault/store.cpp
     src/wire/codec.cpp
     src/wire/structures.cpp
 )
@@ -42,7 +45,7 @@ target_include_directories(lume_core
     PUBLIC include
     PRIVATE src
 )
-target_link_libraries(lume_core PRIVATE unofficial-sodium::sodium OQS::oqs)
+target_link_libraries(lume_core PRIVATE unofficial-sodium::sodium OQS::oqs unofficial::sqlite3::sqlite3)
 target_compile_features(lume_core PUBLIC cxx_std_23)
 lume_configure_target(lume_core)
 
