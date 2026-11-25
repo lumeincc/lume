@@ -7,7 +7,8 @@ from check_includes import check
 
 KEY_ACCESS = "core/src/vault/key_access.hpp"
 INTERNAL = "core/src/vault/vault_internal.hpp"
-HEADERS = (KEY_ACCESS, INTERNAL, "core/src/vault/keys.hpp", "core/include/lume/vault/vault.hpp")
+INDEX_INTERNAL = "core/src/vault/index_internal.hpp"
+HEADERS = (KEY_ACCESS, INTERNAL, INDEX_INTERNAL, "core/src/vault/keys.hpp", "core/include/lume/vault/vault.hpp")
 
 
 def failures_for(name: str, text: str) -> list[str]:
@@ -42,10 +43,19 @@ class GuardedHeaders(unittest.TestCase):
 
     def test_the_internal_header_is_for_its_owners_and_the_tests(self) -> None:
         self.assertEqual(failures_for("core/tests/vault/vault_test.cpp", '#include "vault/vault_internal.hpp"'), [])
-        self.assertEqual(failures_for("core/src/vault/keys.cpp", '#include "vault/vault_internal.hpp"'), [])
+        for name in ("core/src/vault/keys.cpp", "core/src/vault/records.cpp", "core/src/vault/index.cpp"):
+            with self.subTest(name=name):
+                self.assertEqual(failures_for(name, '#include "vault/vault_internal.hpp"'), [])
         for name in ("core/src/vault/store.cpp", "core/src/session/session.cpp", "core/fuzz/vault_fuzzer.cpp"):
             with self.subTest(name=name):
                 self.assertTrue(failures_for(name, "#include <vault/vault_internal.hpp>"))
+
+    def test_the_index_draws_are_for_the_index_and_the_tests(self) -> None:
+        self.assertEqual(failures_for("core/src/vault/index.cpp", '#include "vault/index_internal.hpp"'), [])
+        self.assertEqual(failures_for("core/tests/vault/vault_test.cpp", '#include "vault/index_internal.hpp"'), [])
+        for name in ("core/src/vault/store.cpp", "core/src/vault/vault.cpp", "core/src/vault/records.cpp"):
+            with self.subTest(name=name):
+                self.assertTrue(failures_for(name, '#include "vault/index_internal.hpp"'))
 
     def test_a_guarded_header_cannot_be_reached_through_another_file(self) -> None:
         files = {

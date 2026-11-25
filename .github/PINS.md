@@ -21,7 +21,7 @@ the upstream source as shown.
 | gitleaks | SHA-256 `551f6fc8…f2470eb` | 8.30.1, `linux_x64` | the asset digest on the GitHub release |
 | apt.llvm.org signing key | fingerprint `6084F3CF814B57C1CF12EFD515CF4D18AF4F7421` | Clang and clang-tidy 22 | `tools/ci/install-llvm.sh` refuses a key file holding any other key and trusts only this one |
 | Clang and clang-tidy 22 packages | **not pinned** | newest `llvm-toolchain-noble-22` build | apt.llvm.org keeps only its newest build, so a version pin would break; the packages are verified against the pinned key |
-| Runner image tools: Node.js, Python, CMake, gpg, Visual Studio | **not pinned** | as shipped in `ubuntu-24.04` and `windows-2025` | GitHub's image release notes |
+| Runner image tools: Node.js, Python, CMake, gpg, Visual Studio, the Android NDK | **not pinned** | as shipped in `ubuntu-24.04` and `windows-2025`; the NDK is the newest in `ubuntu-24.04`, `ANDROID_NDK_LATEST_HOME` | GitHub's image release notes; the Android jobs print the NDK's `Pkg.Revision` |
 | gcovr and its dependencies | hashes in `tools/ci/coverage-requirements.txt` | gcovr 8.7 | regenerate with `uv pip compile --generate-hashes --python-platform x86_64-manylinux_2_39 --python-version 3.12` |
 | reuse and its dependencies | hashes in `tools/ci/reuse-requirements.txt` | reuse 6.2.0 | as above |
 | Project Wycheproof vectors | commit `d17cc89fa5c8f4f4d378b5385ebf75da5d0926c9` | `testvectors_v1` | see `core/tests/vectors/README.md` |

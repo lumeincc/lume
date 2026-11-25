@@ -157,9 +157,10 @@ The relay is not written yet. These rules apply to it from its first line.
   invariants, and a fuzz target for every parser.
 - CI runs GCC and Clang with AddressSanitizer and UndefinedBehaviorSanitizer,
   a GCC release build, the fuzz targets, and MSVC Debug and Release on
-  Windows. ThreadSanitizer for the relay and the Android build on an emulator
-  will join once those exist. Coverage of `core/` below 90 % of lines or 70 %
-  of branches fails the build.
+  Windows. It also builds the core and its tests with the Android NDK for
+  arm64-v8a and x86_64, without running them. ThreadSanitizer for the relay
+  and the Android tests on an emulator will join once those exist. Coverage of
+  `core/` below 90 % of lines or 70 % of branches fails the build.
 - Generated files (`core/src/crypto/known_answers.hpp` and the like) are
   regenerated in CI and must match what is committed.
 - Every download in CI is pinned by commit or hash, with two exceptions: the

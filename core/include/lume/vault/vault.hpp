@@ -3,9 +3,12 @@
 
 #pragma once
 
+#include "lume/crypto/bytes.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <optional>
 
 namespace lume::vault {
 
@@ -49,5 +52,11 @@ enum class Platform : std::uint8_t {
 };
 
 using RecordType = std::uint8_t;
+
+struct Change {
+    RecordType type = 0;
+    crypto::ByteView id;
+    std::optional<crypto::ByteView> payload;
+};
 
 }

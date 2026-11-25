@@ -436,8 +436,117 @@ const manifestRefusals = [
   return { name, description, header, sealed: hex(sealed), error: "integrity" };
 });
 
+const scriptEpoch = headerByName.get("keystore_first").epoch;
+const scriptInputs = [
+  [
+    ["put", 1, Buffer.from("alice", "ascii"), Buffer.from("first words to alice", "utf8")],
+    ["put", 1, Buffer.from("bob", "ascii"), Buffer.from("first words to bob", "utf8")],
+    ["put", 2, Buffer.from("2026-11-01", "ascii"), Buffer.alloc(700, 0x31)],
+  ],
+  [
+    ["put", 1, Buffer.from("alice", "ascii"), Buffer.from("alice, written again", "utf8")],
+    ["remove", 1, Buffer.from("bob", "ascii")],
+    ["put", 3, Buffer.alloc(0), Buffer.alloc(0)],
+  ],
+  [
+    ["remove", 2, Buffer.from("2026-11-01", "ascii")],
+    ["put", 1, Buffer.from("bob", "ascii"), Buffer.from("bob comes back", "utf8")],
+    ["remove", 9, Buffer.from("never written", "ascii")],
+  ],
+  [
+    ["put", 1, Buffer.from("alice", "ascii"), Buffer.alloc(300, 0x41)],
+    ["remove", 3, Buffer.alloc(0)],
+  ],
+  [
+    ["remove", 1, Buffer.from("alice", "ascii")],
+    ["remove", 1, Buffer.from("bob", "ascii")],
+  ],
+];
+const scriptKey = (type, id) => `${type}:${hex(id)}`;
+const scriptLive = new Map();
+const scriptRoots = new Map();
+const scriptTypesFromScratch = () => {
+  const types = new Map();
+  for (const entry of scriptLive.values()) {
+    const listed = types.get(entry.type) ?? { type: entry.type, count: 0, root: 0n };
+    listed.count += 1;
+    listed.root = (listed.root + asNumber(rootTermOf(entry.type, entry.id, entry.counter, entry.nonce))) % modulus;
+    types.set(entry.type, listed);
+  }
+  return [...types.values()].sort((left, right) => left.type - right.type).map(({ type, count, root }) => ({ type, count, root: asBytes(root) }));
+};
+const scriptTypesIncremental = () => [...scriptRoots.entries()].filter(([, state]) => state.count > 0)
+  .sort(([left], [right]) => left - right).map(([type, state]) => ({ type, count: state.count, root: asBytes(state.root) }));
+const scriptSteps = scriptInputs.map((changes, step) => {
+  const rows = [];
+  const listed = changes.map(([kind, type, id, payload], index) => {
+    const name = `script ${step} ${index}`;
+    const key = scriptKey(type, id);
+    const held = scriptLive.get(key);
+    const state = scriptRoots.get(type) ?? { count: 0, root: 0n };
+    scriptRoots.set(type, state);
+    if (kind === "remove") {
+      if (held) {
+        rows.push({ write: "erase", slot: held.slot.toString(), address: "", record: "",
+          old_address_nonce: hex(held.addressNonce), old_record_nonce: hex(held.nonce) });
+        state.count -= 1;
+        state.root = (state.root - asNumber(rootTermOf(type, id, held.counter, held.nonce)) + modulus) % modulus;
+        scriptLive.delete(key);
+      }
+      return { type, id: hex(id), payload: null };
+    }
+    const slot = held ? held.slot : BigInt(`0x${hex(seedOf(`${name} slot`).subarray(0, 8))}`) & ((1n << 63n) - 1n);
+    if (slot === 0n) fail("a slot is never 0");
+    const counter = held ? held.counter + 1n : 0n;
+    const nonce = nonceOf(`${name} record nonce`);
+    const addressNonce = nonceOf(`${name} address nonce`);
+    const record = sealRecord(type, id, counter, payload, nonce);
+    const address = sealAddress(slot, { type, id, counter, nonce }, addressNonce);
+    const opened = openRecord(type, id, counter, nonce, record);
+    const located = openAddress(slot, address);
+    if (typeof opened === "string" || !opened.equals(payload) || typeof located === "string" || !located.nonce.equals(nonce)) {
+      fail(`${name} must open at its address`);
+    }
+    if (held) {
+      rows.push({ write: "replace", slot: slot.toString(), address: hex(address), record: hex(record),
+        old_address_nonce: hex(held.addressNonce), old_record_nonce: hex(held.nonce) });
+      state.root = (state.root - asNumber(rootTermOf(type, id, held.counter, held.nonce)) + modulus) % modulus;
+    } else {
+      rows.push({ write: "insert", slot: slot.toString(), address: hex(address), record: hex(record),
+        old_address_nonce: "", old_record_nonce: "" });
+      state.count += 1;
+    }
+    state.root = (state.root + asNumber(rootTermOf(type, id, counter, nonce))) % modulus;
+    scriptLive.set(key, { type, id, slot, counter, nonce, addressNonce });
+    return {
+      type, id: hex(id), payload: hex(payload), ...(held ? {} : { slot: slot.toString() }),
+      record_nonce: hex(nonce), address_nonce: hex(addressNonce),
+    };
+  });
+  const incremental = scriptTypesIncremental();
+  const fromScratch = scriptTypesFromScratch();
+  if (JSON.stringify(incremental.map(({ type, count, root }) => [type, count, hex(root)]))
+    !== JSON.stringify(fromScratch.map(({ type, count, root }) => [type, count, hex(root)]))) {
+    fail(`step ${step} must give the same roots incrementally and from scratch`);
+  }
+  const manifestNonce = nonceOf(`script ${step} manifest nonce`);
+  const sealed = sealManifest(manifestNonce, pad(encodeManifest(scriptEpoch, incremental), manifestBuckets));
+  const reopened = openManifest(sealed, scriptEpoch);
+  if (typeof reopened === "string" || reopened.types.length !== incremental.length) fail(`the manifest of step ${step} must open`);
+  return {
+    changes: listed, manifest_nonce: hex(manifestNonce), rows,
+    types: incremental.map(({ type, count, root }) => ({ type, count, root: hex(root) })), manifest: hex(sealed),
+  };
+});
+if (scriptLive.size !== 0) fail("the script must end with no records");
+const script = {
+  description: "a scripted sequence of puts, rewrites and removes under the header \"keystore_first\": each step gives its changes in order, the slot each new record draws, the record and address nonces each write draws and the step's manifest nonce, then the rows it writes, the types it leaves and the sealed manifest; the roots are computed incrementally and from scratch, which must agree",
+  header: "keystore_first",
+  steps: scriptSteps,
+};
+
 const document = {
-  description: "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3. It holds Argon2id with one lane and a 32-byte output; the Keystore input and the TPM authorisation; headers of a first epoch, a next epoch and a passphrase change, each built from an Argon2id case, a hardware output and a nonce, with the same data key; records padded to power-of-two buckets, their sealed addresses under a slot, root terms that cover each record's nonce, roots and an incremental update; and a manifest sealed at a fixed size. Seeds are SHA-256(\"LUME vault vector \" || name). A Keystore output of epoch e is HMAC-SHA256 under SHA-256(\"LUME vault vector keystore key e\") of the Keystore input; a TPM output is the x-coordinate of a real P-256 ECDH of K_tpm with its own public key. Every refusal is confirmed against the generator's own model of the checks, and must be refused with the error it names",
+  description: "LUME vault, CRYPTO.md section 10, computed with Node.js crypto (OpenSSL), the shared XChaCha20-Poly1305 checked against Wycheproof and an Argon2id implementation of its own checked against RFC 9106 section 5.3. It holds Argon2id with one lane and a 32-byte output; the Keystore input and the TPM authorisation; headers of a first epoch, a next epoch and a passphrase change, each built from an Argon2id case, a hardware output and a nonce, with the same data key; records padded to power-of-two buckets, their sealed addresses under a slot, root terms that cover each record's nonce, roots and an incremental update; a manifest sealed at a fixed size; and a scripted sequence of writes and removals with the sealed manifest after each step. Seeds are SHA-256(\"LUME vault vector \" || name). A Keystore output of epoch e is HMAC-SHA256 under SHA-256(\"LUME vault vector keystore key e\") of the Keystore input; a TPM output is the x-coordinate of a real P-256 ECDH of K_tpm with its own public key. Every refusal is confirmed against the generator's own model of the checks, and must be refused with the error it names",
   generator: "core/tools/generate_vault_vectors.mjs",
   argon2id: argon2Cases,
   keys: {
@@ -461,6 +570,7 @@ const document = {
     empty: { nonce: hex(nonceOf("empty manifest nonce")), sealed: hex(emptyManifest) },
     refusals: manifestRefusals,
   },
+  script,
 };
 writeFileSync(outputFile, JSON.stringify(document, null, 2) + "\n");
 console.log("wrote the vault vectors");
