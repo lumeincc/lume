@@ -509,7 +509,9 @@ TEST(VaultIndexPlan, LeavesTheIndexUnchangedWhenPlanningRunsOutOfMemory)
         EXPECT_EQ(snapshot(index), before);
         EXPECT_TRUE(index.matches(manifest));
     }
-    ASSERT_TRUE(planned.has_value());
+    if (!planned) {
+        FAIL() << "no allocation budget below 1000 let the plan finish";
+    }
     EXPECT_GE(refusals, 4U);
     index.apply(std::move(*planned));
     EXPECT_EQ(index.records(), 4U);
